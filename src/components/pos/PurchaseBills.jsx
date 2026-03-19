@@ -7,150 +7,177 @@ import {
   RefreshCcw, 
   Plus, 
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Clock
 } from 'lucide-react'
 import Button from '../common/Button'
-import Input from '../common/Input'
 import Card from '../common/Card'
+import { PURCHASE_BILLS } from '../../mocks/purchaseBillsData'
 
 const PurchaseBills = () => {
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
+  const [filterBy, setFilterBy] = useState('Vendor')
+  const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(0)
 
-  const bills = [
-    { id: '191042', date: '11/24/2025 03:59:02 PM', vendor: 'OH Brewing', status: 'Committed', total: '826.00', dueDate: '12/24/2025 03:59:02 PM', note: '' },
-    { id: '56406,07', date: '11/24/2025 02:25:11 PM', vendor: 'Fedway', status: 'Committed', total: '1913.78', dueDate: '12/24/2025 02:25:11 PM', note: '' },
-    { id: '171544,170336', date: '11/24/2025 02:05:29 PM', vendor: 'Allied Beverages', status: 'Committed', total: '3514.42', dueDate: '12/24/2025 02:05:29 PM', note: '' },
-    { id: '10347880', date: '11/21/2025 01:01:59 PM', vendor: 'REMARKABLE LIQUIDS', status: 'Committed', total: '539.85', dueDate: '12/21/2025 01:01:59 PM', note: '' },
-    { id: '0178072', date: '11/21/2025 12:47:34 PM', vendor: 'High Grade', status: 'Committed', total: '450.25', dueDate: '12/21/2025 12:47:34 PM', note: '' },
-    { id: '803462', date: '11/20/2025 06:25:47 PM', vendor: 'Gallo Wines', status: 'Committed', total: '448.04', dueDate: '12/20/2025 06:25:47 PM', note: '' },
-  ]
-
   return (
-    <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 overflow-auto pb-8 pr-2">
+    <div className="space-y-6">
       
       {/* Filter Criteria Section */}
-      <Card>
-        <div className="flex flex-wrap items-end gap-10">
-          <div className="space-y-3">
-            <h3 className="text-[14px] font-bold text-[#1E293B] uppercase tracking-wider">Filter Criteria</h3>
-            <div className="flex items-center gap-6">
+      <Card className="!p-4 bg-white shadow-sm border border-slate-200">
+        <div className="flex items-center gap-8">
+          {/* Radio Group */}
+          <div className="flex flex-col gap-1.5 min-w-max">
+            <h3 className="text-[15px] font-black text-slate-800 tracking-tight font-poppins">Filter Criteria</h3>
+            <div className="flex items-center gap-5">
               {['Last Month', 'Last 3 Months', 'Last 6 Months', 'All'].map((period) => (
                 <label key={period} className="flex items-center gap-2 cursor-pointer group">
                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                    filterPeriod === period ? 'border-[#0EA5E9]' : 'border-[#E2E8F0] group-hover:border-[#CBD5E1]'
+                    filterPeriod === period ? 'border-sky-500' : 'border-slate-200 group-hover:border-slate-300'
                   }`}>
-                    {filterPeriod === period && <div className="w-2 h-2 rounded-full bg-[#0EA5E9]" />}
+                    {filterPeriod === period && <div className="w-2 h-2 rounded-full bg-sky-500" />}
                   </div>
                   <input type="radio" className="hidden" name="period" checked={filterPeriod === period} onChange={() => setFilterPeriod(period)} />
-                  <span className={`text-[12px] font-bold transition-colors ${
-                    filterPeriod === period ? 'text-[#0EA5E9]' : 'text-[#64748B] group-hover:text-[#1E293B]'
+                  <span className={`text-[13px] font-bold transition-colors ${
+                    filterPeriod === period ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-800'
                   }`}>{period}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="flex items-end gap-4 flex-1 justify-end">
-            <div className="flex flex-col gap-1 w-56">
-              <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-0.5">Filter By</label>
-              <div className="relative">
-                <select className="w-full h-10 px-3 pr-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] text-[14px] font-medium text-[#1E293B] outline-none appearance-none focus:border-[#0EA5E9] focus:bg-white transition-all">
+          <div className="h-10 w-px bg-slate-100 mx-2" />
+
+          {/* Filter By Dropdown */}
+          <div className="flex flex-col gap-1.5 w-48">
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
+             <div className="relative">
+                <select 
+                  value={filterBy}
+                  onChange={(e) => setFilterBy(e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 appearance-none cursor-pointer"
+                >
                   <option>Vendor</option>
                   <option>Bill #</option>
                   <option>Status</option>
                 </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" size={16} />
-              </div>
-            </div>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+             </div>
+          </div>
 
-            <Input 
-              label="Filter Value" 
-              placeholder="Search..." 
-              className="w-72"
-            />
+          {/* Filter Value */}
+          <div className="flex flex-col gap-1.5 flex-1">
+             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
+             <input
+               type="text"
+               placeholder="Search Value"
+               className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-inner"
+             />
+          </div>
 
-            <Button className="gap-2">
+          <div className="pt-6">
+            <button className="h-11 px-6 rounded-xl border border-sky-400 bg-white text-sky-500 flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-sm hover:bg-sky-50 transition-all active:scale-95">
               <Filter size={16} />
               Filter
-            </Button>
+            </button>
           </div>
         </div>
       </Card>
 
-      {/* Action Buttons Section */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <Button variant="outline" className="gap-2 text-[#64748B]">
-            <Download size={18} />
-            Export CSV
-          </Button>
-          <Button variant="outline" className="gap-2 text-[#64748B]">
-            <RefreshCcw size={18} />
-            Refresh
-          </Button>
-        </div>
+      {/* Search & Actions Bar */}
+      <Card className="!p-4 bg-white shadow-sm border border-slate-200">
+        <div className="flex items-center justify-between gap-4">
+           <div className="flex flex-col gap-1.5 flex-1 max-w-xl">
+               <h3 className="text-[15px] font-black text-slate-800 tracking-tight font-poppins">Search Criteria</h3>
+              <div className="flex gap-2">
+                 <input
+                   type="text"
+                   value={searchQuery}
+                   onChange={(e) => setSearchQuery(e.target.value)}
+                   className="flex-1 h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-inner"
+                 />
+                 <button className="h-11 px-6 rounded-xl border border-sky-400 bg-white text-sky-500 flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-sm hover:bg-sky-50 transition-all active:scale-95">
+                    <Search size={16} />
+                    Search
+                 </button>
+              </div>
+           </div>
 
-        <div className="flex items-center gap-3">
-          <Link to="/pos/purchase-bills/create">
-            <Button className="gap-2">
-              <Plus size={18} />
-              Add Invoice
-            </Button>
-          </Link>
-          <Button variant="outline" className="gap-2 text-rose-500 border-rose-100 hover:bg-rose-50">
-            <Trash2 size={18} />
-            Delete
-          </Button>
+           <div className="flex items-center gap-3 pt-4">
+              <button className="h-11 px-6 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all shadow-sm active:scale-95">
+                 Export To CSV
+              </button>
+              <button className="h-11 px-6 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all shadow-sm active:scale-95">
+                 <RefreshCcw size={16} />
+                 Refresh
+              </button>
+              <Link to="/pos/purchase-bills/create">
+                <button className="h-11 px-6 rounded-xl bg-emerald-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95">
+                  <Plus size={18} />
+                  Add
+                </button>
+              </Link>
+              <button className="h-11 px-6 rounded-xl bg-rose-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
+                 <Trash2 size={18} />
+                 Delete
+              </button>
+           </div>
         </div>
-      </div>
+      </Card>
 
       {/* Table Section */}
-      <div className="flex-1 bg-white rounded-lg border border-[#E2E8F0] shadow-sm flex flex-col overflow-hidden min-h-[500px]">
-        <div className="overflow-auto flex-1">
-          <table className="w-full text-left border-collapse text-[14px]">
-            <thead className="sticky top-0 z-10 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+      <div className="flex-1 bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col overflow-hidden min-h-[500px]">
+        <div className="overflow-auto flex-1 scrollbar-hide">
+          <table className="w-full text-left border-collapse">
+            <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200">
               <tr>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Bill #</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Receive Date</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Vendor</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Status</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap text-right">Total Amt.</th>
-                <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Due Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill #</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendor</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Amt.</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Note</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#E2E8F0]">
-              {bills.map((bill, index) => (
-                <tr 
-                  key={index} 
-                  onClick={() => setSelectedRow(index)}
-                  className={`hover:bg-[#F8FAFC] cursor-pointer transition-colors ${
-                    selectedRow === index ? 'bg-[#0EA5E90D]' : ''
-                  }`}
-                >
-                  <td className="px-6 py-4 font-bold text-[#0EA5E9] hover:underline whitespace-nowrap">{bill.id}</td>
-                  <td className="px-6 py-4 text-[#64748B] whitespace-nowrap font-medium">{bill.date}</td>
-                  <td className="px-6 py-4 font-bold text-[#0EA5E9] hover:underline whitespace-nowrap">{bill.vendor}</td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="px-2.5 py-1 bg-emerald-50 text-emerald-600 text-[12px] font-bold rounded-full border border-emerald-100 uppercase tracking-wide">
-                      {bill.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-[16px] font-black text-[#1E293B] text-right whitespace-nowrap">${bill.total}</td>
-                  <td className="px-6 py-4 text-[#64748B] font-medium whitespace-nowrap">{bill.dueDate}</td>
-                </tr>
-              ))}
+            <tbody className="divide-y divide-slate-100">
+              {PURCHASE_BILLS.map((bill, index) => {
+                const isSelected = selectedRow === index
+                return (
+                  <tr 
+                    key={index} 
+                    onClick={() => setSelectedRow(index)}
+                    className={`hover:bg-sky-50 transition-colors cursor-pointer ${
+                      index % 2 !== 0 ? 'bg-slate-50/30' : ''
+                    } ${isSelected ? 'shadow-[inset_4px_0_0_#0EA5E9] bg-sky-50/50' : ''}`}
+                  >
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-bold text-sky-500 hover:underline">{bill.id}</span>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-600">{bill.date}</td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-bold text-sky-500 hover:underline">{bill.vendor}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg border border-amber-100 uppercase tracking-widest shadow-sm">
+                        {bill.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-bold text-slate-700">{bill.total}</td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-500">{bill.dueDate}</td>
+                    <td className="px-6 py-4 text-xs font-medium text-slate-400">{bill.note}</td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
         
         {/* Footer info */}
-        <div className="px-8 py-4 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between">
-          <span className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider">Total Purchase Bills: {bills.length}</span>
-          <div className="flex items-center gap-8">
-            <span className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider">Total Value:</span>
-            <span className="text-[24px] font-black text-[#0EA5E9] tracking-tight">$2,456,782.12</span>
-          </div>
+        <div className="px-8 py-4 bg-white border-t border-slate-100">
+          <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
+             Total Purchase Bills : {PURCHASE_BILLS.length}
+          </span>
         </div>
       </div>
     </div>

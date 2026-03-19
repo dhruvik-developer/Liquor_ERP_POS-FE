@@ -7,20 +7,24 @@ import {
   RefreshCcw, 
   Plus, 
   Trash2,
-  CheckCircle,
-  ChevronDown,
-  ExternalLink
+  ChevronDown
 } from 'lucide-react'
-import Button from '../common/Button'
-import Input from '../common/Input'
 import Card from '../common/Card'
-import { purchaseOrdersData } from '../../mocks/purchaseOrdersData'
 
-const PurchaseOrders = () => {
+const PurchaseReturns = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedRow, setSelectedRow] = useState(null)
+
+  const returnsData = [
+    { billNo: '3776357', date: '11/11/2025 12:42', vendor: 'Peerless', status: 'Committed', total: '$24.60', dueDate: '', paidStatus: 'Open' },
+    { billNo: '0170053', date: '11/05/2025 01:00', vendor: 'High Grade', status: 'Committed', total: '$270.24', dueDate: '', paidStatus: 'Open' },
+    { billNo: '3772057', date: '11/04/2025 01:42', vendor: 'Peerless', status: 'Committed', total: '$46.98', dueDate: '', paidStatus: 'Open' },
+    { billNo: '3769358', date: '10/28/2025 11:30', vendor: 'Peerless', status: 'Committed', total: '$74.40', dueDate: '', paidStatus: 'Open' },
+    { billNo: '3765328', date: '10/21/2025 12:31', vendor: 'Peerless', status: 'Committed', total: '$61.36', dueDate: '', paidStatus: 'Open' },
+    { billNo: '0160259', date: '10/15/2025 02:01', vendor: 'High Grade', status: 'Committed', total: '$66.40', dueDate: '', paidStatus: 'Open' },
+    { billNo: '3762016', date: '10/14/2025 11:35', vendor: 'Peerless', status: 'Committed', total: '$131.50', dueDate: '', paidStatus: 'Open' },
+  ]
 
   return (
     <div className="space-y-6">
@@ -55,7 +59,6 @@ const PurchaseOrders = () => {
                  <div className="relative group">
                     <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
                       <option>Vendor</option>
-                      <option>PO #</option>
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                  </div>
@@ -112,7 +115,7 @@ const PurchaseOrders = () => {
                </button>
                <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
                <button 
-                 onClick={() => navigate('/pos/purchase-orders/create')}
+                 onClick={() => navigate('/pos/purchase-return/create')}
                  className="h-10 px-6 rounded-xl bg-[#10B981] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95"
                >
                   <Plus size={16} />
@@ -121,13 +124,6 @@ const PurchaseOrders = () => {
                <button className="h-10 px-6 rounded-xl bg-[#F43F5E] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-rose-500/20 hover:bg-rose-600 transition-all active:scale-95">
                   <Trash2 size={16} />
                   Delete
-               </button>
-               <button 
-                 onClick={() => navigate('/pos/purchase-orders/receive')}
-                 className="h-10 px-6 rounded-xl bg-[#0EA5E9] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-[#0284C7] transition-all active:scale-95"
-               >
-                  <CheckCircle size={16} />
-                  Receive
                </button>
             </div>
          </div>
@@ -139,42 +135,35 @@ const PurchaseOrders = () => {
             <table className="w-full text-left border-collapse">
                <thead className="bg-slate-50/50 border-b border-slate-100">
                   <tr>
-                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">PO #</th>
-                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">PO Date</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Bill #</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Bill Date</th>
                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Vendor</th>
-                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Vendor Order #</th>
                      <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Status</th>
-                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap text-right">Est. Total</th>
-                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Status (Overall)</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap text-right">Total Amt.</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Due Date</th>
+                     <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Paid Status</th>
                   </tr>
                </thead>
                <tbody className="divide-y divide-slate-50">
-                  {purchaseOrdersData.slice(0, 10).map((order, idx) => (
+                  {returnsData.map((record, idx) => (
                     <tr 
                       key={idx} 
-                      onClick={() => setSelectedRow(idx)}
-                      className={`hover:bg-sky-50 transition-colors group ${selectedRow === idx ? 'bg-sky-50/50' : ''}`}
+                      className="hover:bg-sky-50/30 transition-colors group cursor-pointer"
                     >
-                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight">
-                          {order.po}
+                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline tracking-tight">
+                          {record.billNo}
                        </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-500">{order.date}</td>
-                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer">
-                          {order.vendor}
+                       <td className="px-8 py-5 text-sm font-bold text-slate-500">{record.date}</td>
+                       <td className="px-8 py-5 text-sm font-black text-slate-700">
+                          {record.vendor}
                        </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{order.vendorOrder}</td>
+                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.status}</td>
+                       <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{record.total}</td>
+                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.dueDate}</td>
                        <td className="px-8 py-5">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                            order.status === 'Fully Received' 
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                              : 'bg-sky-50 text-sky-600 border-sky-100'
-                          }`}>
-                            {order.status}
+                          <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100">
+                            {record.paidStatus}
                           </span>
-                       </td>
-                       <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{order.total}</td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-700">
-                          {order.overallStatus}
                        </td>
                     </tr>
                   ))}
@@ -184,7 +173,7 @@ const PurchaseOrders = () => {
 
          <div className="px-8 py-5 bg-slate-50/30 border-t border-slate-100">
             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-               Total Purchase Orders : {purchaseOrdersData.length}
+               Total Purchase Returns : 82
             </span>
          </div>
       </div>
@@ -192,4 +181,4 @@ const PurchaseOrders = () => {
   )
 }
 
-export default PurchaseOrders
+export default PurchaseReturns

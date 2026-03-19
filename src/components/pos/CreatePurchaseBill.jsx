@@ -6,9 +6,11 @@ import {
   Trash2, 
   Calculator, 
   Upload, 
-  List,
   ChevronDown,
-  X
+  X,
+  Settings,
+  MoreHorizontal,
+  Calendar
 } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
@@ -34,225 +36,405 @@ const CreatePurchaseBill = () => {
   ])
 
   return (
-    <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 overflow-y-auto pb-10 -m-4 sm:-m-6 p-6">
+    <div className="space-y-6">
       
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-[28px] font-black text-[#1E293B] tracking-tight">Create Purchase Bill</h1>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+        <h1 className="text-[24px] font-bold text-slate-800 tracking-tight font-poppins">Create Purchase Bill</h1>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => navigate('/pos/purchase-bills')}>
+          <button 
+            onClick={() => navigate('/pos/purchase-bills')} 
+            className="px-6 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
+          >
             Close
-          </Button>
-          <Button onClick={() => navigate('/pos/purchase-bills')} className="gap-2 px-8">
-            <Save size={18} />
-            Save Bill
-          </Button>
+          </button>
+          <button 
+            onClick={() => navigate('/pos/purchase-bills')} 
+            className="px-8 h-10 rounded-xl bg-[#0EA5E9] text-white text-xs font-black uppercase tracking-widest hover:bg-[#0284C7] transition-all active:scale-95 shadow-lg shadow-sky-500/20 flex items-center gap-2"
+          >
+            <Save size={16} />
+            Save
+          </button>
         </div>
       </div>
 
-      {/* Top Form Section */}
-      <Card>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-1.5">
-            <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">Select Vendor</label>
-            <div className="relative group">
-              <select className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none appearance-none focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E90D] transition-all">
-                <option>Allied Beverages</option>
-              </select>
-              <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" size={16} />
-            </div>
-          </div>
-          <Input label="Invoice #" placeholder="Enter invoice number" />
-          <div className="flex items-end gap-3">
-            <div className="flex-1 space-y-1.5">
-              <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">Sales Person</label>
+      {/* Bill Info Card */}
+      <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+           <div className="lg:col-span-3 space-y-1.5 flex flex-col">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Vendor</label>
               <div className="relative group">
-                <select className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none appearance-none focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E90D] transition-all">
-                  <option>Select</option>
+                <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
+                  <option>Allied Beverages</option>
                 </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-[#94A3B8]" size={16} />
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               </div>
-            </div>
-            <Button variant="outline" className="h-10 w-10 p-0 flex items-center justify-center">
-              <Plus size={18} />
-            </Button>
-          </div>
+           </div>
+           
+           <div className="lg:col-span-3 space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice #</label>
+              <input 
+                type="text" 
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                placeholder=""
+              />
+           </div>
+
+           <div className="lg:col-span-4 flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Sales Person</label>
+                <div className="relative group">
+                  <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
+                    <option>Select a person</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                </div>
+              </div>
+              <button className="h-11 w-11 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-all shadow-sm active:scale-95">
+                <MoreHorizontal size={20} />
+              </button>
+           </div>
+
+           <div className="lg:col-span-2 flex flex-col items-end pb-1 whitespace-nowrap overflow-hidden">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill ID</span>
+              <span className="text-[13px] font-black text-slate-700 tabular-nums">PBL25112423243040365</span>
+           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-6">
-          <Input label="Bill Date" type="date" defaultValue="2025-11-24" />
-          <Input label="Due Date" type="date" defaultValue="2025-12-24" />
-          <Input label="Delivery Date" type="date" defaultValue="2025-11-24" />
-          <Input label="Internal Note" placeholder="Comments..." />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bill Date</label>
+              <div className="relative">
+                <input 
+                   type="text" 
+                   defaultValue="11/24/2025"
+                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
+                />
+                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              </div>
+           </div>
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Due Date</label>
+              <div className="relative">
+                <input 
+                   type="text" 
+                   defaultValue="12/24/2025"
+                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
+                />
+                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              </div>
+           </div>
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Delivery Date</label>
+              <div className="relative">
+                <input 
+                   type="text" 
+                   defaultValue="11/24/2025"
+                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
+                />
+                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              </div>
+           </div>
+           <div className="space-y-1.5">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Note</label>
+              <input 
+                type="text" 
+                className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+              />
+           </div>
         </div>
-      </Card>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
         
-        {/* Item Selection Card */}
-        <div className="lg:col-span-8 space-y-6">
-          <Card title="Item Selection" className="relative group">
-            <div className="absolute top-0 left-0 w-1 bg-[#0EA5E9] h-full rounded-l-lg"></div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-              <div className="space-y-6">
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="col-span-2">
-                    <Input label="SKU / UPC" defaultValue="5008" />
-                  </div>
-                  <Input label="Qty" defaultValue="1" className="text-center" />
-                  <Input label="BPC" defaultValue="24" className="text-center" />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">Item Name</label>
-                    <select className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none">
-                      <option>REDBULL 8.4 OZ 24-PACK</option>
-                    </select>
-                  </div>
-                  <label className="flex items-center gap-2 cursor-pointer group w-fit">
-                    <input type="checkbox" className="w-4 h-4 rounded border-[#E2E8F0] text-[#0EA5E9] focus:ring-[#0EA5E90D]" />
-                    <span className="text-[14px] font-medium text-[#64748B] group-hover:text-[#0EA5E9]">Loose bottles only</span>
-                  </label>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <Input label="Case Cost" defaultValue="38.49" icon={() => <span className="text-[12px] font-bold">$</span>} />
-                  <Input label="Unit Cost" defaultValue="1.60" icon={() => <span className="text-[12px] font-bold">$</span>} readOnly />
-                </div>
+        {/* Item Selection Column */}
+        <div className="lg:col-span-8 flex flex-col">
+           <Card noPadding className="border-slate-200 flex-1 overflow-hidden">
+              <div className="h-14 border-b border-slate-100 flex items-center px-8 bg-slate-50/50">
+                 <div className="relative h-full flex items-center">
+                    <span className="text-[11px] font-black text-sky-500 uppercase tracking-widest">Item Selection</span>
+                    <div className="absolute bottom-0 left-0 w-full h-0.5 bg-sky-500" />
+                 </div>
               </div>
 
-              <div className="space-y-6 flex flex-col justify-between">
-                <div className="bg-[#0EA5E90D] p-5 rounded-lg border border-[#0EA5E91A] flex flex-col gap-2">
-                  <div className="flex justify-between items-center text-[#0EA5E9]">
-                    <span className="text-[12px] font-bold uppercase tracking-wider">Line Total</span>
-                    <span className="text-[24px] font-black tracking-tight">$38.49</span>
-                  </div>
-                  <div className="flex justify-between items-center text-[#64748B]">
-                    <span className="text-[12px] font-bold uppercase tracking-wider">Net Units</span>
-                    <span className="text-[18px] font-bold">24.0</span>
-                  </div>
-                </div>
+              <div className="p-8 space-y-8">
+                 <div className="grid grid-cols-6 gap-6">
+                    <div className="col-span-2 space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SKU / UPC</label>
+                       <input 
+                         type="text" 
+                         defaultValue="5008"
+                         className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                       />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Qty</label>
+                       <input type="text" defaultValue="1" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">BPC</label>
+                       <input type="text" defaultValue="24" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Free Qty</label>
+                       <input type="text" defaultValue="0" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                    </div>
+                    <div className="space-y-1.5 flex flex-col">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Line Total</label>
+                       <div className="relative">
+                          <input type="text" defaultValue="38.490" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                       </div>
+                    </div>
+                 </div>
 
-                <div className="grid grid-cols-2 gap-4 pt-2">
-                   <div className="space-y-3">
-                      <PriceStat label="Curr Cost" value="1.60" />
-                      <PriceStat label="Curr Margin" value="54.15 %" />
-                      <PriceStat label="Sale Price" value="3.49" highlight />
-                   </div>
-                   <div className="space-y-3">
-                      <PriceStat label="New Cost" value="1.60" />
-                      <PriceStat label="Margin" value="54.15 %" />
-                      <PriceStat label="Suggested" value="3.49" highlight />
-                   </div>
-                </div>
+                 <div className="grid grid-cols-6 gap-6 items-end">
+                    <div className="col-span-2 space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Item Name</label>
+                       <div className="relative group">
+                          <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
+                            <option>REDBULL 611269991000 8.4 OZ 24-PACK</option>
+                          </select>
+                          <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                       </div>
+                    </div>
+                    <div className="flex items-center gap-2 pb-3">
+                       <div className="w-5 h-5 rounded-full border-2 border-slate-200 flex items-center justify-center cursor-pointer transition-all hover:border-sky-500 group">
+                          <div className="w-2.5 h-2.5 rounded-full bg-transparent group-hover:bg-sky-500/30" />
+                       </div>
+                       <span className="text-[12px] font-bold text-slate-500">Loose bottles/Units only</span>
+                    </div>
+                    <div className="col-span-2 invisible" />
+                    <div className="space-y-1.5">
+                       <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 text-right">Net Qty</label>
+                       <input type="text" defaultValue="24.0" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 text-center text-sm font-bold text-slate-400 outline-none" />
+                    </div>
+                 </div>
 
-                <Button className="w-full h-12 gap-2 mt-2">
-                  <Plus size={18} />
-                  Add Item to List
-                </Button>
+                 <div className="grid grid-cols-12 gap-8 items-start">
+                    <div className="col-span-8 grid grid-cols-2 gap-x-8 gap-y-6">
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Case Cost</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="38.490" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Cost</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="1.600" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Unit Cost</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="1.60" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Case Cost</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="38.49" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Discount</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="0.000" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
+                          </div>
+                       </div>
+                       <div className="space-y-1.5 flex flex-col">
+                          <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Net Cost</label>
+                          <div className="relative">
+                             <input type="text" defaultValue="38.490" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
+                          </div>
+                       </div>
+                    </div>
+
+                    <div className="col-span-4 space-y-4">
+                       <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-3">
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Cost:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">1.60</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Margin:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">54.15 %</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Markup:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">118.12 %</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sale Price:</span>
+                             <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500 underline decoration-sky-500/30">3.49</span>
+                          </div>
+                       </div>
+
+                       <div className="p-5 rounded-2xl bg-white border border-slate-100 space-y-3 shadow-sm">
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Cost:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">1.60</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margin:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">54.15 %</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Markup:</span>
+                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">118.12 %</span>
+                          </div>
+                          <div className="flex justify-between items-center group">
+                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Suggested Price:</span>
+                             <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500">3.49</span>
+                          </div>
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="flex justify-end pt-4">
+                    <button className="h-11 px-8 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95">
+                       <Plus size={18} />
+                       Add Item
+                    </button>
+                 </div>
               </div>
-            </div>
-          </Card>
+           </Card>
+        </div>
 
-          {/* Table Section */}
-          <div className="bg-white rounded-lg border border-[#E2E8F0] shadow-sm overflow-hidden flex flex-col">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-[14px]">
-                <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
+        {/* Summary Column */}
+        <div className="lg:col-span-4">
+            <Card noPadding className="h-full border-slate-200 flex flex-col">
+               <div className="h-14 border-b border-slate-100 flex items-center px-8 bg-slate-50/50">
+                  <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Summary</h2>
+               </div>
+               
+               <div className="p-8 space-y-4 flex-1">
+                 {[
+                    { label: 'Sub Total', value: '$0.000' },
+                    { label: 'Tax 1', value: '$0.00' },
+                    { label: 'Tax 2', value: '$0.00' },
+                    { label: 'Tax 3', value: '$0.00' },
+                    { label: 'Discount (Fees)', value: '$0.00' },
+                    { label: 'Deposit (Fees)', value: '$0.00' },
+                    { label: 'Return Deposit', value: '$0.00', isRed: true },
+                    { label: 'Overhead', value: '$0.000' },
+                 ].map((row, idx) => (
+                    <div key={idx} className="flex justify-between items-center">
+                       <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">{row.label}</span>
+                       <span className={`text-sm font-black ${row.isRed ? 'text-rose-500' : 'text-slate-700'}`}>{row.value}</span>
+                    </div>
+                 ))}
+                 
+                 <div className="h-px bg-slate-100 my-6" />
+                 
+                 <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-sky-500 tracking-tight font-poppins">Total Payable</h3>
+                    <span className="text-[28px] font-black text-sky-500 tracking-tight">$0.000</span>
+                 </div>
+
+                 <div className="grid grid-cols-3 gap-6 pt-8">
+                    <div className="text-center space-y-1">
+                       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Qty</div>
+                       <div className="text-2xl font-black text-slate-800">1</div>
+                    </div>
+                    <div className="text-center space-y-1 border-x border-slate-100 px-4">
+                       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Unit Qty</div>
+                       <div className="text-2xl font-black text-slate-800">24</div>
+                    </div>
+                    <div className="text-center space-y-1">
+                       <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items</div>
+                       <div className="text-2xl font-black text-slate-800">1</div>
+                    </div>
+                 </div>
+              </div>
+
+              <div className="pt-8">
+                 <button className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                    <Calculator size={18} className="text-slate-400" />
+                    Calculator
+                 </button>
+              </div>
+           </Card>
+        </div>
+      </div>
+
+      {/* Items Table Section */}
+      <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden flex flex-col min-h-[400px]">
+         <div className="h-14 border-b border-slate-100 flex items-center px-8 bg-slate-50/50">
+            <h2 className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Items Detail</h2>
+         </div>
+         <div className="overflow-x-auto scrollbar-hide flex-1">
+            <table className="w-full text-left border-collapse">
+               <thead className="bg-[#F8FAFC] border-b border-slate-100">
                   <tr>
-                    <th className="px-5 py-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">SKU</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider">Item Name</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-center">Qty</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right">Cost</th>
-                    <th className="px-5 py-3 text-[11px] font-bold text-[#64748B] uppercase tracking-wider text-right">Amount</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">SR #</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">SKU</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Vendor Code</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Item Name</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Size/Pack</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Case</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">BPC</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Qty</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Cost</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Disc</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap">Amount</th>
+                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap text-right">RIP</th>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-[#E2E8F0]">
+               </thead>
+               <tbody className="divide-y divide-slate-50">
                   {billItems.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-[#F8FAFC] transition-colors">
-                      <td className="px-5 py-4 font-medium text-[#64748B]">{item.sku}</td>
-                      <td className="px-5 py-4 font-bold text-[#1E293B]">{item.itemName}</td>
-                      <td className="px-5 py-4 text-center font-bold text-[#1E293B]">{item.qty}</td>
-                      <td className="px-5 py-4 text-right font-bold text-[#1E293B]">${item.cost}</td>
-                      <td className="px-5 py-4 text-right font-black text-[#0EA5E9]">${item.amount}</td>
+                    <tr key={idx} className="hover:bg-sky-50 transition-colors">
+                       <td className="px-6 py-5 text-sm font-bold text-slate-400">{item.sr}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-600 tracking-tight">{item.sku}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-600">{item.vendorCode}</td>
+                       <td className="px-6 py-5 text-sm font-black text-slate-700">{item.itemName}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-500">{item.sizePack}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.case}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.bpc}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-sky-500">{item.qty}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-700">${item.cost}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.disc}</td>
+                       <td className="px-6 py-5 text-sm font-black text-slate-800">${item.amount}</td>
+                       <td className="px-6 py-5 text-sm font-bold text-slate-400 text-right">${item.rip.toFixed(2)}</td>
                     </tr>
                   ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-4 bg-[#F8FAFC] flex items-center justify-between border-t border-[#E2E8F0]">
-              <div className="flex gap-2">
-                <Button variant="outline" className="text-rose-500 border-rose-100 p-2 h-9">
+               </tbody>
+            </table>
+         </div>
+
+         <div className="px-8 py-5 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+               <button className="h-10 px-6 rounded-xl border border-rose-100 bg-white text-rose-500 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-rose-50 transition-all shadow-sm active:scale-95">
                   <Trash2 size={16} />
-                </Button>
-                <Button variant="outline" className="text-rose-500 border-rose-100 p-2 h-9 text-[12px]">
-                  Clear All
-                </Button>
-              </div>
-              <Button variant="outline" className="h-9 text-[12px] gap-2">
-                <Upload size={14} />
-                Load CSV
-              </Button>
+                  Remove
+               </button>
+               <button className="h-10 px-6 rounded-xl border border-rose-100 bg-white text-rose-500 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-rose-50 transition-all shadow-sm active:scale-95">
+                  <Trash2 size={16} />
+                  Remove All
+               </button>
             </div>
-          </div>
-        </div>
-
-        {/* Summary Card */}
-        <div className="lg:col-span-4 h-full">
-          <Card title="Invoice Summary" className="h-full flex flex-col border-l-4 border-l-[#1E293B]">
-            <div className="space-y-4 flex-1 py-4">
-              {[
-                { label: 'Sub Total', value: '$ 0.00' },
-                { label: 'Tax 1', value: '$ 0.00' },
-                { label: 'Special Fees', value: '$ 0.00' },
-                { label: 'Container Dep.', value: '$ 0.00' },
-                { label: 'Return Credit', value: '$ 0.00', isRed: true },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <span className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider">{item.label}</span>
-                  <span className={`text-[14px] font-black ${item.isRed ? 'text-rose-500' : 'text-[#1E293B]'}`}>{item.value}</span>
-                </div>
-              ))}
+            
+            <div className="flex items-center gap-3">
+               <button className="h-10 px-6 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                  <Upload size={16} className="text-slate-400" />
+                  Load CSV
+               </button>
+               <button className="h-10 px-6 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                  <Settings size={16} className="text-slate-400" />
+                  Custom Fields
+               </button>
             </div>
-
-            <div className="py-6 border-t border-[#E2E8F0] flex items-center justify-between mt-6 bg-[#1E293B] -mx-8 px-8 mb-4">
-              <h3 className="text-[12px] font-bold text-[#94A3B8] uppercase tracking-widest">Total Payable</h3>
-              <span className="text-[28px] font-black text-white tracking-tight">$ 0.00</span>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <SummaryStat label="Qty" value="1" />
-              <SummaryStat label="Units" value="24" />
-              <SummaryStat label="Items" value="1" />
-            </div>
-
-            <Button variant="outline" className="w-full h-11 bg-white mt-6 gap-2">
-              <Calculator size={18} />
-              Calculator
-            </Button>
-          </Card>
-        </div>
+         </div>
       </div>
     </div>
   )
 }
-
-const PriceStat = ({ label, value, highlight }) => (
-  <div className="flex items-center justify-between group">
-    <span className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider group-hover:text-[#0EA5E9] transition-colors">{label}:</span>
-    <span className={`text-[12px] font-black tracking-tight ${highlight ? 'text-[#0EA5E9]' : 'text-[#1E293B]'}`}>
-      {highlight && '$'} {value}
-    </span>
-  </div>
-)
-
-const SummaryStat = ({ label, value }) => (
-  <div className="text-center p-3 rounded-lg bg-[#F8FAFC] border border-[#E2E8F0]">
-    <p className="text-[10px] font-bold text-[#64748B] uppercase tracking-widest">{label}</p>
-    <p className="text-[18px] font-black text-[#1E293B]">{value}</p>
-  </div>
-)
 
 export default CreatePurchaseBill

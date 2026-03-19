@@ -11,6 +11,10 @@ import StockAdjustment from './components/pos/StockAdjustment'
 import PurchaseBills from './components/pos/PurchaseBills'
 import CreatePurchaseBill from './components/pos/CreatePurchaseBill'
 import PurchaseOrders from './components/pos/PurchaseOrders'
+import CreatePurchaseOrder from './components/pos/CreatePurchaseOrder'
+import ReceivePurchaseOrder from './components/pos/ReceivePurchaseOrder'
+import PurchaseReturns from './components/pos/PurchaseReturns'
+import CreatePurchaseReturn from './components/pos/CreatePurchaseReturn'
 import PeopleManagement from './components/pos/PeopleManagement'
 import AddUserPage from './components/pos/AddUserPage'
 import AddCustomerPage from './components/pos/AddCustomerPage'
@@ -19,6 +23,7 @@ import CashDrawerPage from './components/pos/CashDrawerPage'
 import SettingsPage from './components/pos/SettingsPage'
 import PosTerminalView from './components/pos/PosTerminalView'
 import SalesHistory from './components/pos/SalesHistory'
+import SalesManagement from './components/pos/SalesManagement'
 import ReportsDashboard from './components/pos/ReportsDashboard'
 import UserProfile from './components/pos/UserProfile'
 import ProtectedRoute from './components/routing/ProtectedRoute'
@@ -50,10 +55,14 @@ function App() {
         <Route path="purchase-bills" element={<PurchaseBills />} />
         <Route path="purchase-bills/create" element={<CreatePurchaseBill />} />
         <Route path="purchase-orders" element={<PurchaseOrders />} />
-        <Route path="purchase-return" element={<div className="flex items-center justify-center h-full text-[#64748B]">Purchase Return Module Coming Soon</div>} />
+        <Route path="purchase-orders/create" element={<CreatePurchaseOrder />} />
+        <Route path="purchase-orders/receive" element={<ReceivePurchaseOrder />} />
+        <Route path="purchase-return" element={<PurchaseReturns />} />
+        <Route path="purchase-return/create" element={<CreatePurchaseReturn />} />
         
         {/* Sales Module */}
         <Route path="terminal" element={<PosTerminalView />} />
+        <Route path="sales" element={<SalesManagement />} />
         <Route path="sales/history" element={<SalesHistory />} />
         
         {/* Other Modules */}
