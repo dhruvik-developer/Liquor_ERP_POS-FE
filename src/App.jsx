@@ -1,0 +1,74 @@
+import { Routes, Route, Navigate } from 'react-router-dom'
+import SplashScreen from './pages/SplashScreen'
+import LoginPage from './pages/LoginPage'
+import ForgotPassword from './pages/ForgotPassword'
+import PosLayout from './components/PosLayout'
+import DashboardOverview from './components/pos/DashboardOverview'
+import InventoryManagement from './components/pos/InventoryManagement'
+import AddProduct from './components/pos/AddProduct'
+import LowStockReport from './components/pos/LowStockReport'
+import StockAdjustment from './components/pos/StockAdjustment'
+import PurchaseBills from './components/pos/PurchaseBills'
+import CreatePurchaseBill from './components/pos/CreatePurchaseBill'
+import PurchaseOrders from './components/pos/PurchaseOrders'
+import PeopleManagement from './components/pos/PeopleManagement'
+import AddUserPage from './components/pos/AddUserPage'
+import AddCustomerPage from './components/pos/AddCustomerPage'
+import AddVendorPage from './components/pos/AddVendorPage'
+import CashDrawerPage from './components/pos/CashDrawerPage'
+import SettingsPage from './components/pos/SettingsPage'
+import PosTerminalView from './components/pos/PosTerminalView'
+import SalesHistory from './components/pos/SalesHistory'
+import ReportsDashboard from './components/pos/ReportsDashboard'
+import UserProfile from './components/pos/UserProfile'
+import ProtectedRoute from './components/routing/ProtectedRoute'
+
+function App() {
+  return (
+    <Routes>
+      <Route path="/" element={<SplashScreen />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route
+        path="/pos"
+        element={(
+          <ProtectedRoute>
+            <PosLayout />
+          </ProtectedRoute>
+        )}
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardOverview />} />
+        
+        {/* Inventory Module */}
+        <Route path="products" element={<InventoryManagement />} />
+        <Route path="products/add" element={<AddProduct />} />
+        <Route path="inventory/low-stock" element={<LowStockReport />} />
+        <Route path="inventory/adjust" element={<StockAdjustment />} />
+        
+        {/* Purchase Module */}
+        <Route path="purchase-bills" element={<PurchaseBills />} />
+        <Route path="purchase-bills/create" element={<CreatePurchaseBill />} />
+        <Route path="purchase-orders" element={<PurchaseOrders />} />
+        <Route path="purchase-return" element={<div className="flex items-center justify-center h-full text-[#64748B]">Purchase Return Module Coming Soon</div>} />
+        
+        {/* Sales Module */}
+        <Route path="terminal" element={<PosTerminalView />} />
+        <Route path="sales/history" element={<SalesHistory />} />
+        
+        {/* Other Modules */}
+        <Route path="people" element={<PeopleManagement />} />
+        <Route path="people/users/add" element={<AddUserPage />} />
+        <Route path="people/customers/add" element={<AddCustomerPage />} />
+        <Route path="people/vendors/add" element={<AddVendorPage />} />
+        <Route path="cash-drawer" element={<CashDrawerPage />} />
+        <Route path="reports" element={<ReportsDashboard />} />
+        <Route path="settings" element={<SettingsPage />} />
+        <Route path="profile" element={<UserProfile />} />
+      </Route>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
+}
+
+export default App
