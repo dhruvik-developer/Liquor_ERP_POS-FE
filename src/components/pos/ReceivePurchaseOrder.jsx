@@ -10,9 +10,14 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const ReceivePurchaseOrder = () => {
   const navigate = useNavigate()
+  const [poDate, setPoDate] = useState('2021-11-10')
+  const [receiveDate, setReceiveDate] = useState('2025-11-27')
+  const [billDate, setBillDate] = useState('2025-11-27')
+  const [dueDate, setDueDate] = useState('2025-12-27')
   const [items, setItems] = useState([
     { id: 1, sku: '5215', description: 'VENDANGE CHARDONNAY', sizePack: '1.5 LT,Single', cost: 8.00, caseCost: 48.00, caseUnits: 6, orderQty: 5.00, received: 5.00, selected: false },
     { id: 2, sku: '6081', description: 'ANDRE STRAWBERRY', sizePack: '750 ML,Single', cost: 6.01, caseCost: 72.12, caseUnits: 12, orderQty: 1.00, received: 1.00, selected: false },
@@ -75,17 +80,11 @@ const ReceivePurchaseOrder = () => {
           </div>
 
           {/* Row 2 */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO Date</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                defaultValue="11/10/2021"
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all pr-10"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            </div>
-          </div>
+            <DatePickerField 
+              label="PO Date"
+              value={poDate}
+              onChange={setPoDate}
+            />
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Vendor Contact</label>
             <input 
@@ -104,17 +103,11 @@ const ReceivePurchaseOrder = () => {
           </div>
 
           {/* Row 3 */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Receive Date</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                defaultValue="11/27/2025"
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all pr-10"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            </div>
-          </div>
+            <DatePickerField 
+              label="Receive Date"
+              value={receiveDate}
+              onChange={setReceiveDate}
+            />
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Purchase Bill #</label>
             <input 
@@ -122,17 +115,11 @@ const ReceivePurchaseOrder = () => {
               className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all"
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Purchase Bill Date</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                defaultValue="11/27/2025"
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all pr-10"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            </div>
-          </div>
+            <DatePickerField 
+              label="Purchase Bill Date"
+              value={billDate}
+              onChange={setBillDate}
+            />
 
           {/* Row 4 */}
           <div className="flex items-center gap-3 pt-4">
@@ -142,14 +129,12 @@ const ReceivePurchaseOrder = () => {
             >
                <CheckCircle2 size={14} className="text-white" />
             </div>
-            <label className="text-[13px] font-semibold text-slate-600 cursor-pointer whitespace-nowrap">Due Date</label>
-            <div className="relative flex-1">
-              <input 
-                type="text" 
-                defaultValue="12/27/2025"
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all pr-10"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <div className="flex-1">
+               <DatePickerField 
+                 label="Due Date"
+                 value={dueDate}
+                 onChange={setDueDate}
+               />
             </div>
           </div>
           <div className="lg:col-span-2 flex flex-col gap-1.5">

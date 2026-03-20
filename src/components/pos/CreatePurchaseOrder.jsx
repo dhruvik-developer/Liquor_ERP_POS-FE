@@ -12,9 +12,11 @@ import {
   CheckCircle2
 } from 'lucide-react'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const CreatePurchaseOrder = () => {
   const navigate = useNavigate()
+  const [poDate, setPoDate] = useState('2021-10-11')
   const [items, setItems] = useState([
     { id: 1, sku: '5215', vendorCode: '', itemName: 'VENDANGE CHARDONNAY', lastCost: 48.00, caseUnits: 6, qty: 30.00, caseQty: 5.00, sizePack: '1.5 LT,Single' },
     { id: 2, sku: '6081', vendorCode: '', itemName: 'ANDRE STRAWBERRY', lastCost: 72.12, caseUnits: 12, qty: 12.00, caseQty: 1.00, sizePack: '750 ML,Single' },
@@ -73,17 +75,11 @@ const CreatePurchaseOrder = () => {
               className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none cursor-not-allowed"
             />
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO Date</label>
-            <div className="relative">
-              <input 
-                type="text" 
-                defaultValue="10/11/2021"
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all pr-10"
-              />
-              <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            </div>
-          </div>
+            <DatePickerField 
+              label="PO Date"
+              value={poDate}
+              onChange={setPoDate}
+            />
 
           {/* Row 2 */}
           <div className="flex flex-col gap-1.5">

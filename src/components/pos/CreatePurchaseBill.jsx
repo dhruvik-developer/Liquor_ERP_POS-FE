@@ -15,7 +15,7 @@ import {
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
-import DatePicker from '../common/DatePicker'
+import DatePickerField from '../common/DatePickerField'
 
 const CreatePurchaseBill = () => {
   const navigate = useNavigate()
@@ -106,19 +106,19 @@ const CreatePurchaseBill = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-            <DatePicker 
+            <DatePickerField 
                label="Bill Date"
                value={billDate}
                onChange={setBillDate}
                required
             />
-            <DatePicker 
+            <DatePickerField 
                label="Due Date"
                value={dueDate}
                onChange={setDueDate}
                required
             />
-            <DatePicker 
+            <DatePickerField 
                label="Delivery Date"
                value={deliveryDate}
                onChange={setDeliveryDate}

@@ -13,9 +13,13 @@ import {
   MinusCircle
 } from 'lucide-react'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const CreatePurchaseReturn = () => {
   const navigate = useNavigate()
+  const [returnDate, setReturnDate] = useState('2025-11-26')
+  const [billDate, setBillDate] = useState('2025-11-25')
+  const [dueDate, setDueDate] = useState('2025-11-26')
   const [items, setItems] = useState([
     { id: 1, sr: 1, sku: '6409', description: 'CAMPO VIEJO CRIANZA', sizePack: '750 ML', unitCost: 10.20, qtyReceived: 12.000, qtyReturn: 12.000, landingCost: 122.990, amount: 122.990, selected: true },
     { id: 2, sr: 2, sku: '5302', description: 'SUTTER HOME CABERNET', sizePack: '187 ML 4-Pack', unitCost: 6.000, qtyReceived: 12.000, qtyReturn: 6.000, landingCost: 36.000, amount: 36.000, selected: true },
@@ -131,39 +135,21 @@ const CreatePurchaseReturn = () => {
               </div>
 
               {/* Row 3 */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Return Date</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    defaultValue="11/26/2025"
-                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-sm"
-                  />
-                  <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Bill Date</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    defaultValue="11/25/2025"
-                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-sm"
-                  />
-                  <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Due Date</label>
-                <div className="relative">
-                  <input 
-                    type="text" 
-                    defaultValue="11/26/2025"
-                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-sm"
-                  />
-                  <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                </div>
-              </div>
+              <DatePickerField 
+                label="Return Date"
+                value={returnDate}
+                onChange={setReturnDate}
+              />
+              <DatePickerField 
+                label="Bill Date"
+                value={billDate}
+                onChange={setBillDate}
+              />
+              <DatePickerField 
+                label="Due Date"
+                value={dueDate}
+                onChange={setDueDate}
+              />
 
               {/* Row 4 */}
               <div className="flex flex-col gap-1.5">

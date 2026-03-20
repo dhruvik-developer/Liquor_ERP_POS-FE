@@ -3,8 +3,11 @@ import { Search, Calendar, Download, Eye, FileText, Filter } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const SalesHistory = () => {
+  const [startDate, setStartDate] = useState('2026-03-18')
+  const [endDate, setEndDate] = useState('2026-03-18')
   const [selectedInvoice, setSelectedInvoice] = useState(null)
 
   const sales = [
@@ -26,9 +29,9 @@ const SalesHistory = () => {
               <div className="space-y-1.5 flex-1 min-w-[200px]">
                  <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-0.5 whitespace-nowrap">Date Range</label>
                  <div className="flex items-center gap-2">
-                    <Input type="date" defaultValue="2026-03-18" className="h-10" />
+                    <DatePickerField value={startDate} onChange={setStartDate} wrapperClassName="flex-1" />
                     <span className="text-[#94A3B8] font-bold">to</span>
-                    <Input type="date" defaultValue="2026-03-18" className="h-10" />
+                    <DatePickerField value={endDate} onChange={setEndDate} wrapperClassName="flex-1" />
                  </div>
               </div>
               <Input 

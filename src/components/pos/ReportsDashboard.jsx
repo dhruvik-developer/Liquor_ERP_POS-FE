@@ -3,7 +3,6 @@ import {
   ChevronDown, 
   ChevronRight, 
   Search, 
-  Calendar, 
   X, 
   RefreshCcw,
   BarChart3,
@@ -14,8 +13,11 @@ import {
   Users
 } from 'lucide-react'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const ReportsDashboard = () => {
+  const [startDate, setStartDate] = useState('2025-11-11')
+  const [endDate, setEndDate] = useState('2025-11-24')
   const [selectedReport, setSelectedReport] = useState('Item purchase history report')
   const [expandedSections, setExpandedSections] = useState({
     'Purchase Report': true,
@@ -150,26 +152,18 @@ const ReportsDashboard = () => {
                     </div>
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Start Date</label>
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        defaultValue="11/11/2025"
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none pr-12"
-                      />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    </div>
+                    <DatePickerField 
+                      label="Start Date"
+                      value={startDate}
+                      onChange={setStartDate}
+                    />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">End Date</label>
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        defaultValue="11/24/2025"
-                        className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none pr-12"
-                      />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    </div>
+                    <DatePickerField 
+                      label="End Date"
+                      value={endDate}
+                      onChange={setEndDate}
+                    />
                   </div>
                 </div>
 

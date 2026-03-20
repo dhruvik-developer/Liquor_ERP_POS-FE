@@ -1,11 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Save, User, Globe, Mail, MapPin, Calendar, Phone } from 'lucide-react'
+import { Save, User, Globe, Mail, MapPin, Phone } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const AddCustomerPage = () => {
+  const [dob, setDob] = useState(null)
   const navigate = useNavigate()
 
   const handleCancel = () => navigate('/pos/people')
@@ -41,7 +43,12 @@ const AddCustomerPage = () => {
           <Input label="Email Address" placeholder="customer@domain.com" icon={Mail} required />
           <Input label="City" placeholder="e.g. New York" icon={MapPin} />
           
-          <Input label="Date of Birth" placeholder="MM/DD/YYYY" icon={Calendar} required />
+          <DatePickerField 
+            label="Date of Birth"
+            value={dob}
+            onChange={setDob}
+            required 
+          />
           <Input label="Mobile Number" placeholder="+1 (000) 000-0000" icon={Phone} />
 
           <div className="col-span-1 md:col-span-2 space-y-1.5">

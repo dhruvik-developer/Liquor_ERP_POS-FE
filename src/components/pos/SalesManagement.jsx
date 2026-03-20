@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { 
-  Calendar, 
   Search, 
   X, 
   ChevronDown,
@@ -10,8 +9,11 @@ import {
   Info
 } from 'lucide-react'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const SalesManagement = () => {
+  const [startDate, setStartDate] = useState('2025-11-26')
+  const [endDate, setEndDate] = useState('2025-11-26')
   const [activeTab, setActiveTab] = useState('list')
   const [salesData, setSalesData] = useState([
     { id: '573353', receipt: '04253307806768', date: '26-Nov-25 09:41 PM', amount: 183.29, items: 4 },
@@ -66,22 +68,14 @@ const SalesManagement = () => {
               <div className="lg:col-span-4 space-y-4 pt-1">
                   <h3 className="text-[15px] font-black text-slate-800 tracking-tight font-poppins mb-2">Date Range</h3>
                  <div className="grid grid-cols-1 gap-4">
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        defaultValue="11/26/2025"
-                        className="w-full h-[42px] px-4 rounded-xl border border-slate-200 bg-[#f9fafb] text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all pr-12 shadow-sm"
-                      />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    </div>
-                    <div className="relative">
-                      <input 
-                        type="text" 
-                        defaultValue="11/26/2025"
-                        className="w-full h-[42px] px-4 rounded-xl border border-slate-200 bg-[#f9fafb] text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all pr-12 shadow-sm"
-                      />
-                      <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    </div>
+                    <DatePickerField 
+                      value={startDate}
+                      onChange={setStartDate}
+                    />
+                    <DatePickerField 
+                      value={endDate}
+                      onChange={setEndDate}
+                    />
                  </div>
               </div>
 

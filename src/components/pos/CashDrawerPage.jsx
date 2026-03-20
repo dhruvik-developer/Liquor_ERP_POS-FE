@@ -1,10 +1,13 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Search, X, Calendar } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import DatePickerField from '../common/DatePickerField'
 
 const CashDrawerPage = () => {
+  const [startDate, setStartDate] = useState('2025-11-26')
+  const [endDate, setEndDate] = useState('2025-11-26')
   const shifts = [
     { 
       id: 1, 
@@ -30,17 +33,17 @@ const CashDrawerPage = () => {
       {/* Date Range Filter Section */}
       <Card title="Date Range Filter">
         <div className="flex items-center gap-6 mt-2">
-          <Input 
+          <DatePickerField 
             label="Start Date"
-            defaultValue="11/26/2025"
-            icon={Calendar}
-            className="flex-1"
+            value={startDate}
+            onChange={setStartDate}
+            wrapperClassName="flex-1"
           />
-          <Input 
+          <DatePickerField 
             label="End Date"
-            defaultValue="11/26/2025"
-            icon={Calendar}
-            className="flex-1"
+            value={endDate}
+            onChange={setEndDate}
+            wrapperClassName="flex-1"
           />
 
           <div className="flex-1" />

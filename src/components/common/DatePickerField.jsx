@@ -4,15 +4,18 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { Calendar } from 'lucide-react';
 import { parseISO, format } from 'date-fns';
 
-const DatePicker = ({ 
+const DatePickerField = ({ 
   label, 
   value, 
   onChange, 
-  placeholder = 'Select date',
+  placeholder = 'Select date (MM/DD/YYYY)',
   required = false,
   error,
   className = '',
-  wrapperClassName = ''
+  wrapperClassName = '',
+  minDate,
+  maxDate,
+  disabled = false
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
 
@@ -20,7 +23,6 @@ const DatePicker = ({
     if (value) {
       if (typeof value === 'string') {
         try {
-          // Handle ISO or common date string formats
           const parsed = parseISO(value);
           setSelectedDate(isNaN(parsed) ? new Date(value) : parsed);
         } catch (e) {
@@ -54,17 +56,21 @@ const DatePicker = ({
             onChange={handleChange}
             placeholderText={placeholder}
             dateFormat="MM/dd/yyyy"
+            minDate={minDate}
+            maxDate={maxDate}
+            disabled={disabled}
             className={`
               w-full h-11 px-4 pr-10 rounded-xl border border-slate-200 
               bg-slate-50 text-[14px] font-bold text-slate-700 
               outline-none focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10 
               transition-all shadow-inner 
               placeholder:text-slate-400 placeholder:font-medium
+              ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}
               ${error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-50' : ''}
               ${className}
             `}
             wrapperClassName="w-full block"
-            popperClassName="z-[9999]"
+            popperClassName="!z-[9999]"
          />
          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-sky-500 transition-colors">
             <Calendar size={16} />
@@ -75,4 +81,4 @@ const DatePicker = ({
   );
 };
 
-export default DatePicker;
+export default DatePickerField;
