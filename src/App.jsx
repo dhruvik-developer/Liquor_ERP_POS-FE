@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
+import { CalculatorProvider } from './context/CalculatorContext'
 import SplashScreen from './pages/SplashScreen'
 import LoginPage from './pages/LoginPage'
 import ForgotPassword from './pages/ForgotPassword'
@@ -30,11 +31,12 @@ import ProtectedRoute from './components/routing/ProtectedRoute'
 
 function App() {
   return (
-    <Routes>
-      <Route path="/" element={<SplashScreen />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route
+    <CalculatorProvider>
+      <Routes>
+        <Route path="/" element={<SplashScreen />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route
         path="/pos"
         element={(
           <ProtectedRoute>
@@ -76,7 +78,8 @@ function App() {
         <Route path="profile" element={<UserProfile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      </Routes>
+    </CalculatorProvider>
   )
 }
 

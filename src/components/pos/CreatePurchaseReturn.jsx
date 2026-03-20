@@ -14,8 +14,10 @@ import {
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import { useCalculator } from '../../context/CalculatorContext'
 
 const CreatePurchaseReturn = () => {
+  const { openCalculator } = useCalculator()
   const navigate = useNavigate()
   const [returnDate, setReturnDate] = useState('2025-11-26')
   const [billDate, setBillDate] = useState('2025-11-25')
@@ -243,7 +245,9 @@ const CreatePurchaseReturn = () => {
                  <X size={20} className="p-0.5 bg-white/20 rounded-full" />
                  Remove All
               </button>
-              <button className="h-[44px] px-6 rounded-lg border-2 border-slate-200 bg-white text-slate-600 text-[12px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95 shadow-sm">
+              <button 
+                onClick={openCalculator}
+                className="h-[44px] px-6 rounded-lg border-2 border-slate-200 bg-white text-slate-600 text-[12px] font-black uppercase tracking-widest flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95 shadow-sm">
                  <Calculator size={18} />
                  Calculator
               </button>

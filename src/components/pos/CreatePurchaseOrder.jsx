@@ -13,8 +13,10 @@ import {
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import { useCalculator } from '../../context/CalculatorContext'
 
 const CreatePurchaseOrder = () => {
+  const { openCalculator } = useCalculator()
   const navigate = useNavigate()
   const [poDate, setPoDate] = useState('2021-10-11')
   const [items, setItems] = useState([
@@ -264,7 +266,9 @@ const CreatePurchaseOrder = () => {
 
       {/* Bottom Actions */}
       <div className="flex justify-between items-center mt-8 border-t border-slate-200 pt-6">
-         <button className="h-10 px-5 rounded-lg border border-slate-300 bg-white text-slate-600 text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95">
+         <button 
+           onClick={openCalculator}
+           className="h-10 px-5 rounded-lg border border-slate-300 bg-white text-slate-600 text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95">
             <Calculator size={18} className="text-slate-400" />
             Calculator
          </button>

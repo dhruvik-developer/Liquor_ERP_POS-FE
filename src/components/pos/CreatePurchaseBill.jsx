@@ -16,8 +16,10 @@ import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import { useCalculator } from '../../context/CalculatorContext'
 
 const CreatePurchaseBill = () => {
+  const { openCalculator } = useCalculator()
   const navigate = useNavigate()
   const [billDate, setBillDate] = useState('2025-11-24')
   const [dueDate, setDueDate] = useState('2025-12-24')
@@ -345,7 +347,9 @@ const CreatePurchaseBill = () => {
               </div>
 
               <div className="pt-8">
-                 <button className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
+                 <button 
+                  onClick={openCalculator}
+                  className="w-full h-12 rounded-xl border border-slate-200 bg-white text-slate-600 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-slate-50 transition-all shadow-sm active:scale-95">
                     <Calculator size={18} className="text-slate-400" />
                     Calculator
                  </button>
