@@ -15,9 +15,13 @@ import {
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import DatePicker from '../common/DatePicker'
 
 const CreatePurchaseBill = () => {
   const navigate = useNavigate()
+  const [billDate, setBillDate] = useState('2025-11-24')
+  const [dueDate, setDueDate] = useState('2025-12-24')
+  const [deliveryDate, setDeliveryDate] = useState('2025-11-24')
   const [billItems, setBillItems] = useState([
     { 
       sr: 1, 
@@ -102,43 +106,28 @@ const CreatePurchaseBill = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
-           <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Bill Date</label>
-              <div className="relative">
-                <input 
-                   type="text" 
-                   defaultValue="11/24/2025"
-                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
-                />
-                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              </div>
-           </div>
-           <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Due Date</label>
-              <div className="relative">
-                <input 
-                   type="text" 
-                   defaultValue="12/24/2025"
-                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
-                />
-                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              </div>
-           </div>
-           <div className="space-y-1.5">
-              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Delivery Date</label>
-              <div className="relative">
-                <input 
-                   type="text" 
-                   defaultValue="11/24/2025"
-                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner pr-10"
-                />
-                <Calendar className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              </div>
-           </div>
-           <div className="space-y-1.5">
+            <DatePicker 
+               label="Bill Date"
+               value={billDate}
+               onChange={setBillDate}
+               required
+            />
+            <DatePicker 
+               label="Due Date"
+               value={dueDate}
+               onChange={setDueDate}
+               required
+            />
+            <DatePicker 
+               label="Delivery Date"
+               value={deliveryDate}
+               onChange={setDeliveryDate}
+            />
+           <div className="space-y-1.5 flex flex-col justify-end">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Note</label>
               <input 
                 type="text" 
+                placeholder="Enter note..."
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
               />
            </div>
