@@ -27,6 +27,7 @@ import SalesHistory from './components/pos/SalesHistory'
 import SalesManagement from './components/pos/SalesManagement'
 import ReportsDashboard from './components/pos/ReportsDashboard'
 import UserProfile from './components/pos/UserProfile'
+import ItemMasterManagement from './components/pos/ItemMasterManagement'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 
 function App() {
@@ -70,8 +71,12 @@ function App() {
         {/* Other Modules */}
         <Route path="people" element={<PeopleManagement />} />
         <Route path="people/users/add" element={<AddUserPage />} />
+        <Route path="people/users/edit/:id" element={<AddUserPage />} />
         <Route path="people/customers/add" element={<AddCustomerPage />} />
+        <Route path="people/customers/edit/:id" element={<AddCustomerPage />} />
         <Route path="people/vendors/add" element={<AddVendorPage />} />
+        <Route path="people/vendors/edit/:id" element={<AddVendorPage />} />
+        <Route path="item-master" element={<ItemMasterManagement />} />
         <Route path="cash-drawer" element={<CashDrawerPage />} />
         <Route path="reports" element={<ReportsDashboard />} />
         <Route path="settings" element={<SettingsPage />} />

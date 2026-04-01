@@ -1,14 +1,35 @@
-import React, { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
+import React, { useState, useMemo, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
-import { inventoryData } from '../../mocks/inventoryData'
+import Loader from '../common/Loader'
 import InventoryFilter from './InventoryFilter'
 import InventoryTable from './InventoryTable'
 import AddProductModal from './AddProductModal'
+import useFetch from '../../hooks/useFetch'
+import useDepartments from '../../hooks/useDepartments'
+import useCategories from '../../hooks/useCategories'
+import usePacks from '../../hooks/usePacks'
+import useBrands from '../../hooks/useBrands'
+import useSizes from '../../hooks/useSizes'
+
+const uniqueWithAll = values => {
+  const cleaned = values
+    .filter(Boolean)
+    .map(value => `${value}`.trim())
+    .filter(Boolean)
+  return ['All', ...Array.from(new Set(cleaned))]
+}
+
+const toNameList = list => (
+  Array.isArray(list)
+    ? list.map(item => (typeof item === 'string' ? item : item?.name || item?.title || item?.value || '')).filter(Boolean)
+    : []
+)
 
 const InventoryManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [filters, setFilters] = useState({
-    searchType: 'SKU/UPC',
+    searchType: '',
     searchValue: '',
     nameSearch: '',
     type: 'All',
@@ -23,13 +44,19 @@ const InventoryManagement = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
 
+  useEffect(() => {
+    if (searchParams.get('openAddProduct') === '1') {
+      setIsAddModalOpen(true)
+    }
+  }, [searchParams])
+
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }))
   }
 
   const handleReset = () => {
     setFilters({
-      searchType: 'SKU/UPC',
+      searchType: '',
       searchValue: '',
       nameSearch: '',
       type: 'All',
@@ -43,11 +70,94 @@ const InventoryManagement = () => {
     })
   }
 
+  const { data: responseData, loading, error, refetch: refetchProducts } = useFetch('/inventory/products/')
+  const { categories: categoriesData, loading: categoriesLoading } = useCategories()
+  const { packs: packsData, loading: packsLoading } = usePacks()
+  const { brands: brandsData, loading: brandsLoading } = useBrands()
+  const { sizes: sizesData, loading: sizesLoading } = useSizes()
+  const { data: vendorsData, loading: vendorsLoading } = useFetch('/people/vendors/')
+  const { departments: departmentsData, loading: departmentsLoading } = useDepartments()
+
+  const products = Array.isArray(responseData) ? responseData : responseData?.results || []
+  const categories = Array.isArray(categoriesData) ? categoriesData : []
+  const vendors = Array.isArray(vendorsData) ? vendorsData : vendorsData?.results || []
+
+  // Map backend product data to match what the filter/table expects
+  const mappedProducts = useMemo(() => {
+    return products.map(p => ({
+      id: p.id,
+      sku: p.sku || p.barcode || '',
+      name: p.name || p.product_name || '',
+      type: p.type || 'Standard',
+      department: p.department?.name || p.department_name || p.department || 'All',
+      category: p.category?.name || p.category_name || p.category || 'All',
+      size: p.size?.name || p.size_name || p.size || 'All',
+      pack: p.pack?.name || p.pack_name || p.pack || 'All',
+      brand: p.brand?.name || p.brand_name || p.brand || 'All',
+      supplier: p.supplier?.company_name || p.vendor || 'All',
+      price: Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0,
+      stock: Number(p.stock_quantity ?? p.quantity ?? 0) || 0,
+      total: (Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0) * (Number(p.stock_quantity ?? p.quantity ?? 0) || 0),
+      isInactive: p.item_is_inactive === true || p.is_active === false
+    }))
+  }, [products])
+
+  const dropdownOptions = useMemo(() => {
+    const searchTypes = ['SKU/UPC', 'ID']
+    const itemTypes = uniqueWithAll([
+      ...mappedProducts.map(product => product.type),
+    ])
+    const departments = uniqueWithAll([
+      ...toNameList(departmentsData),
+      ...mappedProducts.map(product => product.department),
+    ])
+    const categoryOptions = uniqueWithAll([
+      ...categories.map(category => category.name),
+      ...mappedProducts.map(product => product.category),
+    ])
+    const sizes = uniqueWithAll([
+      ...toNameList(sizesData),
+      ...mappedProducts.map(product => product.size),
+    ])
+    const packs = uniqueWithAll([
+      ...toNameList(packsData),
+      ...mappedProducts.map(product => product.pack),
+    ])
+    const brands = uniqueWithAll([
+      ...toNameList(brandsData),
+      ...mappedProducts.map(product => product.brand),
+    ])
+    const suppliers = uniqueWithAll([
+      ...vendors.map(vendor => vendor.company_name || vendor.name),
+      ...mappedProducts.map(product => product.supplier),
+    ])
+
+    return {
+      searchTypes,
+      itemTypes,
+      departments,
+      categories: categoryOptions,
+      sizes,
+      packs,
+      brands,
+      suppliers,
+    }
+  }, [departmentsData, packsData, brandsData, sizesData, categories, vendors, mappedProducts])
+
+  useEffect(() => {
+    if (!filters.searchType && dropdownOptions.searchTypes.length > 0) {
+      setFilters(prev => ({ ...prev, searchType: dropdownOptions.searchTypes[0] }))
+    }
+  }, [dropdownOptions.searchTypes, filters.searchType])
+
   const filteredData = useMemo(() => {
-    return inventoryData.filter(item => {
+    return mappedProducts.filter(item => {
+      if (!filters.includeInactive && item.isInactive) return false
+
       const matchSearch = !filters.searchValue || 
-        (filters.searchType === 'SKU/UPC' && item.sku.toLowerCase().includes(filters.searchValue.toLowerCase())) ||
-        (filters.searchType === 'ID' && item.id.toString().includes(filters.searchValue))
+        ((filters.searchType === 'ID')
+          ? item.id?.toString().includes(filters.searchValue)
+          : item.sku.toLowerCase().includes(filters.searchValue.toLowerCase()))
       
       const matchName = !filters.nameSearch || item.name.toLowerCase().includes(filters.nameSearch.toLowerCase())
       const matchType = filters.type === 'All' || item.type === filters.type
@@ -60,7 +170,7 @@ const InventoryManagement = () => {
 
       return matchSearch && matchName && matchType && matchDept && matchCategory && matchSize && matchPack && matchBrand && matchSupplier
     })
-  }, [filters])
+  }, [filters, mappedProducts])
 
   const totalValue = useMemo(() => {
     return filteredData.reduce((sum, item) => sum + item.total, 0)
@@ -72,14 +182,36 @@ const InventoryManagement = () => {
         filters={filters} 
         onFilterChange={handleFilterChange} 
         onReset={handleReset}
-        onAdd={() => setIsAddModalOpen(true)} 
+        onAdd={() => setIsAddModalOpen(true)}
+        dropdownOptions={dropdownOptions}
+        dropdownLoading={categoriesLoading || packsLoading || brandsLoading || sizesLoading || vendorsLoading || departmentsLoading}
       />
 
-      <InventoryTable products={filteredData} />
+      {loading ? (
+        <div className="flex flex-col items-center justify-center p-12 bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+          <Loader size={48} className="mx-auto" />
+          <p className="mt-2 text-[#64748B] font-medium">Loading inventory data...</p>
+        </div>
+      ) : error ? (
+        <div className="p-8 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-center font-bold">
+          {error}
+        </div>
+      ) : (
+        <InventoryTable products={filteredData} />
+      )}
 
       <AddProductModal 
         isOpen={isAddModalOpen} 
-        onClose={() => setIsAddModalOpen(false)} 
+        departments={departmentsData}
+        onSaved={() => refetchProducts()}
+        onClose={() => {
+          setIsAddModalOpen(false)
+          if (searchParams.get('openAddProduct') === '1') {
+            const nextParams = new URLSearchParams(searchParams)
+            nextParams.delete('openAddProduct')
+            setSearchParams(nextParams, { replace: true })
+          }
+        }} 
       />
 
       {/* Footer Area */}
@@ -111,3 +243,4 @@ const InventoryManagement = () => {
 }
 
 export default InventoryManagement
+

@@ -5,6 +5,7 @@ import {
   LogOut
 } from 'lucide-react'
 import { getStoredAuth } from '../../utils/auth'
+import api from '../../services/api'
 
 // Import PNG icons
 import DashboardIcon from '../../assets/icon/Dashboard.png'
@@ -14,6 +15,7 @@ import ReturnIcon from '../../assets/icon/return.png'
 import SalesIcon from '../../assets/icon/Sales.png'
 import PeoplesIcon from '../../assets/icon/Peoples.png'
 import DrawerIcon from '../../assets/icon/Drawer.png'
+import ItemMasterIcon from '../../assets/icon/ItemMaster.png'
 import ReportsIcon from '../../assets/icon/Reports.png'
 import SettingsIcon from '../../assets/icon/Settings.png'
 import LogoIcon from '../../assets/icon/Liquor POS.png'
@@ -27,13 +29,15 @@ const navItems = [
   { id: 'sales', label: 'Sales', icon: SalesIcon, path: '/pos/sales', isPng: true },
   { id: 'people', label: 'Peoples', icon: PeoplesIcon, path: '/pos/people', isPng: true },
   { id: 'cash-drawer', label: 'Cash Drawer', icon: DrawerIcon, path: '/pos/cash-drawer', isPng: true },
+  { id: 'item-master', label: 'Item Master', icon: ItemMasterIcon, path: '/pos/item-master', isPng: true, iconClassName: 'scale-90', inactiveFilter: "brightness(0) saturate(100%) invert(47%) sepia(12%) saturate(505%) hue-rotate(174deg) brightness(95%) contrast(89%)" },
   { id: 'reports', label: 'Reports', icon: ReportsIcon, path: '/pos/reports', isPng: true },
   { id: 'settings', label: 'Settings', icon: SettingsIcon, path: '/pos/settings', isPng: true },
 ]
 
-const SidebarItem = ({ label, icon: Icon, active, path, isPng }) => {
+const SidebarItem = ({ label, icon: Icon, active, path, isPng, iconClassName = '', inactiveFilter = 'none' }) => {
   // Filter to achieve #0EA5E9 color for black/dark PNGs
   const activeFilter = "brightness(0) saturate(100%) invert(51%) sepia(87%) saturate(2135%) hue-rotate(164deg) brightness(97%) contrast(93%)";
+  const uniformIconSizeClass = 'w-[24px] h-[24px]'
   
   return (
     <Link
@@ -52,11 +56,11 @@ const SidebarItem = ({ label, icon: Icon, active, path, isPng }) => {
               <img 
                 src={Icon} 
                 alt={label} 
-                style={{ filter: active ? activeFilter : 'none' }}
-                className={`w-full h-full object-contain transition-all ${active ? '' : 'opacity-70 group-hover:opacity-100'}`} 
+                style={{ filter: active ? activeFilter : inactiveFilter }}
+                className={`${uniformIconSizeClass} object-contain transition-all ${iconClassName} ${active ? '' : 'opacity-70 group-hover:opacity-100'}`} 
               />
             ) : (
-              <Icon size={20} className={active ? 'text-[#0EA5E9]' : 'text-[#64748B] group-hover:text-[#1E293B]'} />
+              <Icon size={24} className={active ? 'text-[#0EA5E9]' : 'text-[#64748B] group-hover:text-[#1E293B]'} />
             )}
           </div>
           <span className={`text-[15px] font-bold leading-[21px] whitespace-nowrap ${active ? 'text-[#0EA5E9]' : ''}`}>
@@ -85,6 +89,7 @@ const PosSidebar = () => {
     if (path.includes('/terminal')) return 'sales'
     if (path.includes('/people')) return 'people'
     if (path.includes('/cash-drawer')) return 'cash-drawer'
+    if (path.includes('/item-master')) return 'item-master'
     if (path.includes('/reports')) return 'reports'
     if (path.includes('/settings')) return 'settings'
     return ''
@@ -92,10 +97,18 @@ const PosSidebar = () => {
 
   const activeId = getActiveId()
 
-  const handleLogout = () => {
-    localStorage.removeItem('auth_token')
-    localStorage.removeItem('auth_user')
-    window.location.href = '/login'
+  const handleLogout = async () => {
+    try {
+      await api.post('/auth/logout/')
+    } catch (err) {
+      console.warn('Logout API failed, forcing local logout:', err)
+    } finally {
+      localStorage.removeItem('access_token')
+      localStorage.removeItem('refresh_token')
+      localStorage.removeItem('auth_user')
+      localStorage.removeItem('auth_token')
+      window.location.href = '/login'
+    }
   }
 
   return (
@@ -117,6 +130,8 @@ const PosSidebar = () => {
             icon={item.icon}
             path={item.path}
             isPng={item.isPng}
+            iconClassName={item.iconClassName}
+            inactiveFilter={item.inactiveFilter}
             active={activeId === item.id}
           />
         ))}
@@ -145,4 +160,3 @@ const PosSidebar = () => {
 }
 
 export default PosSidebar
-

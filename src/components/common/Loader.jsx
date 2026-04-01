@@ -1,30 +1,50 @@
-import React from 'react'
+import React from 'react';
 
-const Loader = ({ fullPage = false, size = 'md' }) => {
-  const sizes = {
-    sm: 'h-6 w-6 border-2',
-    md: 'h-10 w-10 border-3',
-    lg: 'h-16 w-16 border-4'
-  }
-
-  const spinner = (
-    <div className={`animate-spin rounded-full border-[#0EA5E90D] border-t-[#0EA5E9] ${sizes[size]}`} />
-  )
-
-  if (fullPage) {
-    return (
-      <div className="fixed inset-0 z-[300] bg-white/80 backdrop-blur-sm flex items-center justify-center flex-col gap-4">
-        {spinner}
-        <p className="text-[12px] font-bold text-[#64748B] uppercase tracking-[0.2em] animate-pulse">Loading POS...</p>
-      </div>
-    )
-  }
-
+const Loader = ({ size = 40, className = "" }) => {
   return (
-    <div className="flex items-center justify-center p-8">
-      {spinner}
-    </div>
-  )
-}
+    <div className={`flex items-center justify-center ${className}`}>
+      <svg 
+        width={size} 
+        height={size} 
+        viewBox="0 0 120 120" 
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="blueGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#4A90E2"/>
+            <stop offset="100%" stopColor="#357ABD"/>
+          </linearGradient>
+        </defs>
 
-export default Loader
+        {/* Background Circle */}
+        <circle cx="60" cy="60" r="50" stroke="#E6EEF8" strokeWidth="8" fill="none"/>
+
+        {/* Animated Loader Circle */}
+        <circle cx="60" cy="60" r="50"
+                stroke="url(#blueGradient)"
+                strokeWidth="8"
+                fill="none"
+                strokeLinecap="round"
+                strokeDasharray="314"
+                strokeDashoffset="220">
+          <animateTransform
+            attributeName="transform"
+            type="rotate"
+            from="0 60 60"
+            to="360 60 60"
+            dur="1s"
+            repeatCount="indefinite"/>
+        </circle>
+
+        {/* Martini Icon (center) */}
+        <g transform="translate(60,60) scale(0.8)">
+          <line x1="-15" y1="15" x2="15" y2="15" stroke="#357ABD" strokeWidth="2"/>
+          <polygon points="-12,-10 12,-10 0,5" fill="none" stroke="#357ABD" strokeWidth="2"/>
+          <line x1="0" y1="5" x2="0" y2="15" stroke="#357ABD" strokeWidth="2"/>
+        </g>
+      </svg>
+    </div>
+  );
+};
+
+export default Loader;

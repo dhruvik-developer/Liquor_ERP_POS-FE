@@ -40,37 +40,36 @@ const parseAccessAllowed = payload => Boolean(
 
 export const userManagementApi = {
   getUsers: async params => {
-    const response = await getJson('/users', params)
+    const response = await getJson('/users/', params)
     return parsePaginatedUsers(response)
   },
 
   getRoles: async () => {
-    const response = await getJson('/roles')
+    const response = await getJson('/roles/')
     return parseList(response)
   },
 
   getPermissions: async () => {
-    const response = await getJson('/permissions')
+    const response = await getJson('/permissions/')
     return parseList(response)
   },
 
   getStores: async () => {
-    const response = await getJson('/stores')
+    const response = await getJson('/stores/')
     return parseList(response)
   },
 
   checkAccess: async permissionCode => {
-    const response = await getJson('/auth/access-check', { permission: permissionCode })
+    const response = await getJson('/auth/access-check/', { permission: permissionCode })
     return parseAccessAllowed(response)
   },
 
-  createUser: payload => postJson('/users', payload),
-  assignRole: (userId, roleId) => postJson(`/users/${userId}/assign-role`, { role_id: roleId }),
-  assignPermissionOverrides: (userId, permissionIds) => postJson(`/users/${userId}/permission-overrides`, {
+  createUser: payload => postJson('/users/', payload),
+  assignRole: (userId, roleId) => postJson(`/users/${userId}/assign-role/`, { role_id: roleId }),
+  assignPermissionOverrides: (userId, permissionIds) => postJson(`/users/${userId}/permission-overrides/`, {
     permission_ids: permissionIds,
   }),
-  assignStores: (userId, storeIds) => postJson(`/users/${userId}/assign-stores`, {
+  assignStores: (userId, storeIds) => postJson(`/users/${userId}/assign-stores/`, {
     store_ids: storeIds,
   }),
 }
-

@@ -1,5 +1,6 @@
 import { posMockCategories, posMockProducts, posMockRecentOrders, posMockStores } from '../mocks/posMockData'
 import { getJson } from './http'
+import { normalizeUrl } from '../utils/url'
 
 const parseList = payload => payload?.data || payload?.results || payload || []
 
@@ -15,12 +16,12 @@ export const posApi = {
   getStores: async () => posMockStores,
 
   getProducts: async params => withFallback(async () => {
-    const response = await getJson('/products', params)
+    const response = await getJson('/products/', params)
     return parseList(response)
   }, posMockProducts),
 
   getCategories: async () => withFallback(async () => {
-    const response = await getJson('/categories')
+    const response = await getJson('/categories/')
     const categories = parseList(response)
     if (!categories.find(category => category.id === 'all')) {
       return [{ id: 'all', name: 'All' }, ...categories]
@@ -29,19 +30,32 @@ export const posApi = {
   }, posMockCategories),
 
   getStoreProducts: async params => withFallback(async () => {
-    const response = await getJson('/store-products', params)
+    const response = await getJson('/store-products/', params)
     return parseList(response)
   }, posMockProducts),
 
   createOrder: async payload => withFallback(async () => {
-    const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/$/, '')
+    const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '')
+    const endpoint = normalizeUrl('/sales/orders/')
     if (!baseUrl) {
       throw new Error('VITE_API_BASE_URL is missing in .env')
     }
 
-    const response = await fetch(`${baseUrl}/orders`, {
+    const token = localStorage.getItem('access_token')
+    const headers = {
+      'Content-Type': 'application/json',
+    }
+    
+    if (token && token !== 'undefined' && token !== 'null') {
+      headers['Authorization'] = `Bearer ${token}`
+      console.log(`[posApi]: Authorization header attached for ${endpoint}`)
+    } else {
+      console.warn(`[posApi]: No valid token found for ${endpoint}`)
+    }
+    
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(payload),
     })
 
@@ -61,4 +75,3 @@ export const posApi = {
 
   getRecentOrders: async () => posMockRecentOrders,
 }
-

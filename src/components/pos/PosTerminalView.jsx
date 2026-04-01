@@ -13,13 +13,37 @@ import {
   posMockRecentOrders as INITIAL_RECENT_ORDERS
 } from '../../mocks/posMockData'
 import { usePosStore } from '../../store/usePosStore'
+import useFetch from '../../hooks/useFetch'
+import useApi from '../../hooks/useApi'
 
 const PosTerminalView = () => {
-  const [categories] = useState(INITIAL_CATEGORIES)
-  const [products] = useState(INITIAL_PRODUCTS)
-  const [isLoadingProducts] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState('')
+
+  const { data: categoriesData } = useFetch('/inventory/categories/')
+  const { data: productsData, loading: isLoadingProducts } = useFetch('/inventory/products/')
+  
+  const { post } = useApi()
+
+  const categories = categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0 
+    ? [{ id: 'all', name: 'All Items' }, ...categoriesData.map(c => ({ id: c.id, name: c.name }))]
+    : INITIAL_CATEGORIES
+
+  const products = React.useMemo(() => {
+    if (!productsData) return INITIAL_PRODUCTS
+    const items = Array.isArray(productsData) ? productsData : productsData.results || []
+    if (items.length === 0) return INITIAL_PRODUCTS
+    return items.map(p => ({
+      id: p.id,
+      name: p.name,
+      categoryId: p.category?.id || p.category || 'all',
+      barcode: p.sku || p.barcode || '',
+      price: Number(p.retail_price || p.price || 0),
+      image: p.image || null,
+      stock: p.stock_quantity || 0,
+      color: 'bg-emerald-500' 
+    }))
+  }, [productsData])
 
   const {
     selectedCategory,
@@ -69,10 +93,24 @@ const PosTerminalView = () => {
     setIsCompleting(true)
     setError('')
     try {
+      const payload = {
+        status: 'Completed',
+        payment_method: paymentMethod || 'Cash',
+        total_amount: totals.grandTotal,
+        discount_amount: totals.discount || 0,
+        tax_amount: totals.tax || 0,
+        items: cartItems.map(item => ({
+            product_id: item.id,
+            quantity: item.cartQuantity,
+            unit_price: item.price
+        }))
+      }
+      const response = await post('/sales/orders/', payload)
+      
       setOrderStatus('Completed')
       setRecentOrders([
         {
-          id: `SO-${Date.now()}`,
+          id: response?.id ? `SO-${response.id}` : `SO-${Date.now()}`,
           storeName: 'Main Store',
           total: totals.grandTotal,
           status: 'Completed',

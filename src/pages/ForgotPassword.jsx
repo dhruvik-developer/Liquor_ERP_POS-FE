@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
-import { KeyRound, Mail, ArrowLeft, Loader2 } from 'lucide-react'
+import { KeyRound, Mail, ArrowLeft } from 'lucide-react'
+import Loader from '../components/common/Loader'
 import Button from '../components/common/Button'
 import Input from '../components/common/Input'
 
@@ -67,7 +68,7 @@ const ForgotPassword = () => {
               disabled={isLoading}
               className="w-full h-14 text-[14px] gap-3"
             >
-              {isLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+              {isLoading ? <Loader size={20} className="text-white" /> : null}
               <span>{isLoading ? 'Processing...' : 'Send Recovery Packet'}</span>
             </Button>
 

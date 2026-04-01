@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useState, useEffect } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { 
   User, 
   Eye, 
@@ -14,14 +14,100 @@ import {
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import useApi from '../../hooks/useApi'
+import useFetch from '../../hooks/useFetch'
+import Loader from '../common/Loader'
 
-const AddUserPage = () => {
+const AddUserPage = ({ onCancel, onSave }) => {
+  const { id } = useParams()
+  const isEdit = !!id
   const navigate = useNavigate()
+  
+  const { post, put, loading: saving, error: saveError } = useApi()
+  const { data: existingData, loading: fetching, error: fetchError } = useFetch(isEdit ? `/users/${id}/` : null)
+
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [formData, setFormData] = useState({
+    first_name: '',
+    last_name: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirm_password: '',
+    role: ''
+  })
+  const [formError, setFormError] = useState('')
 
-  const handleCancel = () => navigate('/pos/people')
-  const handleSave = () => navigate('/pos/people')
+  useEffect(() => {
+    if (existingData) {
+      setFormData({
+        first_name: existingData.first_name || '',
+        last_name: existingData.last_name || '',
+        email: existingData.email || '',
+        phone: existingData.phone || '',
+        password: '',
+        confirm_password: '',
+        role: existingData.role || ''
+      })
+    }
+  }, [existingData])
+
+  const handleCancel = () => {
+    if (onCancel) onCancel()
+    else navigate('/pos/people?tab=users')
+  }
+
+  const handleSaveBtn = async () => {
+    setFormError('')
+    
+    // Validations
+    if (formData.password || formData.confirm_password || !isEdit) {
+      if (formData.password !== formData.confirm_password) {
+        setFormError("Passwords do not match")
+        return
+      }
+      if (!isEdit && !formData.password) {
+        setFormError("Password is required for new users")
+        return
+      }
+    }
+
+    try {
+      const payload = {
+        username: formData.email,
+        email: formData.email,
+        first_name: formData.first_name,
+        last_name: formData.last_name,
+        role: formData.role
+      }
+
+      if (formData.password) {
+        payload.password = formData.password
+      }
+
+      if (isEdit) {
+        await put(`/users/${id}/`, payload)
+      } else {
+        await post('/users/', payload)
+      }
+      
+      if (onSave) onSave()
+      else navigate('/pos/people?tab=users')
+    } catch (err) {
+      console.error(err)
+    }
+  }
+
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  if (fetching) return (
+    <div className="h-full flex items-center justify-center">
+      <Loader size={64} />
+    </div>
+  )
 
   return (
     <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 overflow-auto pb-12 -m-4 sm:-m-6 p-6">
@@ -29,23 +115,30 @@ const AddUserPage = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[28px] font-black text-[#1E293B] tracking-tight">Register New User</h1>
+          <h1 className="text-[28px] font-black text-[#1E293B] tracking-tight">
+            {isEdit ? 'Update User Profile' : 'Register New User'}
+          </h1>
           <p className="text-[#64748B] font-bold text-[14px] mt-1 uppercase tracking-wider">System Access Management</p>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" onClick={handleCancel}>
+          <Button variant="outline" onClick={handleCancel} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} className="gap-2 px-8">
+          <Button onClick={handleSaveBtn} disabled={saving} className="gap-2 px-8">
             <Save size={18} />
-            Save User
+            {saving ? 'Saving...' : isEdit ? 'Update User' : 'Save User'}
           </Button>
         </div>
       </div>
+      
+      {(saveError || fetchError || formError) && (
+        <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
+          {formError || saveError || fetchError}
+        </div>
+      )}
 
       {/* Main Form Content */}
       <Card className="relative overflow-hidden">
-        <div className="absolute top-0 left-0 w-full h-1 bg-[#0EA5E91A]"></div>
         
         <div className="flex flex-col lg:flex-row gap-12 pt-4">
           
@@ -72,11 +165,15 @@ const AddUserPage = () => {
 
           {/* Right Side: Form Grid */}
           <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-            <Input label="First Name" placeholder="e.g. Jonathan" required />
-            <Input label="Last Name" placeholder="e.g. Doe" required />
+            <Input label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} placeholder="e.g. Jonathan" required />
+            <Input label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} placeholder="e.g. Doe" required />
             
             <Input 
               label="Email Address" 
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+              autoComplete="off"
               placeholder="jdoe@example.com" 
               icon={Mail} 
               required 
@@ -84,6 +181,9 @@ const AddUserPage = () => {
             
             <Input 
               label="Phone Number" 
+              name="phone"
+              value={formData.phone}
+              onChange={handleChange}
               placeholder="98765 43210" 
               icon={Phone} 
               required 
@@ -91,11 +191,15 @@ const AddUserPage = () => {
 
             <div className="relative">
               <Input 
-                label="Access Password" 
+                label={isEdit ? "New Password (Leave blank to keep current)" : "Access Password"} 
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
                 type={showPassword ? 'text' : 'password'} 
+                autoComplete="new-password"
                 placeholder="••••••••" 
                 icon={Lock} 
-                required 
+                required={!isEdit}
               />
               <button 
                 type="button"
@@ -109,10 +213,14 @@ const AddUserPage = () => {
             <div className="relative">
               <Input 
                 label="Confirm Password" 
+                name="confirm_password"
+                value={formData.confirm_password}
+                onChange={handleChange}
                 type={showConfirmPassword ? 'text' : 'password'} 
+                autoComplete="new-password"
                 placeholder="••••••••" 
                 icon={ShieldCheck} 
-                required 
+                required={!isEdit || !!formData.password}
               />
               <button 
                 type="button"
@@ -125,11 +233,11 @@ const AddUserPage = () => {
 
             <div className="col-span-1 md:col-span-2 space-y-1.5">
               <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">System Role & Permissions</label>
-              <select className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E90D] transition-all">
+              <select name="role" value={formData.role} onChange={handleChange} className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E90D] transition-all">
                 <option value="">Select Role</option>
-                <option>Administrator</option>
-                <option>Purchase Manager</option>
-                <option>Sales Associate</option>
+                <option value="Administrator">Administrator</option>
+                <option value="Purchase Manager">Purchase Manager</option>
+                <option value="Sales Associate">Sales Associate</option>
               </select>
             </div>
           </div>

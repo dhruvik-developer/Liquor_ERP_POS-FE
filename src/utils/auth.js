@@ -1,7 +1,12 @@
 export const getStoredAuth = () => {
   try {
     const raw = localStorage.getItem('auth_user')
-    return raw ? JSON.parse(raw) : null
+    const token = localStorage.getItem('access_token')
+    // We also support the old 'auth_token' for backward compatibility during transition if needed,
+    // but prefer the native access_token used by the backend.
+    const oldToken = localStorage.getItem('auth_token')
+    
+    return raw && (token || oldToken) ? JSON.parse(raw) : null
   } catch {
     return null
   }

@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/$/, '')
+import { normalizeUrl } from '../utils/url'
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '')
 
 const createQueryString = params => {
   const searchParams = new URLSearchParams()
@@ -18,7 +20,19 @@ export const getJson = async (path, params = {}) => {
     throw new Error('VITE_API_BASE_URL is missing in .env')
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}${createQueryString(params)}`)
+  const token = localStorage.getItem('access_token')
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+
+  if (token && token !== 'undefined' && token !== 'null') {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const normalizedPath = normalizeUrl(path)
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}${createQueryString(params)}`, {
+    headers,
+  })
   if (!response.ok) {
     throw new Error(`Request failed (${response.status})`)
   }
@@ -30,11 +44,19 @@ export const postJson = async (path, payload = {}) => {
     throw new Error('VITE_API_BASE_URL is missing in .env')
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
+  const token = localStorage.getItem('access_token')
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+
+  if (token && token !== 'undefined' && token !== 'null') {
+    headers['Authorization'] = `Bearer ${token}`
+  }
+
+  const normalizedPath = normalizeUrl(path)
+  const response = await fetch(`${API_BASE_URL}${normalizedPath}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers,
     body: JSON.stringify(payload),
   })
 

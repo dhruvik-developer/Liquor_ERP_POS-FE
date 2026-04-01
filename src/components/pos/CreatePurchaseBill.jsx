@@ -17,6 +17,7 @@ import Input from '../common/Input'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
+import useApi from '../../hooks/useApi'
 
 const CreatePurchaseBill = () => {
   const { openCalculator } = useCalculator()
@@ -40,9 +41,36 @@ const CreatePurchaseBill = () => {
       rip: 0.00 
     }
   ])
+  
+  const { post, loading, error: apiError } = useApi()
+
+  const handleSave = async () => {
+    try {
+      if (billItems.length === 0) return
+      
+      await post('/purchasing/bills/', {
+        vendor_id: 1, // static vendor for UI demo
+        bill_date: billDate,
+        due_date: dueDate,
+        items: billItems.map(item => ({
+          product_id: 1, // static product
+          quantity: item.qty,
+          unit_price: item.cost
+        }))
+      })
+      navigate('/pos/purchase-bills')
+    } catch(err) {
+      console.error(err)
+    }
+  }
 
   return (
     <div className="space-y-6">
+      {apiError && (
+        <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
+          {apiError}
+        </div>
+      )}
       
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
@@ -55,11 +83,12 @@ const CreatePurchaseBill = () => {
             Close
           </button>
           <button 
-            onClick={() => navigate('/pos/purchase-bills')} 
-            className="px-8 h-10 rounded-xl bg-[#0EA5E9] text-white text-xs font-black uppercase tracking-widest hover:bg-[#0284C7] transition-all active:scale-95 shadow-lg shadow-sky-500/20 flex items-center gap-2"
+            onClick={handleSave}
+            disabled={loading}
+            className="px-8 h-10 rounded-xl bg-[#0EA5E9] text-white text-xs font-black uppercase tracking-widest hover:bg-[#0284C7] transition-all active:scale-95 shadow-lg shadow-sky-500/20 flex items-center gap-2 disabled:opacity-50"
           >
             <Save size={16} />
-            Save
+            {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>

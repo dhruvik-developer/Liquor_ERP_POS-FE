@@ -1,18 +1,19 @@
 import React from 'react'
 import { Search, Filter, RotateCcw, Plus } from 'lucide-react'
-import { filterOptions } from '../../mocks/inventoryData'
 import Button from '../common/Button'
 import Input from '../common/Input'
 
-const FilterSelect = ({ label, options, value, onChange, name }) => (
+const FilterSelect = ({ label, options, value, onChange, name, disabled = false }) => (
   <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
     <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-1">{label}</label>
     <select
       name={name}
       value={value}
       onChange={onChange}
-      className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white"
+      disabled={disabled}
+      className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
     >
+      {options?.length === 0 && <option value="">No options</option>}
       {options?.map(opt => (
         <option key={opt} value={opt}>{opt}</option>
       ))}
@@ -20,7 +21,7 @@ const FilterSelect = ({ label, options, value, onChange, name }) => (
   </div>
 )
 
-const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd }) => {
+const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd, dropdownOptions, dropdownLoading }) => {
   const handleChange = (e) => {
     const { name, value } = e.target
     onFilterChange(name, value)
@@ -34,12 +35,15 @@ const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd }) => {
           <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-1">Search Items</label>
           <select
             name="searchType"
-            value={filters.searchType || 'SKU/UPC'}
+            value={filters.searchType}
             onChange={handleChange}
-            className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white"
+            disabled={dropdownLoading}
+            className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60"
           >
-            <option value="SKU/UPC">SKU/UPC</option>
-            <option value="ID">ID</option>
+            {dropdownOptions.searchTypes.length === 0 && <option value="">No options</option>}
+            {dropdownOptions.searchTypes.map(opt => (
+              <option key={opt} value={opt}>{opt}</option>
+            ))}
           </select>
         </div>
 
@@ -64,58 +68,65 @@ const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd }) => {
         <FilterSelect 
           label="Item Type" 
           name="type" 
-          options={filterOptions.itemTypes} 
+          options={dropdownOptions.itemTypes}
           value={filters.type} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
         
         <FilterSelect 
           label="Department" 
           name="dept" 
-          options={filterOptions.departments} 
+          options={dropdownOptions.departments}
           value={filters.dept} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
 
         {/* Row 2 */}
         <FilterSelect 
           label="Category" 
           name="category" 
-          options={filterOptions.categories} 
+          options={dropdownOptions.categories}
           value={filters.category} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
 
         <FilterSelect 
           label="Item Size" 
           name="size" 
-          options={filterOptions.sizes} 
+          options={dropdownOptions.sizes}
           value={filters.size} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
 
         <FilterSelect 
           label="Item Pack" 
           name="pack" 
-          options={filterOptions.packs} 
+          options={dropdownOptions.packs}
           value={filters.pack} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
 
         <FilterSelect 
           label="Item Brand" 
           name="brand" 
-          options={filterOptions.brands} 
+          options={dropdownOptions.brands}
           value={filters.brand} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
 
         <FilterSelect 
           label="Supplier" 
           name="supplier" 
-          options={filterOptions.suppliers} 
+          options={dropdownOptions.suppliers}
           value={filters.supplier} 
-          onChange={handleChange} 
+          onChange={handleChange}
+          disabled={dropdownLoading}
         />
       </div>
 

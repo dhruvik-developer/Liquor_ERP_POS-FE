@@ -15,6 +15,7 @@ import {
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
+import useApi from '../../hooks/useApi'
 
 const CreatePurchaseReturn = () => {
   const { openCalculator } = useCalculator()
@@ -48,8 +49,35 @@ const CreatePurchaseReturn = () => {
     setItems(items.map(item => item.id === id ? { ...item, selected: !item.selected } : item))
   }
 
+  const { post, loading, error: apiError } = useApi()
+
+  const handleSave = async () => {
+    try {
+      const selectedItems = items.filter(i => i.selected)
+      if (selectedItems.length === 0) return
+      
+      await post('/purchasing/returns/', {
+        vendor_id: 1, // static representation
+        return_date: returnDate,
+        items: selectedItems.map(i => ({
+          product_id: i.id,
+          quantity_returned: i.qtyReturn,
+          unit_price: i.unitCost
+        }))
+      })
+      navigate('/pos/purchase-return')
+    } catch(err) {
+      console.error(err)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {apiError && (
+        <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
+          {apiError}
+        </div>
+      )}
         
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -296,9 +324,13 @@ const CreatePurchaseReturn = () => {
 
         {/* Bottom Actions */}
         <div className="flex justify-end items-center gap-4 pt-4">
-           <button className="h-[48px] px-12 rounded-lg bg-[#0EA5E9] text-white text-[14px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#0284C7] transition-all active:scale-95 shadow-xl shadow-sky-500/20">
+           <button 
+             onClick={handleSave}
+             disabled={loading}
+             className="h-[48px] px-12 rounded-lg bg-[#0EA5E9] text-white text-[14px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#0284C7] transition-all active:scale-95 shadow-xl shadow-sky-500/20 disabled:opacity-50"
+           >
               <Save size={20} />
-              Save
+              {loading ? 'Saving...' : 'Save'}
            </button>
            <button 
              onClick={() => navigate('/pos/purchase-return')}

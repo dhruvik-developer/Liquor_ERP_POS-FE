@@ -1,10 +1,25 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { X, Save } from 'lucide-react'
+import Loader from './Loader'
+import useFetch from '../../hooks/useFetch'
+import useApi from '../../hooks/useApi'
+import { refetchDepartments } from '../../hooks/useDepartments'
+import { refetchCategories } from '../../hooks/useCategories'
+import { refetchPacks } from '../../hooks/usePacks'
+import { refetchBrands } from '../../hooks/useBrands'
+import { refetchSubCategories } from '../../hooks/useSubCategories'
+import { refetchSizes } from '../../hooks/useSizes'
 
-const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
+const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
   const [formData, setFormData] = useState({})
+  const [formError, setFormError] = useState('')
+  const { data: categoriesData, loading: categoriesLoading } = useFetch('/inventory/categories/')
+  const { data: uomsData, loading: uomsLoading } = useFetch('/lookups/uoms/')
+  const { post, get, loading: isSaving, error: apiError } = useApi()
 
-  if (!isOpen) return null
+  const categories = Array.isArray(categoriesData) ? categoriesData : categoriesData?.results || []
+  const uoms = Array.isArray(uomsData) ? uomsData : uomsData?.results || []
+  const departmentOptions = Array.isArray(departments) ? departments : []
 
   const isDepartment = type?.toLowerCase().includes('department')
   const isSize = type?.toLowerCase().includes('size')
@@ -21,16 +36,179 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
                 isPack ? "Pack Data" :
                 "New Entry"
 
+  const resetFormState = () => {
+    setFormData({})
+    setFormError('')
+  }
+
+  useEffect(() => {
+    if (isOpen) {
+      resetFormState()
+    }
+  }, [isOpen, type])
+
+  if (!isOpen) return null
+
+  const handleClose = () => {
+    resetFormState()
+    onClose?.()
+  }
+
   const handleChange = (field, value) => {
+    setFormError('')
     setFormData(prev => ({ ...prev, [field]: value }))
   }
 
-  const handleSave = (closeAfterSave = true) => {
-    onSave?.(formData)
-    if (closeAfterSave) {
-      onClose()
-    } else {
-      setFormData({}) // Reset for "Save & New"
+  const handleSave = async (closeAfterSave = true) => {
+    try {
+      setFormError('')
+
+      if (isDepartment) {
+        if (!formData.name?.trim()) {
+          setFormError('Department Name is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          localized_name: (formData.localName || '').trim(),
+        }
+
+        const response = await post('/lookups/departments/', payload)
+        const created = response?.data || response
+        await refetchDepartments()
+        onSave?.(created)
+      } else if (isCategory) {
+        if (!formData.name?.trim()) {
+          setFormError('Category Name is required.')
+          return
+        }
+        if (!formData.department) {
+          setFormError('Department is required.')
+          return
+        }
+
+        const selectedDepartment = departmentOptions.find(department => {
+          if (typeof department === 'string') return department === formData.department
+          return String(department?.id) === String(formData.department) || department?.name === formData.department
+        })
+
+        const departmentId = Number(
+          typeof selectedDepartment === 'object'
+            ? selectedDepartment?.id
+            : formData.department
+        ) || null
+
+        if (!departmentId) {
+          setFormError('Valid Department is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          localized_name: (formData.localName || '').trim(),
+          department: departmentId,
+        }
+
+        const response = await post('/inventory/categories/', payload)
+        const created = response?.data || response
+        await refetchCategories()
+        onSave?.(created)
+      } else if (isPack) {
+        if (!formData.name?.trim()) {
+          setFormError('Pack Name is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          localized_name: (formData.localName || '').trim(),
+        }
+
+        const response = await post('/lookups/packs/', payload)
+        const created = response?.data || response
+        await refetchPacks()
+        onSave?.(created)
+      } else if (isSize) {
+        if (!formData.name?.trim()) {
+          setFormError('Size Name is required.')
+          return
+        }
+
+        const categoryId = Number(formData.category) || null
+        if (!categoryId) {
+          setFormError('Category is required.')
+          return
+        }
+
+        const uomId = Number(formData.uom) || null
+        if (!uomId) {
+          setFormError('UOM is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          localized_name: (formData.localName || '').trim(),
+          category: categoryId,
+          uom: uomId,
+        }
+
+        const response = await post('/lookups/sizes/', payload)
+        const created = response?.data || response
+        const createdId = Number(created?.id) || null
+        const latestSize = createdId ? await get(`/lookups/sizes/${createdId}/`) : created
+        const normalizedSize = latestSize?.data || latestSize || created
+        await refetchSizes()
+        onSave?.(normalizedSize)
+      } else if (isBrand) {
+        if (!formData.name?.trim()) {
+          setFormError('Brand Name is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          manufacturer: (formData.manufacturer || '').trim(),
+        }
+
+        const response = await post('/lookups/brands/', payload)
+        const created = response?.data || response
+        await refetchBrands()
+        onSave?.(created)
+      } else if (isSubCategory) {
+        if (!formData.name?.trim()) {
+          setFormError('Sub Category Name is required.')
+          return
+        }
+        const categoryId = Number(formData.category) || null
+        if (!categoryId) {
+          setFormError('Category is required.')
+          return
+        }
+
+        const payload = {
+          name: formData.name.trim(),
+          localized_name: (formData.localName || '').trim(),
+          category: categoryId,
+        }
+
+        const response = await post('/inventory/sub-categories/', payload)
+        const created = response?.data || response
+        await refetchSubCategories()
+        onSave?.(created)
+      } else {
+        onSave?.(formData)
+      }
+
+      if (closeAfterSave) {
+        handleClose()
+      } else {
+        resetFormState()
+      }
+    } catch (e) {
+      // handled by useApi error; keep modal open for correction
+      console.error(e)
     }
   }
 
@@ -41,13 +219,19 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-5 border-b border-slate-100">
           <h3 className="text-lg font-bold text-slate-800 font-poppins">{title}</h3>
-          <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
+          <button onClick={handleClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
             <X size={18} className="text-slate-500" />
           </button>
         </div>
 
         {/* Form Content */}
         <div className="p-6 space-y-4">
+          {(formError || apiError) && (
+            <div className="rounded-lg border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-bold text-rose-600">
+              {formError || apiError}
+            </div>
+          )}
+
           {isDepartment && (
             <>
               <div className="flex flex-col gap-1.5">
@@ -95,24 +279,34 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
                 <select 
                   value={formData.category || ''}
                   onChange={(e) => handleChange('category', e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
+                  disabled={categoriesLoading}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select Category</option>
-                  <option value="Wine">Wine</option>
-                  <option value="Liquor">Liquor</option>
-                  <option value="Beer">Beer</option>
+                  <option value="">
+                    {categoriesLoading ? 'Loading Categories...' : 'Select Category'}
+                  </option>
+                  {categories.map(category => (
+                    <option key={category.id || category.name} value={String(category.id || '')}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <select 
                   value={formData.uom || ''}
                   onChange={(e) => handleChange('uom', e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
+                  disabled={uomsLoading}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <option value="">Select UOM</option>
-                  <option value="OZ">OZ</option>
-                  <option value="L">L</option>
-                  <option value="ML">ML</option>
+                  <option value="">
+                    {uomsLoading ? 'Loading UOM...' : 'Select UOM'}
+                  </option>
+                  {uoms.map(uom => (
+                    <option key={uom.id || uom.name} value={String(uom.id || '')}>
+                      {uom.name || uom}
+                    </option>
+                  ))}
                 </select>
               </div>
             </>
@@ -168,9 +362,17 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
                   className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
                 >
                   <option value="">Select Department</option>
-                  <option value="Liquor">Liquor</option>
-                  <option value="Wine">Wine</option>
-                  <option value="Beer">Beer</option>
+                  {departmentOptions.map((department) => {
+                    const name = typeof department === 'string' ? department : department?.name
+                    if (!name) return null
+                    const key = typeof department === 'string' ? department : (department.id || name)
+                    const value = typeof department === 'string' ? department : String(department.id || name)
+                    return (
+                      <option key={key} value={value}>
+                        {name}
+                      </option>
+                    )
+                  })}
                 </select>
               </div>
             </>
@@ -200,12 +402,17 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
                 <select 
                   value={formData.category || ''}
                   onChange={(e) => handleChange('category', e.target.value)}
+                  disabled={categoriesLoading}
                   className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
                 >
-                  <option value="">Select Category</option>
-                  <option value="Wine">Wine</option>
-                  <option value="Liquor">Liquor</option>
-                  <option value="Beer">Beer</option>
+                  <option value="">
+                    {categoriesLoading ? 'Loading Categories...' : 'Select Category'}
+                  </option>
+                  {categories.map(category => (
+                    <option key={category.id || category.name} value={String(category.id || '')}>
+                      {category.name}
+                    </option>
+                  ))}
                 </select>
               </div>
             </>
@@ -239,17 +446,19 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
         <div className="p-6 bg-slate-50/50 flex justify-end gap-3 border-t border-slate-100">
            <button 
              onClick={() => handleSave(true)}
-             className="px-6 h-11 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95"
+             disabled={isSaving}
+             className="px-6 h-11 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
            >
-              <Save size={16} />
-              Save & Close
+              {isSaving ? <Loader size={20} className="text-white" /> : <Save size={16} />}
+              {isSaving ? 'Saving...' : 'Save & Close'}
            </button>
            <button 
              onClick={() => handleSave(false)}
-             className="px-6 h-11 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95"
+             disabled={isSaving}
+             className="px-6 h-11 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
            >
-              <Save size={16} />
-              Save & New
+              {isSaving ? <Loader size={20} className="text-white" /> : <Save size={16} />}
+              {isSaving ? 'Saving...' : 'Save & New'}
            </button>
         </div>
       </div>
@@ -258,3 +467,4 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave }) => {
 }
 
 export default QuickAddModal
+

@@ -14,17 +14,17 @@ const withFallback = async (requestFn, fallbackData) => {
 
 export const dashboardApi = {
   getSummary: filters => withFallback(async () => {
-    const response = await getJson('/dashboard/summary', filters)
+    const response = await getJson('/dashboard/summary/', filters)
     return asObject(response)
   }, dashboardMockData.summary),
 
   getStorePerformance: filters => withFallback(async () => {
-    const response = await getJson('/dashboard/store-performance', filters)
+    const response = await getJson('/dashboard/store-performance/', filters)
     return asArray(response)
   }, dashboardMockData.stores),
 
   getSalesAnalytics: filters => withFallback(async () => {
-    const response = await getJson('/dashboard/sales-analytics', filters)
+    const response = await getJson('/dashboard/sales-analytics/', filters)
     return {
       dailySales: asArray(response?.dailySales || response?.daily || response?.line),
       storeSalesComparison: asArray(response?.storeSalesComparison || response?.storeWise || response?.bar),
@@ -37,12 +37,12 @@ export const dashboardApi = {
   }),
 
   getRecentOrders: filters => withFallback(async () => {
-    const response = await getJson('/dashboard/recent-orders', filters)
+    const response = await getJson('/dashboard/recent-orders/', filters)
     return asArray(response)
   }, dashboardMockData.recentOrders),
 
   getLowStock: filters => withFallback(async () => {
-    const response = await getJson('/dashboard/low-stock', filters)
+    const response = await getJson('/dashboard/low-stock/', filters)
     return asArray(response)
   }, dashboardMockData.lowStock),
 
@@ -70,4 +70,3 @@ export const dashboardApi = {
     return pendingList.sort((a, b) => b.count - a.count)
   },
 }
-

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
-import { Wine, User, Shield, Lock, Mail, Loader2 } from 'lucide-react'
+import { Wine, User, Shield, Lock, Mail } from 'lucide-react'
+import Loader from './common/Loader'
 import Button from './common/Button'
 import Input from './common/Input'
+import api from '../services/api'
 
 const roleConfig = {
   staff: {
@@ -49,13 +51,36 @@ const LoginScreen = ({ type = 'staff' }) => {
     }
 
     setIsLoading(true)
-    // Simulating login for UI demonstration
-    setTimeout(() => {
-      localStorage.setItem('auth_token', 'mock_token')
-      localStorage.setItem('auth_user', JSON.stringify({ name: 'Admin User', role: 'admin', email: formValues.email }))
-      navigate('/pos', { replace: true })
+    try {
+      const response = await api.post('/auth/login/', {
+        email: formValues.email,
+        password: formValues.password
+      })
+      const responseData = response.data?.data
+      const tokens = responseData?.tokens
+      const accessToken = tokens?.access_token
+
+      console.log('[Login]: Response received', response.data)
+      
+      if (accessToken) {
+        console.log('[Login]: Access token extracted successfully')
+        localStorage.setItem('access_token', accessToken)
+        // Store user data if available
+        localStorage.setItem('auth_user', JSON.stringify({ 
+          name: responseData.user?.name || 'Admin User', 
+          role: responseData.user?.role || type, 
+          email: formValues.email 
+        }))
+        navigate('/pos', { replace: true })
+      } else {
+        console.error('[Login]: Access token missing in response', response.data)
+        setApiError('Authentication failed: Token not found in response.')
+      }
+    } catch (err) {
+      setApiError(err?.response?.data?.message || err.message || 'Login request failed. Please check credentials.')
+    } finally {
       setIsLoading(false)
-    }, 1500)
+    }
   }
 
   return (
@@ -122,7 +147,7 @@ const LoginScreen = ({ type = 'staff' }) => {
             disabled={isLoading}
             className="w-full h-14 text-[14px] gap-3"
           >
-            {isLoading ? <Loader2 size={18} className="animate-spin" /> : null}
+            {isLoading ? <Loader size={20} className="text-white" /> : null}
             <span>{isLoading ? 'Decrypting...' : 'Initiate Login'}</span>
           </Button>
         </form>

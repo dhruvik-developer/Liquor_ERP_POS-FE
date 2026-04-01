@@ -3,24 +3,163 @@ import { useNavigate } from 'react-router-dom'
 import { 
   Filter, 
   Search, 
-  Download, 
   RefreshCcw, 
   Plus, 
   Trash2,
   CheckCircle,
   ChevronDown,
-  ExternalLink
+  Pencil
 } from 'lucide-react'
-import Button from '../common/Button'
-import Input from '../common/Input'
+import Loader from '../common/Loader'
 import Card from '../common/Card'
-import { purchaseOrdersData } from '../../mocks/purchaseOrdersData'
+import useFetch from '../../hooks/useFetch'
+
+const PERIOD_DAYS = {
+  'Last Month': 30,
+  'Last 3 Months': 90,
+  'Last 6 Months': 180
+}
+
+const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
+
+const toDateValue = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDateTime = (value) => {
+  const date = toDateValue(value)
+  if (!date) return 'N/A'
+  return date.toLocaleString('en-US')
+}
+
+const formatAmount = (value) => {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+}
 
 const PurchaseOrders = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
+  const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterValue, setFilterValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(null)
+
+  const { data: responseData, loading, error, refetch } = useFetch('/purchasing/orders/')
+
+  const { purchaseOrders, totalOrders } = React.useMemo(() => {
+    if (Array.isArray(responseData)) {
+      return { purchaseOrders: responseData, totalOrders: responseData.length }
+    }
+
+    if (Array.isArray(responseData?.results)) {
+      return {
+        purchaseOrders: responseData.results,
+        totalOrders: Number(responseData.count) || responseData.results.length
+      }
+    }
+
+    if (Array.isArray(responseData?.data?.results)) {
+      return {
+        purchaseOrders: responseData.data.results,
+        totalOrders: Number(responseData.data.count) || responseData.data.results.length
+      }
+    }
+
+    if (Array.isArray(responseData?.data)) {
+      return {
+        purchaseOrders: responseData.data,
+        totalOrders: responseData.data.length
+      }
+    }
+
+    return { purchaseOrders: [], totalOrders: 0 }
+  }, [responseData])
+
+  const mappedOrders = React.useMemo(() => {
+    return purchaseOrders.map((order, index) => {
+      const poNumber = getFirstDefined(
+        order.po_number,
+        order.po_no,
+        order.number,
+        order.order_number,
+        order.id
+      )
+      const orderDateRaw = getFirstDefined(
+        order.order_date,
+        order.po_date,
+        order.created_at,
+        order.date
+      )
+      const vendorName = getFirstDefined(
+        order.vendor?.company_name,
+        order.vendor?.name,
+        order.vendor_name,
+        order.vendor
+      )
+      const status = getFirstDefined(order.status, order.po_status, 'Pending')
+      const overallStatus = getFirstDefined(order.overall_status, order.status, order.po_status, 'Pending')
+      const total = getFirstDefined(order.total_amount, order.estimated_total, order.total, order.net_total)
+
+      return {
+        key: getFirstDefined(order.id, order.uuid, poNumber, index),
+        po: poNumber || `PO-${index + 1}`,
+        dateRaw: orderDateRaw,
+        date: formatDateTime(orderDateRaw),
+        vendor: vendorName || 'N/A',
+        vendorOrder: getFirstDefined(order.vendor_order_number, order.vendor_order_no, '-') || '-',
+        status,
+        total: formatAmount(total),
+        overallStatus
+      }
+    })
+  }, [purchaseOrders])
+
+  const displayedOrders = React.useMemo(() => {
+    return mappedOrders.filter((order) => {
+      const date = toDateValue(order.dateRaw)
+      if (filterPeriod !== 'All') {
+        const days = PERIOD_DAYS[filterPeriod]
+        if (days && date) {
+          const diffDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+          if (diffDays > days) return false
+        }
+      }
+
+      const normalizedFilterValue = filterValue.trim().toLowerCase()
+      if (normalizedFilterValue) {
+        const filterTarget = (
+          filterBy === 'PO #'
+            ? order.po
+            : filterBy === 'Status'
+            ? order.status
+            : order.vendor
+        )
+          .toString()
+          .toLowerCase()
+        if (!filterTarget.includes(normalizedFilterValue)) return false
+      }
+
+      const normalizedSearch = searchQuery.trim().toLowerCase()
+      if (!normalizedSearch) return true
+
+      const searchableText = [
+        order.po,
+        order.date,
+        order.vendor,
+        order.vendorOrder,
+        order.status,
+        order.total,
+        order.overallStatus
+      ]
+        .join(' ')
+        .toLowerCase()
+
+      return searchableText.includes(normalizedSearch)
+    })
+  }, [mappedOrders, filterPeriod, filterBy, filterValue, searchQuery])
 
   return (
     <div className="space-y-6">
@@ -53,9 +192,14 @@ const PurchaseOrders = () => {
               <div className="sm:col-span-4 flex flex-col gap-1.5">
                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
                  <div className="relative group">
-                    <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
+                    <select
+                      value={filterBy}
+                      onChange={(e) => setFilterBy(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                    >
                       <option>Vendor</option>
                       <option>PO #</option>
+                      <option>Status</option>
                     </select>
                     <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                  </div>
@@ -63,7 +207,9 @@ const PurchaseOrders = () => {
               <div className="sm:col-span-5 flex flex-col gap-1.5">
                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
                  <input 
-                   type="text" 
+                    type="text" 
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                    placeholder=""
                  />
@@ -106,7 +252,10 @@ const PurchaseOrders = () => {
                <button className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
                   Export To CSV
                </button>
-               <button className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
+               <button
+                 onClick={refetch}
+                 className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200"
+               >
                   <RefreshCcw size={16} />
                   Refresh
                </button>
@@ -149,42 +298,65 @@ const PurchaseOrders = () => {
                   </tr>
                </thead>
                <tbody className="divide-y divide-slate-50">
-                  {purchaseOrdersData.slice(0, 10).map((order, idx) => (
-                    <tr 
-                      key={idx} 
-                      onClick={() => setSelectedRow(idx)}
-                      className={`hover:bg-sky-50 transition-colors group ${selectedRow === idx ? 'bg-sky-50/50' : ''}`}
-                    >
-                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight">
-                          {order.po}
-                       </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-500">{order.date}</td>
-                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer">
-                          {order.vendor}
-                       </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{order.vendorOrder}</td>
-                       <td className="px-8 py-5">
-                          <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                            order.status === 'Fully Received' 
-                              ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
-                              : 'bg-sky-50 text-sky-600 border-sky-100'
-                          }`}>
-                            {order.status}
-                          </span>
-                       </td>
-                       <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{order.total}</td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-700">
-                          {order.overallStatus}
-                       </td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="px-5 py-8 text-center text-[#64748B]">
+                        <Loader size={48} className="mx-auto" />
+                        <p className="mt-2 font-medium text-[#64748B]">Loading purchase orders...</p>
+                      </td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan="7" className="px-8 py-10">
+                        <div className="p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-center font-bold">
+                          {error}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : displayedOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-8 py-16 text-center">
+                        <p className="text-slate-500 font-bold">No purchase orders found.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedOrders.map((order, idx) => (
+                      <tr 
+                        key={order.key}
+                        onClick={() => setSelectedRow(idx)}
+                        className={`hover:bg-sky-50 transition-colors group ${selectedRow === idx ? 'bg-sky-50/50' : ''}`}
+                      >
+                         <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight">
+                            {order.po}
+                         </td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-500">{order.date}</td>
+                         <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer">
+                            {order.vendor}
+                         </td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-400">{order.vendorOrder}</td>
+                         <td className="px-8 py-5">
+                            <span className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                              order.status === 'Fully Received' 
+                                ? 'bg-emerald-50 text-emerald-600 border-emerald-100' 
+                                : 'bg-sky-50 text-sky-600 border-sky-100'
+                            }`}>
+                              {order.status}
+                            </span>
+                         </td>
+                         <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{order.total}</td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-700">
+                            {order.overallStatus}
+                         </td>
+                      </tr>
+                    ))
+                  )}
                </tbody>
             </table>
          </div>
 
          <div className="px-8 py-5 bg-slate-50/30 border-t border-slate-100">
             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-               Total Purchase Orders : {purchaseOrdersData.length}
+               Total Purchase Orders : {totalOrders || displayedOrders.length}
             </span>
          </div>
       </div>

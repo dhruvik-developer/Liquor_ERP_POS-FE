@@ -1,14 +1,14 @@
-import React, { useState } from 'react'
-import { X, Plus, Image as ImageIcon, Trash2, Search } from 'lucide-react'
+import React, { useEffect, useState, useRef } from 'react'
+import { X, Plus, Image as ImageIcon, Trash2, Search, Save } from 'lucide-react'
+import Loader from '../common/Loader'
 import SelectionModal from '../common/SelectionModal'
-import { 
-  DEPARTMENTS, 
-  SIZES, 
-  BRANDS, 
-  CATEGORIES, 
-  SUB_CATEGORIES, 
-  PACKS 
-} from '../../mocks/selectorData'
+import useApi from '../../hooks/useApi'
+import useFetch from '../../hooks/useFetch'
+import useCategories from '../../hooks/useCategories'
+import usePacks from '../../hooks/usePacks'
+import useBrands from '../../hooks/useBrands'
+import useSubCategories from '../../hooks/useSubCategories'
+import useSizes from '../../hooks/useSizes'
 
 const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "" }) => (
   <div className={`flex flex-col gap-1.5 group ${className}`}>
@@ -60,7 +60,8 @@ const SelectField = ({ label, value, onOpenSelector, className = "" }) => (
   </div>
 )
 
-const AddProductModal = ({ isOpen, onClose }) => {
+const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
+  const fileInputRef = useRef(null);
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
@@ -72,7 +73,7 @@ const AddProductModal = ({ isOpen, onClose }) => {
     subCategory: '',
     pack: '',
     nonTaxable: false,
-    tax: 'Tax1',
+    tax: '',
     isInactive: false,
     buyAsCase: false,
     unitsInCase: 0,
@@ -87,7 +88,8 @@ const AddProductModal = ({ isOpen, onClose }) => {
     msrp: 0,
     minPrice: 0,
     upcs: '',
-    minWarnQty: 0
+    minWarnQty: 0,
+    image: null
   })
 
   const [selector, setSelector] = useState({
@@ -96,6 +98,33 @@ const AddProductModal = ({ isOpen, onClose }) => {
     data: [],
     field: ''
   })
+
+  const { categories: categoriesData } = useCategories()
+  const { packs: packsData } = usePacks()
+  const { brands: brandsData } = useBrands()
+  const { subCategories: subCategoriesData } = useSubCategories()
+  const { sizes: sizesData } = useSizes()
+  const { data: taxRatesData, loading: taxRatesLoading } = useFetch('/lookups/tax-rates/')
+  const DEPARTMENTS = departments.length > 0 ? departments : []
+  const SIZES = sizesData || []
+  const BRANDS = brandsData || []
+  const CATEGORIES = categoriesData || []
+  const SUB_CATEGORIES = subCategoriesData || []
+  const PACKS = packsData || []
+  const TAX_RATES = Array.isArray(taxRatesData) ? taxRatesData : taxRatesData?.results || []
+
+  const { post, loading, error: apiError } = useApi()
+
+  useEffect(() => {
+    if (!formData.tax && TAX_RATES.length > 0) {
+      setFormData(prev => ({ ...prev, tax: String(TAX_RATES[0]?.id ?? '') }))
+    }
+  }, [TAX_RATES, formData.tax])
+
+  const getTaxOptionLabel = (taxRate) => {
+    if (!taxRate) return 'Unknown'
+    return taxRate.name || taxRate.title || taxRate.label || `Tax ${taxRate.id}`
+  }
 
   if (!isOpen) return null
 
@@ -113,16 +142,111 @@ const AddProductModal = ({ isOpen, onClose }) => {
     setSelector({ ...selector, isOpen: false })
   }
 
+  const handleImageClick = () => {
+    fileInputRef.current.click()
+  }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        alert('Please select an image file.')
+        return
+      }
+
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, image: reader.result }))
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, image: null }))
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const getLookupIdByName = (items, selectedName) => {
+    if (!selectedName || !Array.isArray(items)) return null
+    const selected = items.find(item => {
+      if (typeof item === 'string') return item === selectedName
+      return item?.name === selectedName
+    })
+    if (typeof selected === 'string') return null
+    return Number(selected?.id) || null
+  }
+
+  const toSafeStringNumber = (value, fallback = '0') => {
+    if (value === null || value === undefined || value === '') return fallback
+    return `${value}`
+  }
+
+  const handleSave = async () => {
+    if (!formData.image) {
+      alert('Product image is mandatory.')
+      return
+    }
+
+    const payload = {
+      sku: `${formData.sku || ''}`.trim(),
+      name: `${formData.name || ''}`.trim(),
+      description: `${formData.description || ''}`.trim(),
+      department: getLookupIdByName(DEPARTMENTS, formData.department),
+      size: getLookupIdByName(SIZES, formData.size),
+      brand: getLookupIdByName(BRANDS, formData.brand),
+      category: getLookupIdByName(CATEGORIES, formData.category),
+      sub_category: getLookupIdByName(SUB_CATEGORIES, formData.subCategory),
+      pack: getLookupIdByName(PACKS, formData.pack),
+      non_taxable: Boolean(formData.nonTaxable),
+      tax_rate: Number(formData.tax) || null,
+      item_is_inactive: Boolean(formData.isInactive),
+      buy_as_case: Boolean(formData.buyAsCase),
+      units_in_case: toSafeStringNumber(formData.unitsInCase),
+      case_cost: toSafeStringNumber(formData.caseCost),
+      case_price: toSafeStringNumber(formData.casePrice),
+      non_discountable: Boolean(formData.nonDiscountable),
+      cost_pricing: {
+        unit_cost: toSafeStringNumber(formData.unitCost),
+        margin: toSafeStringNumber(formData.margin),
+        buydown: toSafeStringNumber(formData.buyDown),
+        markup: toSafeStringNumber(formData.markup),
+        unit_price: toSafeStringNumber(formData.unitPrice),
+        msrp: toSafeStringNumber(formData.msrp),
+        min_price: toSafeStringNumber(formData.minPrice)
+      },
+      stock_information: {
+        enter_upcs: `${formData.upcs || ''}`.trim(),
+        min_warn_qty: toSafeStringNumber(formData.minWarnQty)
+      },
+      image: formData.image
+    }
+
+    await post('/inventory/products/', payload)
+    if (onSaved) {
+      await onSaved()
+    }
+    onClose()
+  }
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 overflow-auto">
       <div className="w-full max-w-6xl bg-[#f0f4f8] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto">
-        {/* Header (Hidden in provided layout but good for closing) */}
+        {/* Header */}
         <div className="hidden items-center justify-between p-6 bg-white border-b border-slate-200">
           <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Add New Product</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
             <X size={20} className="text-slate-500" />
           </button>
         </div>
+        
+        {apiError && (
+          <div className="m-4 p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
+            {apiError}
+          </div>
+        )}
 
         {/* Scrollable Content Container */}
         <div className="p-8 space-y-8 max-h-[85vh] overflow-y-auto scrollbar-hide">
@@ -181,10 +305,18 @@ const AddProductModal = ({ isOpen, onClose }) => {
                 <select 
                   value={formData.tax}
                   onChange={(e) => handleChange('tax', e.target.value)}
+                  disabled={taxRatesLoading}
                   className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500"
                 >
-                  <option value="Tax1">Tax1</option>
-                  <option value="Tax2">Tax2</option>
+                  {TAX_RATES.length === 0 ? (
+                    <option value="">{taxRatesLoading ? 'Loading tax rates...' : 'No tax rates found'}</option>
+                  ) : (
+                    TAX_RATES.map((taxRate) => (
+                      <option key={taxRate.id} value={String(taxRate.id)}>
+                        {getTaxOptionLabel(taxRate)}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -235,15 +367,68 @@ const AddProductModal = ({ isOpen, onClose }) => {
 
               {/* Section 4: Image */}
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
-                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 mb-6 font-poppins">Image</h3>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-sm font-black uppercase tracking-widest text-slate-800 font-poppins">
+                    Image <span className="text-red-500">*</span>
+                  </h3>
+                  {formData.image && (
+                    <span className="text-[10px] font-bold text-sky-500 bg-sky-50 px-2 py-0.5 rounded-full uppercase">Selected</span>
+                  )}
+                </div>
+                
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  onChange={handleFileChange}
+                  accept="image/*"
+                  className="hidden"
+                />
+
                 <div className="space-y-4">
-                   <button className="w-full flex items-center justify-center gap-3 h-12 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95">
+                  {formData.image ? (
+                    <div className="relative group aspect-video w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50 mb-4">
+                      <img 
+                        src={formData.image} 
+                        alt="Product Preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <button 
+                          onClick={handleImageClick}
+                          className="p-2 bg-white rounded-full text-slate-800 hover:text-sky-500 transition-colors"
+                        >
+                          <ImageIcon size={20} />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      onClick={handleImageClick}
+                      className="w-full aspect-video rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-sky-500 hover:bg-sky-50/50 transition-all group"
+                    >
+                      <div className="p-3 rounded-full bg-white shadow-sm text-slate-400 group-hover:text-sky-500 transition-colors">
+                        <ImageIcon size={24} />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-sky-500 transition-colors">Click to upload image</span>
+                    </div>
+                  )}
+
+                   <button 
+                    onClick={handleImageClick}
+                    className="w-full flex items-center justify-center gap-3 h-12 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95"
+                   >
                       <Plus size={18} />
-                      Add Image
+                      {formData.image ? 'Change Image' : 'Add Image'}
                    </button>
-                   <button className="w-full flex items-center justify-center gap-3 h-12 rounded-xl bg-red-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95 text-center">
-                      Remove Image
-                   </button>
+                   {formData.image && (
+                     <button 
+                      onClick={handleRemoveImage}
+                      className="w-full flex items-center justify-center gap-3 h-12 rounded-xl bg-red-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-red-500/20 hover:bg-red-600 transition-all active:scale-95 text-center"
+                     >
+                        <Trash2 size={18} />
+                        Remove Image
+                     </button>
+                   )}
                 </div>
               </div>
             </div>
@@ -307,15 +492,24 @@ const AddProductModal = ({ isOpen, onClose }) => {
         <div className="bg-slate-50 p-6 px-8 border-t border-slate-200 flex justify-end gap-4">
           <button 
             onClick={onClose}
-            className="px-8 h-12 rounded-xl bg-slate-800 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:bg-slate-900 transition-all active:scale-95"
+            disabled={loading}
+            className="px-8 h-12 rounded-xl bg-slate-800 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50"
           >
             Close
           </button>
           <button 
-            onClick={onClose}
-            className="px-10 h-12 rounded-xl bg-sky-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95"
+            onClick={async () => {
+              try {
+                await handleSave()
+              } catch (e) {
+                console.error(e)
+              }
+            }}
+            disabled={loading}
+            className="px-10 h-12 rounded-xl flex items-center gap-2 bg-sky-500 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all active:scale-95 disabled:opacity-50"
           >
-            Save
+            {loading ? <Loader size={20} className="text-white" /> : <Save size={16} />}
+            {loading ? 'Saving...' : 'Save'}
           </button>
         </div>
 
@@ -324,6 +518,7 @@ const AddProductModal = ({ isOpen, onClose }) => {
             isOpen={selector.isOpen}
             title={selector.title}
             data={selector.data}
+            departments={DEPARTMENTS}
             onSelect={handleSelect}
             onClose={() => setSelector({ ...selector, isOpen: false })}
           />
@@ -334,3 +529,4 @@ const AddProductModal = ({ isOpen, onClose }) => {
 }
 
 export default AddProductModal
+

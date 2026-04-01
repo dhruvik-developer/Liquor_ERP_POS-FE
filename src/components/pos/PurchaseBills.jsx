@@ -1,24 +1,148 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
-import { 
-  Filter, 
-  Search, 
-  Download, 
-  RefreshCcw, 
-  Plus, 
-  Trash2,
-  ChevronDown,
-  Clock
-} from 'lucide-react'
-import Button from '../common/Button'
+import { Filter, Search, RefreshCcw, Plus, Trash2, ChevronDown } from 'lucide-react'
+import Loader from '../common/Loader'
 import Card from '../common/Card'
-import { PURCHASE_BILLS } from '../../mocks/purchaseBillsData'
+import useFetch from '../../hooks/useFetch'
+
+const PERIOD_DAYS = {
+  'Last Month': 30,
+  'Last 3 Months': 90,
+  'Last 6 Months': 180
+}
+
+const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
+
+const toDateValue = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDateTime = (value) => {
+  const date = toDateValue(value)
+  if (!date) return 'N/A'
+  return date.toLocaleString('en-US')
+}
+
+const formatAmount = (value) => {
+  const amount = Number(value)
+  return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
+}
 
 const PurchaseBills = () => {
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
   const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterValue, setFilterValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedRow, setSelectedRow] = useState(0)
+  const [selectedRow, setSelectedRow] = useState(null)
+
+  const { data: responseData, loading, error, refetch } = useFetch('/purchasing/bills/')
+
+  const { purchaseBills, totalBills } = React.useMemo(() => {
+    if (Array.isArray(responseData)) {
+      return { purchaseBills: responseData, totalBills: responseData.length }
+    }
+
+    if (Array.isArray(responseData?.results)) {
+      return {
+        purchaseBills: responseData.results,
+        totalBills: Number(responseData.count) || responseData.results.length
+      }
+    }
+
+    if (Array.isArray(responseData?.data?.results)) {
+      return {
+        purchaseBills: responseData.data.results,
+        totalBills: Number(responseData.data.count) || responseData.data.results.length
+      }
+    }
+
+    if (Array.isArray(responseData?.data)) {
+      return {
+        purchaseBills: responseData.data,
+        totalBills: responseData.data.length
+      }
+    }
+
+    return { purchaseBills: [], totalBills: 0 }
+  }, [responseData])
+
+  const mappedBills = React.useMemo(() => {
+    return purchaseBills.map((bill, index) => {
+      const billNumber = getFirstDefined(
+        bill.bill_number,
+        bill.bill_no,
+        bill.invoice_number,
+        bill.number,
+        bill.reference_number,
+        bill.id
+      )
+      const billDateRaw = getFirstDefined(bill.bill_date, bill.bill_datetime, bill.date, bill.created_at)
+      const dueDateRaw = getFirstDefined(bill.due_date, bill.due_datetime, bill.payment_due_date)
+      const vendorName = getFirstDefined(
+        bill.vendor?.company_name,
+        bill.vendor?.name,
+        bill.vendor_name,
+        bill.vendor
+      )
+      const status = getFirstDefined(bill.status, bill.bill_status, 'Committed')
+      const totalAmount = getFirstDefined(
+        bill.total_amount,
+        bill.total,
+        bill.amount_total,
+        bill.grand_total,
+        bill.net_total
+      )
+
+      return {
+        key: getFirstDefined(bill.id, bill.uuid, billNumber, index),
+        id: billNumber || `BILL-${index + 1}`,
+        dateRaw: billDateRaw,
+        date: formatDateTime(billDateRaw),
+        vendor: vendorName || 'N/A',
+        status,
+        total: formatAmount(totalAmount),
+        dueDate: formatDateTime(dueDateRaw),
+        note: getFirstDefined(bill.note, bill.notes, '')
+      }
+    })
+  }, [purchaseBills])
+
+  const displayedBills = React.useMemo(() => {
+    return mappedBills.filter((bill) => {
+      const date = toDateValue(bill.dateRaw)
+      if (filterPeriod !== 'All') {
+        const days = PERIOD_DAYS[filterPeriod]
+        if (days && date) {
+          const diffDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
+          if (diffDays > days) return false
+        }
+      }
+
+      const normalizedFilterValue = filterValue.trim().toLowerCase()
+      if (normalizedFilterValue) {
+        const filterTarget = (
+          filterBy === 'Bill #'
+            ? bill.id
+            : filterBy === 'Status'
+            ? bill.status
+            : bill.vendor
+        )
+          .toString()
+          .toLowerCase()
+        if (!filterTarget.includes(normalizedFilterValue)) return false
+      }
+
+      const normalizedSearch = searchQuery.trim().toLowerCase()
+      if (!normalizedSearch) return true
+
+      const combinedSearch = [bill.id, bill.vendor, bill.status, bill.note, bill.total, bill.date, bill.dueDate]
+        .join(' ')
+        .toLowerCase()
+      return combinedSearch.includes(normalizedSearch)
+    })
+  }, [mappedBills, filterPeriod, filterBy, filterValue, searchQuery])
 
   return (
     <div className="space-y-6">
@@ -70,6 +194,8 @@ const PurchaseBills = () => {
              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
              <input
                type="text"
+               value={filterValue}
+               onChange={(e) => setFilterValue(e.target.value)}
                placeholder="Search Value"
                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-inner"
              />
@@ -107,7 +233,10 @@ const PurchaseBills = () => {
               <button className="h-11 px-6 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all shadow-sm active:scale-95">
                  Export To CSV
               </button>
-              <button className="h-11 px-6 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all shadow-sm active:scale-95">
+              <button
+                onClick={refetch}
+                className="h-11 px-6 rounded-xl bg-slate-100 text-slate-600 text-xs font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all shadow-sm active:scale-95"
+              >
                  <RefreshCcw size={16} />
                  Refresh
               </button>
@@ -141,34 +270,57 @@ const PurchaseBills = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {PURCHASE_BILLS.map((bill, index) => {
-                const isSelected = selectedRow === index
-                return (
-                  <tr 
-                    key={index} 
-                    onClick={() => setSelectedRow(index)}
-                    className={`hover:bg-sky-50 transition-colors cursor-pointer ${
-                      index % 2 !== 0 ? 'bg-slate-50/30' : ''
-                    } ${isSelected ? 'shadow-[inset_4px_0_0_#0EA5E9] bg-sky-50/50' : ''}`}
-                  >
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-sky-500 hover:underline">{bill.id}</span>
-                    </td>
-                    <td className="px-6 py-4 text-xs font-bold text-slate-600">{bill.date}</td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-bold text-sky-500 hover:underline">{bill.vendor}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg border border-amber-100 uppercase tracking-widest shadow-sm">
-                        {bill.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-bold text-slate-700">{bill.total}</td>
-                    <td className="px-6 py-4 text-xs font-bold text-slate-500">{bill.dueDate}</td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-400">{bill.note}</td>
-                  </tr>
-                )
-              })}
+              {loading ? (
+                <tr>
+                  <td colSpan="7" className="px-5 py-8 text-center text-[#64748B]">
+                    <Loader size={48} className="mx-auto" />
+                    <p className="mt-2 font-medium">Loading bills...</p>
+                  </td>
+                </tr>
+              ) : error ? (
+                <tr>
+                  <td colSpan="7" className="px-8 py-10">
+                    <div className="p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-center font-bold">
+                      {error}
+                    </div>
+                  </td>
+                </tr>
+              ) : displayedBills.length === 0 ? (
+                <tr>
+                  <td colSpan="7" className="px-8 py-16 text-center">
+                    <p className="text-slate-500 font-bold">No purchase bills found.</p>
+                  </td>
+                </tr>
+              ) : (
+                displayedBills.map((bill, index) => {
+                  const isSelected = selectedRow === index
+                  return (
+                    <tr 
+                      key={bill.key}
+                      onClick={() => setSelectedRow(index)}
+                      className={`hover:bg-sky-50 transition-colors cursor-pointer ${
+                        index % 2 !== 0 ? 'bg-slate-50/30' : ''
+                      } ${isSelected ? 'shadow-[inset_4px_0_0_#0EA5E9] bg-sky-50/50' : ''}`}
+                    >
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-sky-500 hover:underline">{bill.id}</span>
+                      </td>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-600">{bill.date}</td>
+                      <td className="px-6 py-4">
+                        <span className="text-sm font-bold text-sky-500 hover:underline">{bill.vendor}</span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg border border-amber-100 uppercase tracking-widest shadow-sm">
+                          {bill.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm font-bold text-slate-700">{bill.total}</td>
+                      <td className="px-6 py-4 text-xs font-bold text-slate-500">{bill.dueDate}</td>
+                      <td className="px-6 py-4 text-xs font-medium text-slate-400">{bill.note}</td>
+                    </tr>
+                  )
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -176,7 +328,7 @@ const PurchaseBills = () => {
         {/* Footer info */}
         <div className="px-8 py-4 bg-white border-t border-slate-100">
           <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-             Total Purchase Bills : {PURCHASE_BILLS.length}
+             Total Purchase Bills : {totalBills || displayedBills.length}
           </span>
         </div>
       </div>

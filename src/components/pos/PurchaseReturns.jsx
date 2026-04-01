@@ -6,25 +6,33 @@ import {
   Download, 
   RefreshCcw, 
   Plus, 
+  Pencil,
   Trash2,
   ChevronDown
 } from 'lucide-react'
+import Loader from '../common/Loader'
 import Card from '../common/Card'
+import useFetch from '../../hooks/useFetch'
 
 const PurchaseReturns = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
   const [searchQuery, setSearchQuery] = useState('')
 
-  const returnsData = [
-    { billNo: '3776357', date: '11/11/2025 12:42', vendor: 'Peerless', status: 'Committed', total: '$24.60', dueDate: '', paidStatus: 'Open' },
-    { billNo: '0170053', date: '11/05/2025 01:00', vendor: 'High Grade', status: 'Committed', total: '$270.24', dueDate: '', paidStatus: 'Open' },
-    { billNo: '3772057', date: '11/04/2025 01:42', vendor: 'Peerless', status: 'Committed', total: '$46.98', dueDate: '', paidStatus: 'Open' },
-    { billNo: '3769358', date: '10/28/2025 11:30', vendor: 'Peerless', status: 'Committed', total: '$74.40', dueDate: '', paidStatus: 'Open' },
-    { billNo: '3765328', date: '10/21/2025 12:31', vendor: 'Peerless', status: 'Committed', total: '$61.36', dueDate: '', paidStatus: 'Open' },
-    { billNo: '0160259', date: '10/15/2025 02:01', vendor: 'High Grade', status: 'Committed', total: '$66.40', dueDate: '', paidStatus: 'Open' },
-    { billNo: '3762016', date: '10/14/2025 11:35', vendor: 'Peerless', status: 'Committed', total: '$131.50', dueDate: '', paidStatus: 'Open' },
-  ]
+  const { data: responseData, loading, error } = useFetch('/purchasing/returns/')
+  const purchaseReturns = Array.isArray(responseData) ? responseData : responseData?.results || []
+
+  const mappedReturns = React.useMemo(() => {
+    return purchaseReturns.map(ret => ({
+      billNo: ret.return_number || `RET-${ret.id}`,
+      date: ret.return_date ? new Date(ret.return_date).toLocaleDateString() : 'N/A',
+      vendor: ret.vendor?.company_name || ret.vendor || 'N/A',
+      status: ret.status || 'Committed',
+      total: `$${Number(ret.total_amount || 0).toFixed(2)}`,
+      dueDate: '',
+      paidStatus: 'Open'
+    }))
+  }, [purchaseReturns])
 
   return (
     <div className="space-y-6">
@@ -145,35 +153,60 @@ const PurchaseReturns = () => {
                   </tr>
                </thead>
                <tbody className="divide-y divide-slate-50">
-                  {returnsData.map((record, idx) => (
-                    <tr 
-                      key={idx} 
-                      className="hover:bg-sky-50/30 transition-colors group cursor-pointer"
-                    >
-                       <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline tracking-tight">
-                          {record.billNo}
-                       </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-500">{record.date}</td>
-                       <td className="px-8 py-5 text-sm font-black text-slate-700">
-                          {record.vendor}
-                       </td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.status}</td>
-                       <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{record.total}</td>
-                       <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.dueDate}</td>
-                       <td className="px-8 py-5">
-                          <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100">
-                            {record.paidStatus}
-                          </span>
-                       </td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="7" className="px-8 py-10">
+                        <div className="flex flex-col items-center justify-center">
+                          <Loader size={48} className="mx-auto" />
+                          <p className="mt-2 text-[#64748B] font-medium tracking-tight">Loading purchase returns...</p>
+                        </div>
+                      </td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan="7" className="px-8 py-10">
+                        <div className="p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-center font-bold">
+                          {error}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : mappedReturns.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="px-8 py-16 text-center">
+                        <p className="text-slate-500 font-bold">No purchase returns found.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    mappedReturns.map((record, idx) => (
+                      <tr 
+                        key={idx} 
+                        className="hover:bg-sky-50/30 transition-colors group cursor-pointer"
+                      >
+                         <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline tracking-tight">
+                            {record.billNo}
+                         </td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-500">{record.date}</td>
+                         <td className="px-8 py-5 text-sm font-black text-slate-700">
+                            {record.vendor}
+                         </td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.status}</td>
+                         <td className="px-8 py-5 text-sm font-black text-slate-700 text-right">{record.total}</td>
+                         <td className="px-8 py-5 text-sm font-bold text-slate-400">{record.dueDate}</td>
+                         <td className="px-8 py-5">
+                            <span className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest bg-rose-50 text-rose-500 border border-rose-100">
+                              {record.paidStatus}
+                            </span>
+                         </td>
+                      </tr>
+                    ))
+                  )}
                </tbody>
             </table>
          </div>
 
          <div className="px-8 py-5 bg-slate-50/30 border-t border-slate-100">
             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-               Total Purchase Returns : 82
+               Total Purchase Returns : {mappedReturns.length}
             </span>
          </div>
       </div>
