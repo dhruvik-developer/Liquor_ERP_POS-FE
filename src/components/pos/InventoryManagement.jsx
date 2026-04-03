@@ -16,7 +16,7 @@ const uniqueWithAll = values => {
   const cleaned = values
     .filter(Boolean)
     .map(value => `${value}`.trim())
-    .filter(Boolean)
+    .filter(value => Boolean(value) && value.toLowerCase() !== 'all')
   return ['All', ...Array.from(new Set(cleaned))]
 }
 
@@ -43,6 +43,7 @@ const InventoryManagement = () => {
   })
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState(null)
 
   useEffect(() => {
     if (searchParams.get('openAddProduct') === '1') {
@@ -52,6 +53,17 @@ const InventoryManagement = () => {
 
   const handleFilterChange = (name, value) => {
     setFilters(prev => ({ ...prev, [name]: value }))
+  }
+
+  const handleEdit = (mappedProduct) => {
+    const originalProduct = (products || []).find(p => p.id === mappedProduct.id)
+    setEditingProduct(originalProduct)
+    setIsAddModalOpen(true)
+  }
+
+  const handleAdd = () => {
+    setEditingProduct(null)
+    setIsAddModalOpen(true)
   }
 
   const handleReset = () => {
@@ -128,7 +140,7 @@ const InventoryManagement = () => {
       ...mappedProducts.map(product => product.brand),
     ])
     const suppliers = uniqueWithAll([
-      ...vendors.map(vendor => vendor.company_name || vendor.name),
+      ...vendors.map(vendor => vendor.vendor_name || vendor.company_name || vendor.name),
       ...mappedProducts.map(product => product.supplier),
     ])
 
@@ -182,7 +194,7 @@ const InventoryManagement = () => {
         filters={filters} 
         onFilterChange={handleFilterChange} 
         onReset={handleReset}
-        onAdd={() => setIsAddModalOpen(true)}
+        onAdd={handleAdd}
         dropdownOptions={dropdownOptions}
         dropdownLoading={categoriesLoading || packsLoading || brandsLoading || sizesLoading || vendorsLoading || departmentsLoading}
       />
@@ -197,15 +209,17 @@ const InventoryManagement = () => {
           {error}
         </div>
       ) : (
-        <InventoryTable products={filteredData} />
+        <InventoryTable products={filteredData} onEdit={handleEdit} />
       )}
 
       <AddProductModal 
         isOpen={isAddModalOpen} 
+        product={editingProduct}
         departments={departmentsData}
         onSaved={() => refetchProducts()}
         onClose={() => {
           setIsAddModalOpen(false)
+          setEditingProduct(null)
           if (searchParams.get('openAddProduct') === '1') {
             const nextParams = new URLSearchParams(searchParams)
             nextParams.delete('openAddProduct')

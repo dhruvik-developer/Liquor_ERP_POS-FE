@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Save, 
@@ -9,55 +9,325 @@ import {
   ChevronDown,
   X,
   Settings,
-  MoreHorizontal,
-  Calendar
+  MoreHorizontal
 } from 'lucide-react'
 import Button from '../common/Button'
-import Input from '../common/Input'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
+import useFetch from '../../hooks/useFetch'
+
+const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
+
+const collectNonEmptyStrings = (values) =>
+  values
+    .map((value) => (value === undefined || value === null ? '' : String(value).trim()))
+    .filter(Boolean)
+
+const asNumber = (value, fallback = 0) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const toInputDate = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const createDefaultDueDate = () => {
+  const date = new Date()
+  date.setDate(date.getDate() + 30)
+  return toInputDate(date)
+}
+
+const normalizeCurrency = (value) => asNumber(value, 0).toFixed(2)
+
+const formatMoneyLabel = (value) => `$${normalizeCurrency(value)}`
+
+const getOrderItems = (order) => {
+  if (!order) return []
+  if (Array.isArray(order.items)) return order.items
+  if (Array.isArray(order.line_items)) return order.line_items
+  if (Array.isArray(order.order_items)) return order.order_items
+  if (Array.isArray(order.lines)) return order.lines
+  return []
+}
+
+const normalizeOrderLineItem = (line, lineIndex, orderId) => {
+  const product = line.product || {}
+  const qty = asNumber(
+    getFirstDefined(line.quantity_ordered, line.quantity, line.qty, line.order_qty, line.ordered_qty, 0),
+    0
+  )
+  const bpc = asNumber(getFirstDefined(line.case_units, line.bpc, line.units_per_case, product.case_units, 1), 1)
+  const cost = asNumber(getFirstDefined(line.unit_price, line.unit_cost, line.cost, line.price, product.cost, 0), 0)
+  const disc = asNumber(getFirstDefined(line.discount, line.discount_amount, 0), 0)
+  const amount = asNumber(getFirstDefined(line.amount, line.total_amount), qty * cost - disc)
+
+  const size = getFirstDefined(product.size?.name, product.size_name, line.size, '')
+  const pack = getFirstDefined(product.pack?.name, product.pack_name, line.pack, '')
+  const sizePack = [size, pack].filter(Boolean).join(' / ') || '-'
+
+  return {
+    sr: lineIndex + 1,
+    lineItemId: getFirstDefined(line.id, line.item_id, null),
+    productId: getFirstDefined(line.product_id, product.id, null),
+    sku: getFirstDefined(line.sku, product.sku, product.upc, product.barcode, '-'),
+    vendorCode: getFirstDefined(line.vendor_code, product.vendor_code, product.supplier_code, '-'),
+    itemName: getFirstDefined(line.item_name, line.item_description, line.description, product.name, product.item_name, 'N/A'),
+    sizePack,
+    case: asNumber(getFirstDefined(line.case_qty, line.cases, line.case_count, qty), qty),
+    bpc,
+    qty,
+    cost,
+    disc,
+    amount,
+    rip: asNumber(getFirstDefined(line.rip, line.return_invoice_price, 0), 0),
+    orderKey: orderId
+  }
+}
 
 const CreatePurchaseBill = () => {
   const { openCalculator } = useCalculator()
   const navigate = useNavigate()
-  const [billDate, setBillDate] = useState('2025-11-24')
-  const [dueDate, setDueDate] = useState('2025-12-24')
-  const [deliveryDate, setDeliveryDate] = useState('2025-11-24')
-  const [billItems, setBillItems] = useState([
-    { 
-      sr: 1, 
-      sku: '611269991000', 
-      vendorCode: 'VDR001', 
-      itemName: 'REDBULL 611269991000 8.4 OZ 24-PACK', 
-      sizePack: '8.4 OZ', 
-      case: 1.0, 
-      bpc: 24, 
-      qty: 1, 
-      cost: 38.49, 
-      disc: '0.00%', 
-      amount: 38.49, 
-      rip: 0.00 
-    }
-  ])
+  const today = toInputDate(new Date())
+  const [billDate, setBillDate] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [deliveryDate, setDeliveryDate] = useState('')
+  const [salesPerson, setSalesPerson] = useState('')
+  const [invoiceNumber, setInvoiceNumber] = useState('')
+  const [note, setNote] = useState('')
+  const [selectedVendorId, setSelectedVendorId] = useState('')
+  const [selectedOrderId, setSelectedOrderId] = useState('')
+  const [billItems, setBillItems] = useState([])
+  const [charges, setCharges] = useState({
+    tax1: 0,
+    tax2: 0,
+    tax3: 0,
+    discountFees: 0,
+    depositFees: 0,
+    returnDeposit: 0,
+    overhead: 0
+  })
   
   const { post, loading, error: apiError } = useApi()
+  const { data: vendorsData, loading: vendorsLoading, error: vendorsError } = useFetch('/people/vendors/')
+  const { data: ordersData, loading: ordersLoading, error: ordersError } = useFetch('/purchasing/orders/')
+  const { data: billsData, error: billsError } = useFetch('/purchasing/bills/')
+  const vendors = useMemo(() => {
+    if (Array.isArray(vendorsData)) return vendorsData
+    if (Array.isArray(vendorsData?.results)) return vendorsData.results
+    if (Array.isArray(vendorsData?.data?.results)) return vendorsData.data.results
+    if (Array.isArray(vendorsData?.data)) return vendorsData.data
+    return []
+  }, [vendorsData])
+  const purchaseOrders = useMemo(() => {
+    if (Array.isArray(ordersData)) return ordersData
+    if (Array.isArray(ordersData?.results)) return ordersData.results
+    if (Array.isArray(ordersData?.data?.results)) return ordersData.data.results
+    if (Array.isArray(ordersData?.data)) return ordersData.data
+    return []
+  }, [ordersData])
+  const purchaseBills = useMemo(() => {
+    if (Array.isArray(billsData)) return billsData
+    if (Array.isArray(billsData?.results)) return billsData.results
+    if (Array.isArray(billsData?.data?.results)) return billsData.data.results
+    if (Array.isArray(billsData?.data)) return billsData.data
+    return []
+  }, [billsData])
+  const billedOrderKeys = useMemo(() => {
+    const keys = new Set()
+
+    purchaseBills.forEach((bill) => {
+      const billVendorId = String(bill.vendor?.id ?? bill.vendor_id ?? bill.vendor ?? '').trim()
+      const billOrderIdValues = collectNonEmptyStrings([
+        bill.purchase_order_id,
+        bill.purchase_order,
+        bill.order_id,
+        bill.order,
+        bill.po_id
+      ])
+      const billPoNumberValues = collectNonEmptyStrings([bill.po_number, bill.purchase_order_number, bill.order_number])
+
+      billOrderIdValues.forEach((value) => {
+        keys.add(`id:${value}`)
+      })
+
+      billPoNumberValues.forEach((value) => {
+        keys.add(`po:${value}`)
+        if (billVendorId) keys.add(`vendor-po:${billVendorId}:${value}`)
+      })
+    })
+
+    return keys
+  }, [purchaseBills])
+
+  const normalizedOrders = useMemo(() => {
+    return purchaseOrders.map((order, index) => {
+      const orderId = String(getFirstDefined(order.id, order.pk, order.uuid, order.po_id, `order-${index}`))
+      const vendorId = String(getFirstDefined(order.vendor?.id, order.vendor_id, order.vendor, ''))
+      const poNumber = String(getFirstDefined(order.po_number, order.order_number, order.po_no, orderId))
+      const status = String(getFirstDefined(order.status, order.po_status, order.overall_status, '')).trim().toLowerCase()
+      const items = getOrderItems(order).map((line, lineIndex) => normalizeOrderLineItem(line, lineIndex, orderId))
+
+      return {
+        ...order,
+        key: orderId,
+        vendorId,
+        poNumber,
+        status,
+        items,
+        billDate: getFirstDefined(order.bill_date, order.purchase_bill_date, order.updated_at, order.created_at),
+        dueDate: getFirstDefined(order.due_date),
+        deliveryDate: getFirstDefined(order.delivery_date, order.expected_date, order.received_date),
+        salesPerson: getFirstDefined(order.sales_person, order.salesperson, order.created_by?.name, ''),
+        note: getFirstDefined(order.note, order.notes, ''),
+        invoiceNumber: getFirstDefined(order.invoice_number, order.vendor_invoice, ''),
+        tax1: asNumber(getFirstDefined(order.tax_1, order.tax1, order.tax_amount_1, 0), 0),
+        tax2: asNumber(getFirstDefined(order.tax_2, order.tax2, order.tax_amount_2, 0), 0),
+        tax3: asNumber(getFirstDefined(order.tax_3, order.tax3, order.tax_amount_3, 0), 0),
+        discountFees: asNumber(getFirstDefined(order.discount_fees, order.discount, order.discount_amount, 0), 0),
+        depositFees: asNumber(getFirstDefined(order.deposit_fees, order.deposit, 0), 0),
+        returnDeposit: asNumber(getFirstDefined(order.return_deposit, 0), 0),
+        overhead: asNumber(getFirstDefined(order.overhead, order.other_charges, 0), 0)
+      }
+    })
+  }, [purchaseOrders])
+
+  const fullyReceivedOrders = useMemo(() => {
+    if (!selectedVendorId) return []
+    const vendorId = String(selectedVendorId)
+    return normalizedOrders.filter((order) => {
+      const status = order.status
+      const orderVendorId = order.vendorId
+      if (!(status === 'fully received' && orderVendorId === vendorId)) return false
+
+      const orderIdValues = collectNonEmptyStrings([order.key])
+      const orderPoNumberValues = collectNonEmptyStrings([order.poNumber])
+
+      const hasExistingBill = orderIdValues.some((value) => billedOrderKeys.has(`id:${value}`)) ||
+        orderPoNumberValues.some(
+          (value) => billedOrderKeys.has(`vendor-po:${vendorId}:${value}`) || billedOrderKeys.has(`po:${value}`)
+        )
+
+      return !hasExistingBill
+    })
+  }, [normalizedOrders, selectedVendorId, billedOrderKeys])
+
+  const selectedOrder = useMemo(
+    () => fullyReceivedOrders.find((order) => String(order.key) === String(selectedOrderId)) || null,
+    [fullyReceivedOrders, selectedOrderId]
+  )
+
+  useEffect(() => {
+    if (!selectedOrder) {
+      setBillItems([])
+      setBillDate('')
+      setDueDate('')
+      setDeliveryDate('')
+      setSalesPerson('')
+      setInvoiceNumber('')
+      setNote('')
+      setCharges({
+        tax1: 0,
+        tax2: 0,
+        tax3: 0,
+        discountFees: 0,
+        depositFees: 0,
+        returnDeposit: 0,
+        overhead: 0
+      })
+      return
+    }
+
+    setBillItems(selectedOrder.items)
+    setBillDate(toInputDate(selectedOrder.billDate) || today)
+    setDueDate(toInputDate(selectedOrder.dueDate) || createDefaultDueDate())
+    setDeliveryDate(toInputDate(selectedOrder.deliveryDate))
+    setSalesPerson(selectedOrder.salesPerson || '')
+    setInvoiceNumber(selectedOrder.invoiceNumber || '')
+    setNote(selectedOrder.note || '')
+    setCharges({
+      tax1: selectedOrder.tax1,
+      tax2: selectedOrder.tax2,
+      tax3: selectedOrder.tax3,
+      discountFees: selectedOrder.discountFees,
+      depositFees: selectedOrder.depositFees,
+      returnDeposit: selectedOrder.returnDeposit,
+      overhead: selectedOrder.overhead
+    })
+  }, [selectedOrder, today])
+
+  const subTotal = useMemo(
+    () => billItems.reduce((acc, item) => acc + asNumber(item.amount, asNumber(item.qty) * asNumber(item.cost) - asNumber(item.disc)), 0),
+    [billItems]
+  )
+
+  const totalPayable = useMemo(() => {
+    return (
+      subTotal +
+      asNumber(charges.tax1) +
+      asNumber(charges.tax2) +
+      asNumber(charges.tax3) +
+      asNumber(charges.depositFees) +
+      asNumber(charges.overhead) -
+      asNumber(charges.discountFees) -
+      asNumber(charges.returnDeposit)
+    )
+  }, [subTotal, charges])
+
+  const totals = useMemo(
+    () => ({
+      items: billItems.length,
+      totalQty: billItems.reduce((acc, item) => acc + asNumber(item.qty), 0),
+      totalUnitQty: billItems.reduce((acc, item) => acc + asNumber(item.qty) * asNumber(item.bpc), 0)
+    }),
+    [billItems]
+  )
 
   const handleSave = async () => {
     try {
-      if (billItems.length === 0) return
-      
-      await post('/purchasing/bills/', {
-        vendor_id: 1, // static vendor for UI demo
+      if (billItems.length === 0 || !selectedVendorId) return
+
+      const purchaseOrderId = Number(selectedOrderId) || null
+      const payload = {
+        vendor: Number(selectedVendorId) || null,
+        purchase_order: purchaseOrderId,
+        sales_person: salesPerson || '',
+        invoice_number: invoiceNumber || '',
         bill_date: billDate,
         due_date: dueDate,
-        items: billItems.map(item => ({
-          product_id: 1, // static product
-          quantity: item.qty,
-          unit_price: item.cost
-        }))
-      })
+        delivery_date: deliveryDate || null,
+        note: note || '',
+        tax_1: asNumber(charges.tax1).toFixed(2),
+        tax_2: asNumber(charges.tax2).toFixed(2),
+        tax_3: asNumber(charges.tax3).toFixed(2),
+        discount_fees: asNumber(charges.discountFees).toFixed(2),
+        deposit_fees: asNumber(charges.depositFees).toFixed(2),
+        return_deposit: asNumber(charges.returnDeposit).toFixed(2),
+        overhead: asNumber(charges.overhead).toFixed(2),
+        sub_total: subTotal.toFixed(2),
+        total_amount: totalPayable.toFixed(2)
+      }
+
+      if (!purchaseOrderId) {
+        payload.items_detail = billItems
+          .map((item) => ({
+            product: Number(item.productId) || null,
+            quantity_ordered: asNumber(item.qty),
+            quantity_received: asNumber(item.qty),
+            unit_price: asNumber(item.cost).toFixed(2)
+          }))
+          .filter((item) => item.product)
+      }
+
+      await post('/purchasing/bills/', payload)
       navigate('/pos/purchase-bills')
     } catch(err) {
       console.error(err)
@@ -66,9 +336,9 @@ const CreatePurchaseBill = () => {
 
   return (
     <div className="space-y-6">
-      {apiError && (
+      {(apiError || vendorsError || ordersError || billsError) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
-          {apiError}
+          {apiError || vendorsError || ordersError || billsError}
         </div>
       )}
       
@@ -99,8 +369,26 @@ const CreatePurchaseBill = () => {
            <div className="lg:col-span-3 space-y-1.5 flex flex-col">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Select Vendor</label>
               <div className="relative group">
-                <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
-                  <option>Allied Beverages</option>
+                <select
+                  value={selectedVendorId}
+                  onChange={(e) => {
+                    setSelectedVendorId(e.target.value)
+                    setSelectedOrderId('')
+                  }}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                >
+                  <option value="">Select vendor</option>
+                  {vendorsLoading ? (
+                    <option value="" disabled>
+                      Loading vendors...
+                    </option>
+                  ) : (
+                    vendors.map((vendor) => (
+                      <option key={vendor.id} value={vendor.id}>
+                        {vendor.vendor_name || vendor.company_name || vendor.name || `Vendor ${vendor.id}`}
+                      </option>
+                    ))
+                  )}
                 </select>
                 <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               </div>
@@ -110,6 +398,8 @@ const CreatePurchaseBill = () => {
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Invoice #</label>
               <input 
                 type="text" 
+                value={invoiceNumber}
+                onChange={(e) => setInvoiceNumber(e.target.value)}
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                 placeholder=""
               />
@@ -118,25 +408,22 @@ const CreatePurchaseBill = () => {
            <div className="lg:col-span-4 flex items-end gap-2">
               <div className="flex-1 space-y-1.5">
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Sales Person</label>
-                <div className="relative group">
-                  <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
-                    <option>Select a person</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                </div>
+                <input
+                  type="text"
+                  value={salesPerson}
+                  onChange={(e) => setSalesPerson(e.target.value)}
+                  placeholder="Enter sales person"
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                />
               </div>
               <button className="h-11 w-11 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:border-sky-500 hover:text-sky-500 transition-all shadow-sm active:scale-95">
                 <MoreHorizontal size={20} />
               </button>
            </div>
 
-           <div className="lg:col-span-2 flex flex-col items-end pb-1 whitespace-nowrap overflow-hidden">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill ID</span>
-              <span className="text-[13px] font-black text-slate-700 tabular-nums">PBL25112423243040365</span>
-           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6 mt-8">
             <DatePickerField 
                label="Bill Date"
                value={billDate}
@@ -149,15 +436,38 @@ const CreatePurchaseBill = () => {
                onChange={setDueDate}
                required
             />
-            <DatePickerField 
-               label="Delivery Date"
-               value={deliveryDate}
-               onChange={setDeliveryDate}
-            />
-           <div className="space-y-1.5 flex flex-col justify-end">
+             <DatePickerField 
+                label="Delivery Date"
+                value={deliveryDate}
+                onChange={setDeliveryDate}
+             />
+            <div className="space-y-1.5 flex flex-col justify-end">
+              <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Fully Received PO</label>
+              <div className="relative group">
+                <select
+                  value={selectedOrderId}
+                  onChange={(e) => setSelectedOrderId(e.target.value)}
+                  disabled={!selectedVendorId || ordersLoading}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  <option value="">
+                    {!selectedVendorId ? 'Select vendor first' : ordersLoading ? 'Loading orders...' : 'Select fully received order'}
+                  </option>
+                  {fullyReceivedOrders.map((order) => (
+                    <option key={order.key} value={order.key}>
+                      {order.poNumber || `PO #${order.key}`}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="space-y-1.5 flex flex-col justify-end">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Note</label>
               <input 
                 type="text" 
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
                 placeholder="Enter note..."
                 className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
               />
@@ -183,26 +493,26 @@ const CreatePurchaseBill = () => {
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">SKU / UPC</label>
                        <input 
                          type="text" 
-                         defaultValue="5008"
+                         defaultValue=""
                          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
-                       />
+                        />
                     </div>
                     <div className="space-y-1.5">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Qty</label>
-                       <input type="text" defaultValue="1" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                       <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                     </div>
                     <div className="space-y-1.5">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">BPC</label>
-                       <input type="text" defaultValue="24" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                       <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                     </div>
                     <div className="space-y-1.5">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Free Qty</label>
-                       <input type="text" defaultValue="0" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                       <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                     </div>
                     <div className="space-y-1.5 flex flex-col">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Line Total</label>
                        <div className="relative">
-                          <input type="text" defaultValue="38.490" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                          <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                        </div>
                     </div>
@@ -212,9 +522,9 @@ const CreatePurchaseBill = () => {
                     <div className="col-span-2 space-y-1.5">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Item Name</label>
                        <div className="relative group">
-                          <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
-                            <option>REDBULL 611269991000 8.4 OZ 24-PACK</option>
-                          </select>
+                           <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
+                             <option value="">Select item</option>
+                           </select>
                           <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
                        </div>
                     </div>
@@ -227,7 +537,7 @@ const CreatePurchaseBill = () => {
                     <div className="col-span-2 invisible" />
                     <div className="space-y-1.5">
                        <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1 text-right">Net Qty</label>
-                       <input type="text" defaultValue="24.0" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 text-center text-sm font-bold text-slate-400 outline-none" />
+                       <input type="text" defaultValue="" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 text-center text-sm font-bold text-slate-400 outline-none" />
                     </div>
                  </div>
 
@@ -236,42 +546,42 @@ const CreatePurchaseBill = () => {
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Case Cost</label>
                           <div className="relative">
-                             <input type="text" defaultValue="38.490" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                           </div>
                        </div>
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Cost</label>
                           <div className="relative">
-                             <input type="text" defaultValue="1.600" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                           </div>
                        </div>
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Unit Cost</label>
                           <div className="relative">
-                             <input type="text" defaultValue="1.60" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <input type="text" defaultValue="" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
                           </div>
                        </div>
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Last Case Cost</label>
                           <div className="relative">
-                             <input type="text" defaultValue="38.49" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <input type="text" defaultValue="" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
                           </div>
                        </div>
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Discount</label>
                           <div className="relative">
-                             <input type="text" defaultValue="0.000" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
+                             <input type="text" defaultValue="" className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
                           </div>
                        </div>
                        <div className="space-y-1.5 flex flex-col">
                           <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Net Cost</label>
                           <div className="relative">
-                             <input type="text" defaultValue="38.490" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
+                             <input type="text" defaultValue="" readOnly className="w-full h-11 rounded-xl border border-slate-100 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-400 outline-none" />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-200 font-bold">$</span>
                           </div>
                        </div>
@@ -281,38 +591,38 @@ const CreatePurchaseBill = () => {
                        <div className="p-5 rounded-2xl bg-slate-50/50 border border-slate-100 space-y-3">
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Cost:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">1.60</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Margin:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">54.15 %</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Curr Markup:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">118.12 %</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sale Price:</span>
-                             <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500 underline decoration-sky-500/30">3.49</span>
+                              <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500 underline decoration-sky-500/30">-</span>
                           </div>
                        </div>
 
                        <div className="p-5 rounded-2xl bg-white border border-slate-100 space-y-3 shadow-sm">
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">New Cost:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">1.60</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Margin:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">54.15 %</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Markup:</span>
-                             <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">118.12 %</span>
+                              <span className="text-[12px] font-black text-slate-600 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                           <div className="flex justify-between items-center group">
                              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Suggested Price:</span>
-                             <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500">3.49</span>
+                              <span className="text-[12px] font-black text-slate-800 tracking-tight transition-colors group-hover:text-sky-500">-</span>
                           </div>
                        </div>
                     </div>
@@ -337,14 +647,14 @@ const CreatePurchaseBill = () => {
                
                <div className="p-8 space-y-4 flex-1">
                  {[
-                    { label: 'Sub Total', value: '$0.000' },
-                    { label: 'Tax 1', value: '$0.00' },
-                    { label: 'Tax 2', value: '$0.00' },
-                    { label: 'Tax 3', value: '$0.00' },
-                    { label: 'Discount (Fees)', value: '$0.00' },
-                    { label: 'Deposit (Fees)', value: '$0.00' },
-                    { label: 'Return Deposit', value: '$0.00', isRed: true },
-                    { label: 'Overhead', value: '$0.000' },
+                    { label: 'Sub Total', value: formatMoneyLabel(subTotal) },
+                    { label: 'Tax 1', value: formatMoneyLabel(charges.tax1) },
+                    { label: 'Tax 2', value: formatMoneyLabel(charges.tax2) },
+                    { label: 'Tax 3', value: formatMoneyLabel(charges.tax3) },
+                    { label: 'Discount (Fees)', value: formatMoneyLabel(charges.discountFees) },
+                    { label: 'Deposit (Fees)', value: formatMoneyLabel(charges.depositFees) },
+                    { label: 'Return Deposit', value: formatMoneyLabel(charges.returnDeposit), isRed: true },
+                    { label: 'Overhead', value: formatMoneyLabel(charges.overhead) },
                  ].map((row, idx) => (
                     <div key={idx} className="flex justify-between items-center">
                        <span className="text-[12px] font-bold text-slate-400 uppercase tracking-widest">{row.label}</span>
@@ -356,21 +666,21 @@ const CreatePurchaseBill = () => {
                  
                  <div className="flex justify-between items-center">
                     <h3 className="text-lg font-bold text-sky-500 tracking-tight font-poppins">Total Payable</h3>
-                    <span className="text-[28px] font-black text-sky-500 tracking-tight">$0.000</span>
+                    <span className="text-[28px] font-black text-sky-500 tracking-tight">{formatMoneyLabel(totalPayable)}</span>
                  </div>
 
                  <div className="grid grid-cols-3 gap-6 pt-8">
                     <div className="text-center space-y-1">
                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Qty</div>
-                       <div className="text-2xl font-black text-slate-800">1</div>
+                        <div className="text-2xl font-black text-slate-800">{totals.totalQty}</div>
                     </div>
                     <div className="text-center space-y-1 border-x border-slate-100 px-4">
                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Unit Qty</div>
-                       <div className="text-2xl font-black text-slate-800">24</div>
+                        <div className="text-2xl font-black text-slate-800">{totals.totalUnitQty}</div>
                     </div>
                     <div className="text-center space-y-1">
                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Items</div>
-                       <div className="text-2xl font-black text-slate-800">1</div>
+                        <div className="text-2xl font-black text-slate-800">{totals.items}</div>
                     </div>
                  </div>
               </div>
@@ -410,23 +720,31 @@ const CreatePurchaseBill = () => {
                      <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest whitespace-nowrap text-right">RIP</th>
                   </tr>
                </thead>
-               <tbody className="divide-y divide-slate-50">
-                  {billItems.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-sky-50 transition-colors">
-                       <td className="px-6 py-5 text-sm font-bold text-slate-400">{item.sr}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-600 tracking-tight">{item.sku}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-600">{item.vendorCode}</td>
-                       <td className="px-6 py-5 text-sm font-black text-slate-700">{item.itemName}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-500">{item.sizePack}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.case}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.bpc}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-sky-500">{item.qty}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-700">${item.cost}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.disc}</td>
-                       <td className="px-6 py-5 text-sm font-black text-slate-800">${item.amount}</td>
-                       <td className="px-6 py-5 text-sm font-bold text-slate-400 text-right">${item.rip.toFixed(2)}</td>
+                <tbody className="divide-y divide-slate-50">
+                  {billItems.length === 0 ? (
+                    <tr>
+                      <td colSpan="12" className="px-6 py-10 text-center text-sm font-bold text-slate-400">
+                        No items added yet.
+                      </td>
                     </tr>
-                  ))}
+                  ) : (
+                    billItems.map((item, idx) => (
+                      <tr key={idx} className="hover:bg-sky-50 transition-colors">
+                         <td className="px-6 py-5 text-sm font-bold text-slate-400">{item.sr}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-600 tracking-tight">{item.sku}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-600">{item.vendorCode}</td>
+                         <td className="px-6 py-5 text-sm font-black text-slate-700">{item.itemName}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-500">{item.sizePack}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">{item.case}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">{asNumber(item.bpc).toFixed(2)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-sky-500">{asNumber(item.qty).toFixed(2)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">${asNumber(item.cost).toFixed(3)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">{asNumber(item.disc).toFixed(3)}</td>
+                         <td className="px-6 py-5 text-sm font-black text-slate-800">${asNumber(item.amount).toFixed(3)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-400 text-right">${item.rip.toFixed(2)}</td>
+                      </tr>
+                    ))
+                  )}
                </tbody>
             </table>
          </div>

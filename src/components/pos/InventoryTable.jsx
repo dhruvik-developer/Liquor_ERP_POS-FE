@@ -1,6 +1,7 @@
 import React from 'react'
+import { Pencil } from 'lucide-react'
 
-const InventoryTable = ({ products }) => {
+const InventoryTable = ({ products, onEdit }) => {
   return (
     <div className="flex-1 overflow-auto bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -13,6 +14,7 @@ const InventoryTable = ({ products }) => {
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Price</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Total Qty</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Total</th>
+            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap text-center">Actions</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-[#F1F5F9]">
@@ -28,11 +30,22 @@ const InventoryTable = ({ products }) => {
                 <td className="px-6 py-4 text-[14px] font-bold text-[#1E293B]">{item.price.toFixed(2)}</td>
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.stock}</td>
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.total}</td>
+                <td className="px-6 py-4">
+                  <div className="flex items-center justify-center gap-2">
+                    <button 
+                      onClick={() => onEdit?.(item)}
+                      className="p-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-colors"
+                      title="Edit Product"
+                    >
+                      <Pencil size={16} />
+                    </button>
+                  </div>
+                </td>
               </tr>
             ))
           ) : (
             <tr>
-              <td colSpan="7" className="px-6 py-20 text-center">
+              <td colSpan="8" className="px-6 py-20 text-center">
                 <p className="text-[#64748B] font-medium">No products found</p>
               </td>
             </tr>

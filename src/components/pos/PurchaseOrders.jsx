@@ -88,12 +88,15 @@ const PurchaseOrders = () => {
         order.id
       )
       const orderDateRaw = getFirstDefined(
+        order.expected_date,
         order.order_date,
         order.po_date,
         order.created_at,
         order.date
       )
       const vendorName = getFirstDefined(
+        order.vendor_details?.vendor_name,
+        order.vendor_details?.company_name,
         order.vendor?.company_name,
         order.vendor?.name,
         order.vendor_name,
@@ -105,11 +108,12 @@ const PurchaseOrders = () => {
 
       return {
         key: getFirstDefined(order.id, order.uuid, poNumber, index),
+        id: order.id,
         po: poNumber || `PO-${index + 1}`,
         dateRaw: orderDateRaw,
         date: formatDateTime(orderDateRaw),
         vendor: vendorName || 'N/A',
-        vendorOrder: getFirstDefined(order.vendor_order_number, order.vendor_order_no, '-') || '-',
+        vendorOrder: getFirstDefined(order.vendor_order_ref, order.vendor_order_number, order.vendor_order_no, '-') || '-',
         status,
         total: formatAmount(total),
         overallStatus
@@ -326,7 +330,13 @@ const PurchaseOrders = () => {
                         onClick={() => setSelectedRow(idx)}
                         className={`hover:bg-sky-50 transition-colors group ${selectedRow === idx ? 'bg-sky-50/50' : ''}`}
                       >
-                         <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight">
+                         <td 
+                           className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight"
+                           onClick={(e) => {
+                             e.stopPropagation()
+                             navigate(`/pos/purchase-orders/edit/${order.id}`)
+                           }}
+                         >
                             {order.po}
                          </td>
                          <td className="px-8 py-5 text-sm font-bold text-slate-500">{order.date}</td>

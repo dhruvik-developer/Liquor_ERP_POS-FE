@@ -14,8 +14,8 @@ const FilterSelect = ({ label, options, value, onChange, name, disabled = false 
       className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
     >
       {options?.length === 0 && <option value="">No options</option>}
-      {options?.map(opt => (
-        <option key={opt} value={opt}>{opt}</option>
+      {options?.map((opt, index) => (
+        <option key={`${name}-${opt}-${index}`} value={opt}>{opt}</option>
       ))}
     </select>
   </div>
@@ -41,8 +41,8 @@ const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd, dropdownOpti
             className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60"
           >
             {dropdownOptions.searchTypes.length === 0 && <option value="">No options</option>}
-            {dropdownOptions.searchTypes.map(opt => (
-              <option key={opt} value={opt}>{opt}</option>
+            {dropdownOptions.searchTypes.map((opt, index) => (
+              <option key={`searchType-${opt}-${index}`} value={opt}>{opt}</option>
             ))}
           </select>
         </div>

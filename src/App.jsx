@@ -59,6 +59,7 @@ function App() {
         <Route path="purchase-bills/create" element={<CreatePurchaseBill />} />
         <Route path="purchase-orders" element={<PurchaseOrders />} />
         <Route path="purchase-orders/create" element={<CreatePurchaseOrder />} />
+        <Route path="purchase-orders/edit/:id" element={<CreatePurchaseOrder />} />
         <Route path="purchase-orders/receive" element={<ReceivePurchaseOrder />} />
         <Route path="purchase-return" element={<PurchaseReturns />} />
         <Route path="purchase-return/create" element={<CreatePurchaseReturn />} />

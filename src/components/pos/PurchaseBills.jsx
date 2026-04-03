@@ -38,6 +38,7 @@ const PurchaseBills = () => {
   const [selectedRow, setSelectedRow] = useState(null)
 
   const { data: responseData, loading, error, refetch } = useFetch('/purchasing/bills/')
+  const { data: vendorsData } = useFetch('/people/vendors/')
 
   const { purchaseBills, totalBills } = React.useMemo(() => {
     if (Array.isArray(responseData)) {
@@ -69,6 +70,23 @@ const PurchaseBills = () => {
   }, [responseData])
 
   const mappedBills = React.useMemo(() => {
+    const vendorList = Array.isArray(vendorsData)
+      ? vendorsData
+      : Array.isArray(vendorsData?.results)
+      ? vendorsData.results
+      : Array.isArray(vendorsData?.data?.results)
+      ? vendorsData.data.results
+      : Array.isArray(vendorsData?.data)
+      ? vendorsData.data
+      : []
+
+    const vendorLookup = vendorList.reduce((acc, vendor) => {
+      const id = String(getFirstDefined(vendor.id, vendor.vendor_id, '')).trim()
+      const name = getFirstDefined(vendor.vendor_name, vendor.company_name, vendor.name, vendor.vendor_code)
+      if (id && name) acc[id] = name
+      return acc
+    }, {})
+
     return purchaseBills.map((bill, index) => {
       const billNumber = getFirstDefined(
         bill.bill_number,
@@ -80,13 +98,15 @@ const PurchaseBills = () => {
       )
       const billDateRaw = getFirstDefined(bill.bill_date, bill.bill_datetime, bill.date, bill.created_at)
       const dueDateRaw = getFirstDefined(bill.due_date, bill.due_datetime, bill.payment_due_date)
+      const billVendorId = String(getFirstDefined(bill.vendor?.id, bill.vendor_id, bill.vendor, '')).trim()
       const vendorName = getFirstDefined(
+        bill.vendor?.vendor_name,
         bill.vendor?.company_name,
         bill.vendor?.name,
         bill.vendor_name,
+        vendorLookup[billVendorId],
         bill.vendor
       )
-      const status = getFirstDefined(bill.status, bill.bill_status, 'Committed')
       const totalAmount = getFirstDefined(
         bill.total_amount,
         bill.total,
@@ -101,13 +121,12 @@ const PurchaseBills = () => {
         dateRaw: billDateRaw,
         date: formatDateTime(billDateRaw),
         vendor: vendorName || 'N/A',
-        status,
         total: formatAmount(totalAmount),
         dueDate: formatDateTime(dueDateRaw),
         note: getFirstDefined(bill.note, bill.notes, '')
       }
     })
-  }, [purchaseBills])
+  }, [purchaseBills, vendorsData])
 
   const displayedBills = React.useMemo(() => {
     return mappedBills.filter((bill) => {
@@ -125,8 +144,6 @@ const PurchaseBills = () => {
         const filterTarget = (
           filterBy === 'Bill #'
             ? bill.id
-            : filterBy === 'Status'
-            ? bill.status
             : bill.vendor
         )
           .toString()
@@ -137,7 +154,7 @@ const PurchaseBills = () => {
       const normalizedSearch = searchQuery.trim().toLowerCase()
       if (!normalizedSearch) return true
 
-      const combinedSearch = [bill.id, bill.vendor, bill.status, bill.note, bill.total, bill.date, bill.dueDate]
+      const combinedSearch = [bill.id, bill.vendor, bill.note, bill.total, bill.date, bill.dueDate]
         .join(' ')
         .toLowerCase()
       return combinedSearch.includes(normalizedSearch)
@@ -183,7 +200,6 @@ const PurchaseBills = () => {
                 >
                   <option>Vendor</option>
                   <option>Bill #</option>
-                  <option>Status</option>
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
              </div>
@@ -263,7 +279,6 @@ const PurchaseBills = () => {
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill #</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Bill Date</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Vendor</th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Amt.</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Due Date</th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Note</th>
@@ -272,14 +287,14 @@ const PurchaseBills = () => {
             <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan="7" className="px-5 py-8 text-center text-[#64748B]">
+                  <td colSpan="6" className="px-5 py-8 text-center text-[#64748B]">
                     <Loader size={48} className="mx-auto" />
                     <p className="mt-2 font-medium">Loading bills...</p>
                   </td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="7" className="px-8 py-10">
+                  <td colSpan="6" className="px-8 py-10">
                     <div className="p-4 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 text-center font-bold">
                       {error}
                     </div>
@@ -287,7 +302,7 @@ const PurchaseBills = () => {
                 </tr>
               ) : displayedBills.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-8 py-16 text-center">
+                  <td colSpan="6" className="px-8 py-16 text-center">
                     <p className="text-slate-500 font-bold">No purchase bills found.</p>
                   </td>
                 </tr>
@@ -308,11 +323,6 @@ const PurchaseBills = () => {
                       <td className="px-6 py-4 text-xs font-bold text-slate-600">{bill.date}</td>
                       <td className="px-6 py-4">
                         <span className="text-sm font-bold text-sky-500 hover:underline">{bill.vendor}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="px-2.5 py-1 bg-amber-50 text-amber-600 text-[10px] font-black rounded-lg border border-amber-100 uppercase tracking-widest shadow-sm">
-                          {bill.status}
-                        </span>
                       </td>
                       <td className="px-6 py-4 text-sm font-bold text-slate-700">{bill.total}</td>
                       <td className="px-6 py-4 text-xs font-bold text-slate-500">{bill.dueDate}</td>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { X, Plus, Image as ImageIcon, Trash2, Search, Save } from 'lucide-react'
 import Loader from '../common/Loader'
 import SelectionModal from '../common/SelectionModal'
@@ -33,26 +33,38 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", prefix
   </div>
 )
 
-const SelectField = ({ label, value, onOpenSelector, className = "" }) => (
+const SelectField = ({ label, value, options = [], onChange, onOpenSelector, className = "", disabled = false }) => (
   <div className={`flex flex-col gap-1.5 group ${className}`}>
     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 group-focus-within:text-sky-500 transition-colors">
       {label}
     </label>
     <div className="flex gap-2">
       <div className="relative flex-1">
-        <input
-          readOnly
-          value={value || "Select"}
-          onClick={onOpenSelector}
-          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 cursor-pointer text-left"
-        />
+        <select
+          value={value || ''}
+          onChange={(e) => onChange?.(e.target.value)}
+          disabled={disabled}
+          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 appearance-none disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <option value="">{disabled ? 'Select Category First' : 'Select'}</option>
+          {(Array.isArray(options) ? options : []).map((option, index) => {
+            const label = getLookupName(option)
+            if (!label) return null
+            return (
+              <option key={`opt-${label}-${index}`} value={label}>
+                {label}
+              </option>
+            )
+          })}
+        </select>
         <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
         </div>
       </div>
       <button 
         onClick={onOpenSelector}
-        className="h-11 w-11 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-sky-500 hover:border-sky-500 transition-all font-black text-xl shadow-sm pb-1"
+        disabled={disabled}
+        className="h-11 w-11 shrink-0 rounded-xl border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-sky-500 hover:border-sky-500 transition-all font-black text-xl shadow-sm pb-1 disabled:cursor-not-allowed disabled:opacity-60"
       >
         ...
       </button>
@@ -60,37 +72,69 @@ const SelectField = ({ label, value, onOpenSelector, className = "" }) => (
   </div>
 )
 
-const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
+const getId = (value) => {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'number') return value
+  if (typeof value === 'string') {
+    const parsed = Number(value)
+    return Number.isNaN(parsed) ? null : parsed
+  }
+  if (typeof value === 'object') {
+    if (value.id !== undefined && value.id !== null) return Number(value.id)
+    if (value.pk !== undefined && value.pk !== null) return Number(value.pk)
+  }
+  return null
+}
+
+const getLookupName = (item) => {
+  if (typeof item === 'string') return item
+  return item?.name || item?.title || item?.localized_name || ''
+}
+
+const findLookupByName = (items, selectedName) => {
+  if (!selectedName || !Array.isArray(items)) return null
+  return items.find(item => getLookupName(item) === selectedName) || null
+}
+
+const getLookupIdByName = (items, selectedName) => {
+  const selected = findLookupByName(items, selectedName)
+  if (!selected || typeof selected === 'string') return null
+  return getId(selected)
+}
+
+const INITIAL_FORM_DATA = {
+  sku: '',
+  name: '',
+  description: '',
+  department: '',
+  size: '',
+  brand: '',
+  category: '',
+  subCategory: '',
+  pack: '',
+  nonTaxable: false,
+  tax: '',
+  isInactive: false,
+  buyAsCase: false,
+  unitsInCase: 0,
+  caseCost: 0,
+  casePrice: 0,
+  nonDiscountable: false,
+  unitCost: 0,
+  margin: 0,
+  buyDown: 0,
+  markup: 0,
+  unitPrice: 0,
+  msrp: 0,
+  minPrice: 0,
+  upcs: '',
+  minWarnQty: 0,
+  image: null
+}
+
+const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product = null }) => {
   const fileInputRef = useRef(null);
-  const [formData, setFormData] = useState({
-    sku: '',
-    name: '',
-    description: '',
-    department: '',
-    size: '',
-    brand: '',
-    category: '',
-    subCategory: '',
-    pack: '',
-    nonTaxable: false,
-    tax: '',
-    isInactive: false,
-    buyAsCase: false,
-    unitsInCase: 0,
-    caseCost: 0,
-    casePrice: 0,
-    nonDiscountable: false,
-    unitCost: 0,
-    margin: 0,
-    buyDown: 0,
-    markup: 0,
-    unitPrice: 0,
-    msrp: 0,
-    minPrice: 0,
-    upcs: '',
-    minWarnQty: 0,
-    image: null
-  })
+  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
 
   const [selector, setSelector] = useState({
     isOpen: false,
@@ -108,12 +152,47 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
   const DEPARTMENTS = departments.length > 0 ? departments : []
   const SIZES = sizesData || []
   const BRANDS = brandsData || []
-  const CATEGORIES = categoriesData || []
-  const SUB_CATEGORIES = subCategoriesData || []
+  const ALL_CATEGORIES = categoriesData || []
+  const ALL_SUB_CATEGORIES = subCategoriesData || []
   const PACKS = packsData || []
   const TAX_RATES = Array.isArray(taxRatesData) ? taxRatesData : taxRatesData?.results || []
 
-  const { post, loading, error: apiError } = useApi()
+  const selectedDepartmentId = useMemo(
+    () => getLookupIdByName(DEPARTMENTS, formData.department),
+    [DEPARTMENTS, formData.department]
+  )
+
+  const CATEGORIES = useMemo(() => {
+    if (!selectedDepartmentId) return ALL_CATEGORIES
+    return (Array.isArray(ALL_CATEGORIES) ? ALL_CATEGORIES : []).filter(category => {
+      const departmentId = getId(category?.department)
+      return departmentId === selectedDepartmentId
+    })
+  }, [ALL_CATEGORIES, selectedDepartmentId])
+
+  const selectedCategoryId = useMemo(() => {
+    const selectedFromFiltered = getLookupIdByName(CATEGORIES, formData.category)
+    if (selectedFromFiltered) return selectedFromFiltered
+    return getLookupIdByName(ALL_CATEGORIES, formData.category)
+  }, [CATEGORIES, ALL_CATEGORIES, formData.category])
+
+  const SUB_CATEGORIES = useMemo(() => {
+    if (!selectedCategoryId) return ALL_SUB_CATEGORIES
+    return (Array.isArray(ALL_SUB_CATEGORIES) ? ALL_SUB_CATEGORIES : []).filter(subCategory => {
+      const categoryId = getId(subCategory?.category)
+      return categoryId === selectedCategoryId
+    })
+  }, [ALL_SUB_CATEGORIES, selectedCategoryId])
+
+  const { post, patch, loading, error: apiError } = useApi()
+
+  const resetModalState = () => {
+    setFormData(INITIAL_FORM_DATA)
+    setSelector({ isOpen: false, title: '', data: [], field: '' })
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
 
   useEffect(() => {
     if (!formData.tax && TAX_RATES.length > 0) {
@@ -126,10 +205,28 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
     return taxRate.name || taxRate.title || taxRate.label || `Tax ${taxRate.id}`
   }
 
-  if (!isOpen) return null
-
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
+    setFormData(prev => {
+      if (field === 'department') {
+        return { ...prev, department: value, category: '', subCategory: '' }
+      }
+      if (field === 'category') {
+        const selectedCategory = findLookupByName(ALL_CATEGORIES, value)
+        const departmentIdFromCategory = getId(selectedCategory?.department)
+        const linkedDepartment = (Array.isArray(DEPARTMENTS) ? DEPARTMENTS : []).find(
+          department => getId(department) === departmentIdFromCategory
+        )
+        const linkedDepartmentName = getLookupName(linkedDepartment)
+
+        return {
+          ...prev,
+          category: value,
+          subCategory: '',
+          department: linkedDepartmentName || prev.department,
+        }
+      }
+      return { ...prev, [field]: value }
+    })
   }
 
   const openSelector = (title, data, field) => {
@@ -169,20 +266,64 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
     }
   }
 
-  const getLookupIdByName = (items, selectedName) => {
-    if (!selectedName || !Array.isArray(items)) return null
-    const selected = items.find(item => {
-      if (typeof item === 'string') return item === selectedName
-      return item?.name === selectedName
-    })
-    if (typeof selected === 'string') return null
-    return Number(selected?.id) || null
-  }
-
   const toSafeStringNumber = (value, fallback = '0') => {
     if (value === null || value === undefined || value === '') return fallback
     return `${value}`
   }
+
+  useEffect(() => {
+    if (!formData.category) return
+    const hasCategory = Boolean(findLookupByName(CATEGORIES, formData.category))
+    if (!hasCategory) {
+      setFormData(prev => ({ ...prev, category: '', subCategory: '' }))
+    }
+  }, [CATEGORIES, formData.category])
+
+  useEffect(() => {
+    if (!formData.subCategory) return
+    const hasSubCategory = Boolean(findLookupByName(SUB_CATEGORIES, formData.subCategory))
+    if (!hasSubCategory) {
+      setFormData(prev => ({ ...prev, subCategory: '' }))
+    }
+  }, [SUB_CATEGORIES, formData.subCategory])
+
+  useEffect(() => {
+    if (product && isOpen) {
+      setFormData({
+        sku: product.sku || '',
+        name: product.name || '',
+        description: product.description || '',
+        department: product.department_name || (typeof product.department === 'string' ? product.department : ''),
+        size: product.size_name || (typeof product.size === 'string' ? product.size : ''),
+        brand: product.brand_name || (typeof product.brand === 'string' ? product.brand : ''),
+        category: product.category_name || (typeof product.category === 'string' ? product.category : ''),
+        subCategory: product.sub_category_name || (typeof product.sub_category === 'string' ? product.sub_category : ''),
+        pack: product.pack_name || (typeof product.pack === 'string' ? product.pack : ''),
+        nonTaxable: Boolean(product.non_taxable),
+        tax: String(product.tax_rate || ''),
+        isInactive: product.item_is_inactive === true || product.is_active === false,
+        buyAsCase: Boolean(product.buy_as_case),
+        unitsInCase: product.units_in_case || 0,
+        caseCost: product.case_cost || 0,
+        casePrice: product.case_price || 0,
+        nonDiscountable: Boolean(product.non_discountable),
+        unitCost: product.cost_pricing?.unit_cost || 0,
+        margin: product.cost_pricing?.margin || 0,
+        buyDown: product.cost_pricing?.buydown || 0,
+        markup: product.cost_pricing?.markup || 0,
+        unitPrice: product.cost_pricing?.unit_price || 0,
+        msrp: product.cost_pricing?.msrp || 0,
+        minPrice: product.cost_pricing?.min_price || 0,
+        upcs: product.stock_information?.enter_upcs || '',
+        minWarnQty: product.stock_information?.min_warn_qty || 0,
+        image: product.image || product.image_base64 || null
+      })
+    } else if (!isOpen) {
+      resetModalState()
+    }
+  }, [product, isOpen])
+
+  if (!isOpen) return null
 
   const handleSave = async () => {
     if (!formData.image) {
@@ -224,10 +365,15 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
       image: formData.image
     }
 
-    await post('/inventory/products/', payload)
+    if (product?.id) {
+      await patch(`/inventory/products/${product.id}/`, payload)
+    } else {
+      await post('/inventory/products/', payload)
+    }
     if (onSaved) {
       await onSaved()
     }
+    resetModalState()
     onClose()
   }
 
@@ -236,7 +382,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
       <div className="w-full max-w-6xl bg-[#f0f4f8] rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 my-auto">
         {/* Header */}
         <div className="hidden items-center justify-between p-6 bg-white border-b border-slate-200">
-          <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">Add New Product</h2>
+          <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{product ? 'Edit Product' : 'Add New Product'}</h2>
           <button onClick={onClose} className="p-2 rounded-full hover:bg-slate-100 transition-colors">
             <X size={20} className="text-slate-500" />
           </button>
@@ -278,15 +424,52 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <SelectField label="Department" value={formData.department} onOpenSelector={() => openSelector('Select Department', DEPARTMENTS, 'department')} />
-              <SelectField label="Size" value={formData.size} onOpenSelector={() => openSelector('Select Size', SIZES, 'size')} />
-              <SelectField label="Brand" value={formData.brand} onOpenSelector={() => openSelector('Select Brand', BRANDS, 'brand')} />
+              <SelectField
+                label="Department"
+                value={formData.department}
+                options={DEPARTMENTS}
+                onChange={(value) => handleChange('department', value)}
+                onOpenSelector={() => openSelector('Select Department', DEPARTMENTS, 'department')}
+              />
+              <SelectField
+                label="Size"
+                value={formData.size}
+                options={SIZES}
+                onChange={(value) => handleChange('size', value)}
+                onOpenSelector={() => openSelector('Select Size', SIZES, 'size')}
+              />
+              <SelectField
+                label="Brand"
+                value={formData.brand}
+                options={BRANDS}
+                onChange={(value) => handleChange('brand', value)}
+                onOpenSelector={() => openSelector('Select Brand', BRANDS, 'brand')}
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <SelectField label="Category" value={formData.category} onOpenSelector={() => openSelector('Select Category', CATEGORIES, 'category')} />
-              <SelectField label="Sub-Category" value={formData.subCategory} onOpenSelector={() => openSelector('Select Sub-Category', SUB_CATEGORIES, 'subCategory')} />
-              <SelectField label="Pack" value={formData.pack} onOpenSelector={() => openSelector('Select Pack', PACKS, 'pack')} />
+              <SelectField
+                label="Category"
+                value={formData.category}
+                options={CATEGORIES}
+                onChange={(value) => handleChange('category', value)}
+                onOpenSelector={() => openSelector('Select Category', CATEGORIES, 'category')}
+              />
+              <SelectField
+                label="Sub-Category"
+                value={formData.subCategory}
+                options={SUB_CATEGORIES}
+                onChange={(value) => handleChange('subCategory', value)}
+                disabled={!formData.category}
+                onOpenSelector={() => openSelector('Select Sub-Category', SUB_CATEGORIES, 'subCategory')}
+              />
+              <SelectField
+                label="Pack"
+                value={formData.pack}
+                options={PACKS}
+                onChange={(value) => handleChange('pack', value)}
+                onOpenSelector={() => openSelector('Select Pack', PACKS, 'pack')}
+              />
             </div>
 
             <div className="flex flex-wrap items-center gap-8 pt-4">
@@ -491,7 +674,10 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [] }) => {
         {/* Footer Actions */}
         <div className="bg-slate-50 p-6 px-8 border-t border-slate-200 flex justify-end gap-4">
           <button 
-            onClick={onClose}
+            onClick={() => {
+              resetModalState()
+              onClose()
+            }}
             disabled={loading}
             className="px-8 h-12 rounded-xl bg-slate-800 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-slate-900/20 hover:bg-slate-900 transition-all active:scale-95 disabled:opacity-50"
           >

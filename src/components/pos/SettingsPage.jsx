@@ -69,32 +69,26 @@ const SettingsPage = () => {
       </div>
 
       {/* Tabs Header */}
-      <div className="flex items-center gap-8 px-2 border-b border-[#E2E8F0]">
-        <button 
+      <div className="bg-white rounded-lg border border-[#E2E8F0] shadow-sm p-1 flex items-center gap-1 w-fit">
+        <button
           onClick={() => setActiveTab('customer')}
-          className={`pb-4 pt-2 text-[14px] font-bold uppercase tracking-wider transition-all relative ${
-            activeTab === 'customer' 
-              ? 'text-[#0EA5E9]' 
-              : 'text-[#94A3B8] hover:text-[#64748B]'
+          className={`flex items-center px-6 py-2 rounded-md text-[14px] font-bold uppercase tracking-wider transition-all duration-200 ${
+            activeTab === 'customer'
+              ? 'bg-[#0EA5E91A] text-[#0EA5E9]'
+              : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
           }`}
         >
           Customer Screen
-          {activeTab === 'customer' && (
-            <div className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-[#0EA5E9] rounded-full" />
-          )}
         </button>
-        <button 
+        <button
           onClick={() => setActiveTab('credit-card')}
-          className={`pb-4 pt-2 text-[14px] font-bold uppercase tracking-wider transition-all relative ${
-            activeTab === 'credit-card' 
-              ? 'text-[#0EA5E9]' 
-              : 'text-[#94A3B8] hover:text-[#64748B]'
+          className={`flex items-center px-6 py-2 rounded-md text-[14px] font-bold uppercase tracking-wider transition-all duration-200 ${
+            activeTab === 'credit-card'
+              ? 'bg-[#0EA5E91A] text-[#0EA5E9]'
+              : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
           }`}
         >
           Credit Card Setup
-          {activeTab === 'credit-card' && (
-            <div className="absolute bottom-[-1px] left-0 right-0 h-[3px] bg-[#0EA5E9] rounded-full" />
-          )}
         </button>
       </div>
 

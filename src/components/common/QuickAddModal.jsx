@@ -147,11 +147,40 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
           return
         }
 
+        const noOfUnits = formData.no_of_units === '' || formData.no_of_units === undefined ? null : Number(formData.no_of_units)
+        const unitsInCase = formData.units_in_case === '' || formData.units_in_case === undefined ? null : Number(formData.units_in_case)
+        const taxFactor = formData.tax_factor === '' || formData.tax_factor === undefined ? null : Number(formData.tax_factor)
+        const unitPriceFactor = formData.unit_price_factor === '' || formData.unit_price_factor === undefined ? null : Number(formData.unit_price_factor)
+
+        if (noOfUnits !== null && Number.isNaN(noOfUnits)) {
+          setFormError('No. of Units must be numeric.')
+          return
+        }
+        if (unitsInCase !== null && Number.isNaN(unitsInCase)) {
+          setFormError('Units In Case must be numeric.')
+          return
+        }
+        if (taxFactor !== null && Number.isNaN(taxFactor)) {
+          setFormError('Tax Factor must be numeric.')
+          return
+        }
+        if (unitPriceFactor !== null && Number.isNaN(unitPriceFactor)) {
+          setFormError('Unit Price Factor must be numeric.')
+          return
+        }
+
+        const unitPriceUomId = Number(formData.unit_price_uom) || null
+
         const payload = {
           name: formData.name.trim(),
           localized_name: (formData.localName || '').trim(),
           category: categoryId,
           uom: uomId,
+          ...(noOfUnits !== null ? { no_of_units: noOfUnits } : {}),
+          ...(unitsInCase !== null ? { units_in_case: unitsInCase } : {}),
+          ...(taxFactor !== null ? { tax_factor: taxFactor } : {}),
+          ...(unitPriceFactor !== null ? { unit_price_factor: unitPriceFactor } : {}),
+          ...(unitPriceUomId !== null ? { unit_price_uom: unitPriceUomId } : {}),
         }
 
         const response = await post('/lookups/sizes/', payload)
@@ -308,6 +337,64 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                     </option>
                   ))}
                 </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    type="number"
+                    placeholder="No. of Units"
+                    value={formData.no_of_units || ''}
+                    onChange={(e) => handleChange('no_of_units', e.target.value)}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <input
+                    type="number"
+                    placeholder="Units In Case"
+                    value={formData.units_in_case || ''}
+                    onChange={(e) => handleChange('units_in_case', e.target.value)}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="number"
+                  step="0.001"
+                  placeholder="Tax Factor"
+                  value={formData.tax_factor || ''}
+                  onChange={(e) => handleChange('tax_factor', e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                />
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-3">
+                <p className="mb-2 text-[10px] font-black uppercase tracking-widest text-slate-400">Unit Price</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="number"
+                    step="0.0001"
+                    placeholder="Factor"
+                    value={formData.unit_price_factor || ''}
+                    onChange={(e) => handleChange('unit_price_factor', e.target.value)}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                  />
+                  <select 
+                    value={formData.unit_price_uom || ''}
+                    onChange={(e) => handleChange('unit_price_uom', e.target.value)}
+                    disabled={uomsLoading}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <option value="">
+                      {uomsLoading ? 'Loading UOM...' : 'Select UOM'}
+                    </option>
+                    {uoms.map(uom => (
+                      <option key={uom.id || uom.name} value={String(uom.id || '')}>
+                        {uom.name || uom}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
             </>
           )}

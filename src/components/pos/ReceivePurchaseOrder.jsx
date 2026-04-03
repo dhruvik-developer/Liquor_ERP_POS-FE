@@ -15,6 +15,8 @@ const asNumber = (value, fallback = 0) => {
   return Number.isFinite(parsed) ? parsed : fallback
 }
 
+const normalizeStatus = (status) => String(status || '').trim().toLowerCase()
+
 const toInputDate = (value) => {
   if (!value) return ''
   const date = new Date(value)
@@ -64,6 +66,8 @@ const ReceivePurchaseOrder = () => {
   const normalizedOrders = useMemo(() => {
     return purchaseOrders.map((order, index) => {
       const vendorName = getFirstDefined(
+        order.vendor_details?.vendor_name,
+        order.vendor_details?.company_name,
         order.vendor?.company_name,
         order.vendor?.name,
         order.vendor_name,
@@ -86,10 +90,11 @@ const ReceivePurchaseOrder = () => {
         key: orderId,
         vendorKey,
         vendorName,
+        status: getFirstDefined(order.status, order.overall_status, order.po_status, ''),
         poNumber: getFirstDefined(order.po_number, order.po_no, order.order_number, order.number, orderId),
-        billId: getFirstDefined(order.bill_id, order.purchase_bill_id, order.receiving_bill_id, ''),
-        poDate: getFirstDefined(order.order_date, order.po_date, order.date, order.created_at, ''),
-        vendorOrderNumber: getFirstDefined(order.vendor_order_number, order.vendor_order_no, ''),
+        billId: getFirstDefined(order.bill_id, order.purchase_bill_id, order.receiving_bill_id) ?? '',
+        poDate: getFirstDefined(order.expected_date, order.order_date, order.po_date, order.date, order.created_at) ?? '',
+        vendorOrderNumber: getFirstDefined(order.vendor_order_ref, order.vendor_order_number, order.vendor_order_no) ?? '',
         vendorContact: getFirstDefined(
           order.vendor?.contact_name,
           order.vendor?.contact_person,
@@ -97,10 +102,10 @@ const ReceivePurchaseOrder = () => {
           order.vendor_contact,
           vendorName
         ),
-        note: getFirstDefined(order.note, order.notes, ''),
-        purchaseBillNumber: getFirstDefined(order.purchase_bill_number, order.bill_number, ''),
-        purchaseBillDate: getFirstDefined(order.purchase_bill_date, order.bill_date, order.updated_at, ''),
-        dueDate: getFirstDefined(order.due_date, ''),
+        note: getFirstDefined(order.note, order.notes) ?? '',
+        purchaseBillNumber: getFirstDefined(order.purchase_bill_number, order.bill_number) ?? '',
+        purchaseBillDate: getFirstDefined(order.purchase_bill_date, order.bill_date, order.updated_at) ?? '',
+        dueDate: getFirstDefined(order.due_date) ?? '',
         items: orderItems.map((line, itemIndex) => {
           const product = line.product || {}
           const caseUnits = asNumber(getFirstDefined(line.case_units, line.bpc, line.units_per_case, product.case_units, 1), 1)
@@ -137,19 +142,32 @@ const ReceivePurchaseOrder = () => {
     })
   }, [purchaseOrders])
 
+  const receivableOrders = useMemo(
+    () =>
+      normalizedOrders.filter((order) => {
+        const normalizedStatus = normalizeStatus(order.status)
+        const blockedByStatus = normalizedStatus.includes('fully received') || normalizedStatus === 'closed'
+        const hasReceivableItem = order.items.some(
+          (item) => Math.max(asNumber(item.orderQty) - asNumber(item.alreadyReceivedQty), 0) > 0
+        )
+        return !blockedByStatus && hasReceivableItem
+      }),
+    [normalizedOrders]
+  )
+
   const vendorOptions = useMemo(() => {
     const seen = new Set()
-    return normalizedOrders.filter((order) => {
+    return receivableOrders.filter((order) => {
       if (seen.has(order.vendorKey)) return false
       seen.add(order.vendorKey)
       return true
     })
-  }, [normalizedOrders])
+  }, [receivableOrders])
 
   const filteredOrders = useMemo(() => {
-    if (!selectedVendorKey) return normalizedOrders
-    return normalizedOrders.filter((order) => order.vendorKey === selectedVendorKey)
-  }, [normalizedOrders, selectedVendorKey])
+    if (!selectedVendorKey) return receivableOrders
+    return receivableOrders.filter((order) => order.vendorKey === selectedVendorKey)
+  }, [receivableOrders, selectedVendorKey])
 
   const selectedOrder = useMemo(
     () => filteredOrders.find((order) => order.key === selectedPoId) || null,
@@ -157,11 +175,11 @@ const ReceivePurchaseOrder = () => {
   )
 
   useEffect(() => {
-    if (normalizedOrders.length === 0) return
+    if (receivableOrders.length === 0) return
     if (!selectedVendorKey) {
-      setSelectedVendorKey(normalizedOrders[0].vendorKey)
+      setSelectedVendorKey(receivableOrders[0].vendorKey)
     }
-  }, [normalizedOrders, selectedVendorKey])
+  }, [receivableOrders, selectedVendorKey])
 
   useEffect(() => {
     if (filteredOrders.length === 0) {
@@ -185,7 +203,7 @@ const ReceivePurchaseOrder = () => {
       return
     }
 
-    setBillId(selectedOrder.billId)
+    setBillId(selectedOrder.billId ?? '')
     setPoDate(toInputDate(selectedOrder.poDate) || today)
     setVendorContact(selectedOrder.vendorContact || selectedOrder.vendorName)
     setVendorOrderNumber(selectedOrder.vendorOrderNumber || '')

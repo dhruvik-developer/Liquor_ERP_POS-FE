@@ -6,6 +6,7 @@ import {
   ListFilter, 
   Maximize, 
   Package, 
+  Ruler,
   Award,
   Pencil, 
   Plus, 
@@ -28,6 +29,7 @@ const MASTER_TABS = [
   { key: 'category', label: 'Category', endpoint: '/inventory/categories/', icon: Layers },
   { key: 'sub-category', label: 'Sub Category', endpoint: '/inventory/sub-categories/', icon: ListFilter },
   { key: 'size', label: 'Size', endpoint: '/lookups/sizes/', icon: Maximize },
+  { key: 'uom', label: 'UMO', endpoint: '/lookups/uoms/', icon: Ruler },
   { key: 'pack', label: 'Pack', endpoint: '/lookups/packs/', icon: Package },
   { key: 'brand', label: 'Brand', endpoint: '/lookups/brands/', icon: Award },
 ]
@@ -67,11 +69,61 @@ const normalizeRelationName = (record, relationKey, fallbackKey) => {
   return '-'
 }
 
+const getDepartmentNameFromCategory = (categoryValue, categories, departments) => {
+  const categoryId = getId(categoryValue)
+  let categoryRecord = null
+
+  if (typeof categoryValue === 'object' && categoryValue !== null) {
+    categoryRecord = categoryValue
+  } else if (categoryId) {
+    categoryRecord = categories.find(cat => getId(cat) === categoryId) || null
+  }
+
+  if (!categoryRecord) return ''
+
+  const directDepartmentName = normalizeRelationName(categoryRecord, 'department', 'department_name')
+  if (directDepartmentName && directDepartmentName !== '-') return directDepartmentName
+
+  const departmentId = getId(categoryRecord?.department)
+  if (!departmentId) return ''
+
+  const departmentRecord = departments.find(dep => getId(dep) === departmentId)
+  return getName(departmentRecord)
+}
+
+const getCategoryWithDepartmentLabel = (item, categories, departments) => {
+  const directDisplay = item?.category_display
+  if (typeof directDisplay === 'string' && directDisplay.trim()) return directDisplay
+
+  const categoryLabel = normalizeRelationName(item, 'category', 'category_name')
+  if (!categoryLabel || categoryLabel === '-') return '-'
+  if (categoryLabel.includes('->')) return categoryLabel
+
+  const apiDepartmentLabel = item?.category_department_name
+  const departmentLabel = (typeof apiDepartmentLabel === 'string' && apiDepartmentLabel.trim())
+    ? apiDepartmentLabel
+    : getDepartmentNameFromCategory(item?.category, categories, departments)
+  if (!departmentLabel || departmentLabel === '-') return categoryLabel
+  return `${categoryLabel} -> ${departmentLabel}`
+}
+
 const getDefaultForm = activeTab => {
   if (activeTab === 'brand') return { name: '', manufacturer: '' }
   if (activeTab === 'category') return { name: '', localized_name: '', department: '' }
   if (activeTab === 'sub-category') return { name: '', localized_name: '', category: '' }
-  if (activeTab === 'size') return { name: '', localized_name: '', category: '', uom: '' }
+  if (activeTab === 'size') {
+    return {
+      name: '',
+      localized_name: '',
+      category: '',
+      uom: '',
+      no_of_units: '',
+      units_in_case: '',
+      tax_factor: '',
+      unit_price_factor: '',
+      unit_price_uom: '',
+    }
+  }
   return { name: '', localized_name: '' }
 }
 
@@ -92,13 +144,17 @@ const ItemMasterManagement = () => {
   const { data, loading, error, refetch } = useFetch(activeConfig.endpoint)
   const { data: departmentsData } = useFetch('/lookups/departments/')
   const { data: categoriesData } = useFetch('/inventory/categories/')
-  const { data: uomsData } = useFetch('/lookups/uoms/')
+  const { data: uomsData, refetch: refetchUomsList } = useFetch('/lookups/uoms/')
   const { post, put, del, loading: saving, error: apiError } = useApi()
 
   const departments = useMemo(() => toArray(departmentsData), [departmentsData])
   const categories = useMemo(() => toArray(categoriesData), [categoriesData])
   const uoms = useMemo(() => toArray(uomsData), [uomsData])
   const rows = useMemo(() => toArray(data), [data])
+  const sizeUomDisplay = useMemo(() => {
+    const selected = uoms.find(item => String(item?.id || '') === String(formData.uom || ''))
+    return selected?.name || ''
+  }, [uoms, formData.uom])
 
   useEffect(() => {
     setSearchText('')
@@ -119,12 +175,16 @@ const ItemMasterManagement = () => {
         item?.manufacturer,
         item?.localized_name,
         normalizeRelationName(item, 'department', 'department_name'),
-        normalizeRelationName(item, 'category', 'category_name'),
+        activeTab === 'sub-category'
+          ? getCategoryWithDepartmentLabel(item, categories, departments)
+          : normalizeRelationName(item, 'category', 'category_name'),
+        item?.category_display,
+        item?.category_department_name,
         normalizeRelationName(item, 'uom', 'uom_name'),
       ]
       return tokens.some(token => String(token || '').toLowerCase().includes(query))
     })
-  }, [rows, searchText])
+  }, [rows, searchText, activeTab, categories, departments])
 
   const setTab = tab => {
     setSearchParams({ tab })
@@ -155,6 +215,11 @@ const ItemMasterManagement = () => {
     if (activeTab === 'size') {
       next.category = String(getId(item?.category) || '')
       next.uom = String(getId(item?.uom) || '')
+      next.no_of_units = item?.no_of_units !== undefined && item?.no_of_units !== null ? String(item.no_of_units) : ''
+      next.units_in_case = item?.units_in_case !== undefined && item?.units_in_case !== null ? String(item.units_in_case) : ''
+      next.tax_factor = item?.tax_factor !== undefined && item?.tax_factor !== null ? String(item.tax_factor) : ''
+      next.unit_price_factor = item?.unit_price_factor !== undefined && item?.unit_price_factor !== null ? String(item.unit_price_factor) : ''
+      next.unit_price_uom = String(getId(item?.unit_price_uom) || '')
     }
 
     setEditingItem(item)
@@ -168,6 +233,7 @@ const ItemMasterManagement = () => {
     if (tab === 'category') return refetchCategories()
     if (tab === 'sub-category') return refetchSubCategories()
     if (tab === 'size') return refetchSizes()
+    if (tab === 'uom') return refetchUomsList()
     if (tab === 'pack') return refetchPacks()
     if (tab === 'brand') return refetchBrands()
     return Promise.resolve()
@@ -211,11 +277,27 @@ const ItemMasterManagement = () => {
       const uomId = Number(formData.uom)
       if (!categoryId) throw new Error('Category is required.')
       if (!uomId) throw new Error('UOM is required.')
+      const noOfUnits = formData.no_of_units === '' ? null : Number(formData.no_of_units)
+      const unitsInCase = formData.units_in_case === '' ? null : Number(formData.units_in_case)
+      const taxFactor = formData.tax_factor === '' ? null : Number(formData.tax_factor)
+      const unitPriceFactor = formData.unit_price_factor === '' ? null : Number(formData.unit_price_factor)
+      const unitPriceUomId = Number(formData.unit_price_uom) || null
+
+      if (noOfUnits !== null && Number.isNaN(noOfUnits)) throw new Error('No. of Units must be numeric.')
+      if (unitsInCase !== null && Number.isNaN(unitsInCase)) throw new Error('Units In Case must be numeric.')
+      if (taxFactor !== null && Number.isNaN(taxFactor)) throw new Error('Tax Factor must be numeric.')
+      if (unitPriceFactor !== null && Number.isNaN(unitPriceFactor)) throw new Error('Unit Price Factor must be numeric.')
+
       return {
         name: baseName,
         localized_name: formData.localized_name?.trim() || '',
         category: categoryId,
         uom: uomId,
+        ...(noOfUnits !== null ? { no_of_units: noOfUnits } : {}),
+        ...(unitsInCase !== null ? { units_in_case: unitsInCase } : {}),
+        ...(taxFactor !== null ? { tax_factor: taxFactor } : {}),
+        ...(unitPriceFactor !== null ? { unit_price_factor: unitPriceFactor } : {}),
+        ...(unitPriceUomId !== null ? { unit_price_uom: unitPriceUomId } : {}),
       }
     }
 
@@ -277,7 +359,7 @@ const ItemMasterManagement = () => {
       return [
         { key: 'id', title: 'ID', render: item => item.id ?? '-' },
         { key: 'name', title: 'SUB CATEGORY', render: item => item.name || '-' },
-        { key: 'category', title: 'CATEGORY', render: item => normalizeRelationName(item, 'category', 'category_name') },
+        { key: 'category', title: 'CATEGORY', render: item => getCategoryWithDepartmentLabel(item, categories, departments) },
       ]
     }
     if (activeTab === 'size') {
@@ -286,6 +368,15 @@ const ItemMasterManagement = () => {
         { key: 'name', title: 'SIZE', render: item => item.name || '-' },
         { key: 'category', title: 'CATEGORY', render: item => normalizeRelationName(item, 'category', 'category_name') },
         { key: 'uom', title: 'UOM', render: item => normalizeRelationName(item, 'uom', 'uom_name') },
+        { key: 'no_of_units', title: 'UNITS', render: item => item.no_of_units || '-' },
+        { key: 'units_in_case', title: 'CASE QTY', render: item => item.units_in_case || '-' },
+        { key: 'tax_factor', title: 'TAX FACT.', render: item => item.tax_factor || '-' },
+      ]
+    }
+    if (activeTab === 'uom') {
+      return [
+        { key: 'id', title: 'ID', render: item => item.id ?? '-' },
+        { key: 'name', title: 'UOM', render: item => item.name || '-' },
       ]
     }
     if (activeTab === 'pack') {
@@ -299,7 +390,7 @@ const ItemMasterManagement = () => {
       { key: 'name', title: 'BRAND NAME', render: item => item.name || '-' },
       { key: 'manufacturer', title: 'MANUFACTURER', render: item => item.manufacturer || '-' },
     ]
-  }, [activeTab])
+  }, [activeTab, categories, departments])
 
   return (
     <div className="flex flex-col h-full gap-6 animate-in fade-in duration-300 pb-8 pr-2">
@@ -482,7 +573,12 @@ const ItemMasterManagement = () => {
                   <option value="">Select Category *</option>
                   {categories.map(category => (
                     <option key={category.id || category.name} value={String(category.id || '')}>
-                      {category.name}
+                      {(() => {
+                        const departmentLabel = getDepartmentNameFromCategory(category, categories, departments)
+                        return departmentLabel && departmentLabel !== '-'
+                          ? `${category.name} -> ${departmentLabel}`
+                          : category.name
+                      })()}
                     </option>
                   ))}
                 </select>
@@ -515,6 +611,58 @@ const ItemMasterManagement = () => {
                       </option>
                     ))}
                   </select>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <input
+                      type="number"
+                      value={formData.no_of_units || ''}
+                      onChange={event => setFormData(prev => ({ ...prev, no_of_units: event.target.value }))}
+                      placeholder="No. of Units"
+                      className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                    />
+                    <input
+                      type="number"
+                      value={formData.units_in_case || ''}
+                      onChange={event => setFormData(prev => ({ ...prev, units_in_case: event.target.value }))}
+                      placeholder="Units In Case"
+                      className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                    />
+                  </div>
+
+                  <input
+                    type="number"
+                    step="0.001"
+                    value={formData.tax_factor || ''}
+                    onChange={event => setFormData(prev => ({ ...prev, tax_factor: event.target.value }))}
+                    placeholder="Tax Factor"
+                    className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                  />
+
+                    <div className="rounded-lg border border-[#E2E8F0] p-3">
+                      <p className="mb-2 text-[11px] font-black uppercase tracking-wider text-[#64748B]">Unit Price</p>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="number"
+                          step="0.0001"
+                          value={formData.unit_price_factor || ''}
+                          onChange={event => setFormData(prev => ({ ...prev, unit_price_factor: event.target.value }))}
+                          placeholder="Factor"
+                          className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                        />
+                        <select
+                          value={String(formData.unit_price_uom || '')}
+                          onChange={event => setFormData(prev => ({ ...prev, unit_price_uom: event.target.value }))}
+                          className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white appearance-none cursor-pointer"
+                        >
+                          <option value="">Select UOM</option>
+                          {uoms.map(uom => (
+                            <option key={uom.id} value={String(uom.id)}>
+                              {uom.name || '-'}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                 </>
               )}
             </div>
