@@ -10,8 +10,14 @@ const initialFormData = {
   vendor_name: '',
   vendor_code: '',
   company_name: '',
-  default_tax_class: '',
-  pdf_format: 'Standard Invoice',
+  sales_persons: [
+    {
+      first_name: '',
+      last_name: '',
+      phone: '',
+      email: ''
+    }
+  ],
   inactive: false,
   address_1: '',
   address_2: '',
@@ -40,20 +46,50 @@ const AddVendorPage = ({ onCancel, onSave }) => {
   const navigate = useNavigate()
   
   const { post, put, loading: saving, error: saveError } = useApi()
-  const { data: taxData, loading: taxLoading, error: taxError } = useFetch('/people/vendor-taxes/')
   const { data: existingData, loading: fetching, error: fetchError } = useFetch(isEdit ? `/people/vendors/${id}/` : null)
   
   const [formData, setFormData] = useState(initialFormData)
 
   useEffect(() => {
     if (existingData) {
+      const vendorCore = existingData.vendor_core_information || {}
+      const contactAddress = existingData.contact_address_information || {}
+      const apiSalesPersons = Array.isArray(existingData.sales_person_contact_details)
+        ? existingData.sales_person_contact_details
+        : Array.isArray(existingData.sales_persons)
+          ? existingData.sales_persons
+          : Array.isArray(existingData.sales_people)
+            ? existingData.sales_people
+            : []
+
+      const normalizedSalesPersons = apiSalesPersons.length
+        ? apiSalesPersons.map((person) => ({
+            first_name: person.first_name || '',
+            last_name: person.last_name || '',
+            phone: person.phone || person.mobile || '',
+            email: person.email || ''
+          }))
+        : initialFormData.sales_persons
+
       setFormData({
         ...initialFormData,
         ...existingData,
+        ...vendorCore,
+        ...contactAddress,
         ...(existingData.address_details || {}),
         // Match API field names to form state if they differ
-        vendor_name: existingData.name || existingData.vendor_name || '',
-        company_name: existingData.company || existingData.company_name || '',
+        vendor_name: vendorCore.vendor_name || existingData.name || existingData.vendor_name || '',
+        company_name: vendorCore.company_name || existingData.company || existingData.company_name || '',
+        vendor_code: vendorCore.vendor_code || existingData.vendor_code || '',
+        pay_term: vendorCore.pay_term || existingData.pay_term || initialFormData.pay_term,
+        gst_number: vendorCore.gst_number || existingData.gst_number || '',
+        inactive: typeof vendorCore.is_active === 'boolean'
+          ? !vendorCore.is_active
+          : typeof existingData.is_active === 'boolean'
+            ? !existingData.is_active
+            : !!existingData.inactive,
+        email: contactAddress.email || existingData.email || '',
+        sales_persons: normalizedSalesPersons
       })
     }
   }, [existingData])
@@ -63,9 +99,44 @@ const AddVendorPage = ({ onCancel, onSave }) => {
     else navigate('/pos/people?tab=vendors')
   }
 
-  const buildPayload = () => ({
-    ...formData
-  })
+  const buildPayload = () => {
+    const salesPersons = (Array.isArray(formData.sales_persons) ? formData.sales_persons : [])
+      .map((person) => ({
+        first_name: person.first_name || '',
+        last_name: person.last_name || '',
+        phone: person.phone || '',
+        email: person.email || ''
+      }))
+      .filter((person) => person.first_name || person.last_name || person.phone || person.email)
+
+    return {
+      vendor_core_information: {
+        vendor_name: formData.vendor_name || '',
+        vendor_code: formData.vendor_code || '',
+        company_name: formData.company_name || '',
+        pay_term: formData.pay_term || '',
+        gst_number: formData.gst_number || '',
+        is_active: !formData.inactive
+      },
+      sales_person_contact_details: salesPersons,
+      contact_address_information: {
+        address_1: formData.address_1 || '',
+        address_2: formData.address_2 || '',
+        city: formData.city || '',
+        state: formData.state || '',
+        zip: formData.zip || '',
+        code: formData.code || '',
+        ext: formData.ext || '',
+        country: formData.country || '',
+        phone_1: formData.phone_1 || '',
+        phone_2: formData.phone_2 || '',
+        cell_phone: formData.cell_phone || '',
+        fax: formData.fax || '',
+        email: formData.email || '',
+        note: formData.note || ''
+      }
+    }
+  }
 
   const handleSaveBtn = async () => {
     try {
@@ -96,6 +167,36 @@ const AddVendorPage = ({ onCancel, onSave }) => {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
+  const addSalesPerson = () => {
+    setFormData((prev) => ({
+      ...prev,
+      sales_persons: [
+        ...(Array.isArray(prev.sales_persons) ? prev.sales_persons : []),
+        { first_name: '', last_name: '', phone: '', email: '' }
+      ]
+    }))
+  }
+
+  const removeSalesPerson = (index) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.sales_persons) ? prev.sales_persons : []
+      if (current.length <= 1) return prev
+
+      return {
+        ...prev,
+        sales_persons: current.filter((_, idx) => idx !== index)
+      }
+    })
+  }
+
+  const handleSalesPersonChange = (index, key, value) => {
+    setFormData((prev) => {
+      const current = Array.isArray(prev.sales_persons) ? prev.sales_persons : []
+      const updated = current.map((person, idx) => (idx === index ? { ...person, [key]: value } : person))
+      return { ...prev, sales_persons: updated }
+    })
+  }
+
   if (fetching) return (
     <div className="h-full flex items-center justify-center">
       <Loader size={64} />
@@ -113,9 +214,9 @@ const AddVendorPage = ({ onCancel, onSave }) => {
         </div>
       </div>
 
-      {(saveError || taxError || fetchError) && (
+      {(saveError || fetchError) && (
         <div className="p-3 bg-rose-50 text-rose-600 rounded-md border border-rose-100 text-[13px] font-semibold">
-          {saveError || taxError || fetchError}
+          {saveError || fetchError}
         </div>
       )}
 
@@ -154,24 +255,6 @@ const AddVendorPage = ({ onCancel, onSave }) => {
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className={labelClassName}>Default Tax Class</label>
-            <select
-              className={inputClassName}
-              name="default_tax_class"
-              value={formData.default_tax_class}
-              onChange={handleChange}
-              disabled={taxLoading}
-            >
-              <option value="">{taxLoading ? 'Loading Taxes...' : '-- Select TaxClass --'}</option>
-              {Array.isArray(taxData) && taxData.map((tax, idx) => (
-                <option key={tax.id || idx} value={tax.id}>
-                  {tax.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <label className="flex items-center gap-2 text-[12px] text-[#64748B] font-semibold">
             <input
               type="checkbox"
@@ -183,17 +266,75 @@ const AddVendorPage = ({ onCancel, onSave }) => {
             Vendor is inactive
           </label>
 
-          <div className="space-y-1.5">
-            <label className={labelClassName}>PDF Format</label>
-            <select
-              className={inputClassName}
-              name="pdf_format"
-              value={formData.pdf_format}
-              onChange={handleChange}
+        </div>
+      </Card>
+
+      <Card title="Sales Person & Contact Details" className="shadow-none">
+        <div className="space-y-3">
+          {(Array.isArray(formData.sales_persons) ? formData.sales_persons : []).map((person, index) => (
+            <div key={index} className="rounded-md border border-[#E2E8F0] p-3 space-y-3 bg-[#F8FAFC]">
+              <div className="flex items-center justify-between">
+                <p className="text-[12px] font-bold text-[#334155]">Sales Person {index + 1}</p>
+                <button
+                  type="button"
+                  onClick={() => removeSalesPerson(index)}
+                  disabled={(formData.sales_persons || []).length <= 1}
+                  className="text-[12px] font-semibold text-rose-600 disabled:text-slate-300"
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className={labelClassName}>First Name *</label>
+                  <input
+                    className={inputClassName}
+                    value={person.first_name}
+                    onChange={(e) => handleSalesPersonChange(index, 'first_name', e.target.value)}
+                    placeholder="Enter First Name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClassName}>Last Name *</label>
+                  <input
+                    className={inputClassName}
+                    value={person.last_name}
+                    onChange={(e) => handleSalesPersonChange(index, 'last_name', e.target.value)}
+                    placeholder="Enter Last Name"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClassName}>Phone</label>
+                  <input
+                    className={inputClassName}
+                    value={person.phone}
+                    onChange={(e) => handleSalesPersonChange(index, 'phone', e.target.value)}
+                    placeholder="(000) 000-0000"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className={labelClassName}>Email</label>
+                  <input
+                    className={inputClassName}
+                    value={person.email}
+                    onChange={(e) => handleSalesPersonChange(index, 'email', e.target.value)}
+                    placeholder="sales@example.com"
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={addSalesPerson}
+              className="h-9 px-4 text-[12px] font-semibold text-[#0EA5E9] border-[#0EA5E9] hover:bg-[#0EA5E90D]"
             >
-              <option value="Standard Invoice">Standard Invoice</option>
-              <option value="Compact Invoice">Compact Invoice</option>
-            </select>
+              + Add Sales Person
+            </Button>
           </div>
         </div>
       </Card>
@@ -350,7 +491,7 @@ const AddVendorPage = ({ onCancel, onSave }) => {
             Save & New
           </Button>
         )}
-        <Button onClick={handleSaveBtn} disabled={saving || taxLoading} className="h-9 px-6 text-[12px] font-semibold">
+        <Button onClick={handleSaveBtn} disabled={saving} className="h-9 px-6 text-[12px] font-semibold">
           {saving ? 'Saving...' : isEdit ? 'Update' : 'Save'}
         </Button>
       </div>

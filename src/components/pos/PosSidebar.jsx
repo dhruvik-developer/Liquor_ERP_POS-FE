@@ -1,31 +1,31 @@
 import React from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { 
-  ShoppingCart, 
   LogOut
 } from 'lucide-react'
 import { getStoredAuth } from '../../utils/auth'
 import api from '../../services/api'
 
 // Import PNG icons
-import DashboardIcon from '../../assets/icon/Dashboard.png'
-import ProductsIcon from '../../assets/icon/Products.png'
-import AddToCartIcon from '../../assets/icon/add to cart.png'
-import ReturnIcon from '../../assets/icon/return.png'
-import SalesIcon from '../../assets/icon/Sales.png'
-import PeoplesIcon from '../../assets/icon/Peoples.png'
-import DrawerIcon from '../../assets/icon/Drawer.png'
-import ItemMasterIcon from '../../assets/icon/ItemMaster.png'
-import ReportsIcon from '../../assets/icon/Reports.png'
-import SettingsIcon from '../../assets/icon/Settings.png'
-import LogoIcon from '../../assets/icon/Liquor POS.png'
+import DashboardIcon from '../../assets/icon/dashboard.png'
+import ProductsIcon from '../../assets/icon/products.png'
+import PurchaseBillsIcon from '../../assets/icon/purchasebills.png'
+import PurchaseOrdersIcon from '../../assets/icon/purchaseorders.png'
+import PurchaseReturnIcon from '../../assets/icon/purchasereturn.png'
+import SalesIcon from '../../assets/icon/sales.png'
+import PeoplesIcon from '../../assets/icon/peoples.png'
+import DrawerIcon from '../../assets/icon/drawer.png'
+import ItemMasterIcon from '../../assets/icon/itemmaster.png'
+import ReportsIcon from '../../assets/icon/reports.png'
+import SettingsIcon from '../../assets/icon/settings.png'
+import LogoIcon from '../../assets/icon/liquorPOS.png'
 
 const navItems = [
   { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon, path: '/pos/dashboard', isPng: true },
   { id: 'products', label: 'Products', icon: ProductsIcon, path: '/pos/products', isPng: true },
-  { id: 'purchase-bills', label: 'Purchase Bills', icon: ShoppingCart, path: '/pos/purchase-bills', isPng: false },
-  { id: 'purchase-orders', label: 'Purchase Orders', icon: AddToCartIcon, path: '/pos/purchase-orders', isPng: true },
-  { id: 'purchase-return', label: 'Purchase Return', icon: ReturnIcon, path: '/pos/purchase-return', isPng: true },
+  { id: 'purchase-bills', label: 'Purchase Bills', icon: PurchaseBillsIcon, path: '/pos/purchase-bills', isPng: true },
+  { id: 'purchase-orders', label: 'Purchase Orders', icon: PurchaseOrdersIcon, path: '/pos/purchase-orders', isPng: true },
+  { id: 'purchase-return', label: 'Purchase Return', icon: PurchaseReturnIcon, path: '/pos/purchase-return', isPng: true },
   { id: 'sales', label: 'Sales', icon: SalesIcon, path: '/pos/sales', isPng: true },
   { id: 'people', label: 'Peoples', icon: PeoplesIcon, path: '/pos/people', isPng: true },
   { id: 'cash-drawer', label: 'Cash Drawer', icon: DrawerIcon, path: '/pos/cash-drawer', isPng: true },
