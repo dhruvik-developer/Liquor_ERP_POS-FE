@@ -10,8 +10,8 @@ import useBrands from '../../hooks/useBrands'
 import useSubCategories from '../../hooks/useSubCategories'
 import useSizes from '../../hooks/useSizes'
 
-const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "" }) => (
-  <div className={`flex flex-col gap-1.5 group ${className}`}>
+const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "", disabled = false }) => (
+  <div className={`flex flex-col gap-1.5 group ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
     <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1 group-focus-within:text-sky-500 transition-colors">
       {label}
     </label>
@@ -24,7 +24,8 @@ const InputField = ({ label, value, onChange, placeholder, type = "text", prefix
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10 ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''}`}
+        disabled={disabled}
+        className={`w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10 ${prefix ? 'pl-8' : ''} ${suffix ? 'pr-8' : ''} ${disabled ? 'cursor-not-allowed' : ''}`}
       />
       {suffix && (
         <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-sm">{suffix}</span>
@@ -119,7 +120,6 @@ const INITIAL_FORM_DATA = {
   unitsInCase: 0,
   caseCost: 0,
   casePrice: 0,
-  nonDiscountable: false,
   unitCost: 0,
   margin: 0,
   buyDown: 0,
@@ -225,6 +225,15 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
           department: linkedDepartmentName || prev.department,
         }
       }
+      if (field === 'buyAsCase' && value === false) {
+        return { 
+          ...prev, 
+          buyAsCase: false,
+          unitsInCase: 0,
+          caseCost: 0,
+          casePrice: 0
+        }
+      }
       return { ...prev, [field]: value }
     })
   }
@@ -306,7 +315,6 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
         unitsInCase: product.units_in_case || 0,
         caseCost: product.case_cost || 0,
         casePrice: product.case_price || 0,
-        nonDiscountable: Boolean(product.non_discountable),
         unitCost: product.cost_pricing?.unit_cost || 0,
         margin: product.cost_pricing?.margin || 0,
         buyDown: product.cost_pricing?.buydown || 0,
@@ -348,7 +356,6 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       units_in_case: toSafeStringNumber(formData.unitsInCase),
       case_cost: toSafeStringNumber(formData.caseCost),
       case_price: toSafeStringNumber(formData.casePrice),
-      non_discountable: Boolean(formData.nonDiscountable),
       cost_pricing: {
         unit_cost: toSafeStringNumber(formData.unitCost),
         margin: toSafeStringNumber(formData.margin),
@@ -531,20 +538,28 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
                   <label htmlFor="buyAsCase" className="text-sm font-black uppercase tracking-widest text-slate-800 cursor-pointer">Buy As Case</label>
                 </div>
                 <div className="space-y-4">
-                  <InputField label="Units In Case" value={formData.unitsInCase} onChange={(e) => handleChange('unitsInCase', e.target.value)} />
+                  <InputField 
+                    label="Units In Case" 
+                    value={formData.unitsInCase} 
+                    onChange={(e) => handleChange('unitsInCase', e.target.value)} 
+                    disabled={!formData.buyAsCase}
+                  />
                   <div className="grid grid-cols-2 gap-4">
-                    <InputField label="Case Cost" prefix="$" value={formData.caseCost} onChange={(e) => handleChange('caseCost', e.target.value)} />
-                    <InputField label="Case Price" prefix="$" value={formData.casePrice} onChange={(e) => handleChange('casePrice', e.target.value)} />
-                  </div>
-                  <label className="flex items-center gap-3 cursor-pointer group pt-2">
-                    <input 
-                      type="checkbox" 
-                      checked={formData.nonDiscountable} 
-                      onChange={(e) => handleChange('nonDiscountable', e.target.checked)}
-                      className="w-5 h-5 rounded-lg border-2 border-slate-300 text-sky-500 focus:ring-primary appearance-none checked:border-sky-500 checked:bg-sky-500 transition-all cursor-pointer" 
+                    <InputField 
+                      label="Case Cost" 
+                      prefix="$" 
+                      value={formData.caseCost} 
+                      onChange={(e) => handleChange('caseCost', e.target.value)} 
+                      disabled={!formData.buyAsCase}
                     />
-                    <span className="text-xs font-black uppercase tracking-widest text-slate-600 group-hover:text-slate-900 transition-colors">Non Discountable</span>
-                  </label>
+                    <InputField 
+                      label="Case Price" 
+                      prefix="$" 
+                      value={formData.casePrice} 
+                      onChange={(e) => handleChange('casePrice', e.target.value)} 
+                      disabled={!formData.buyAsCase}
+                    />
+                  </div>
                 </div>
               </div>
 

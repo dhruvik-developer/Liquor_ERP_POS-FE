@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, Calculator, Trash2, Plus } from 'lucide-react'
+import { ChevronDown, Calculator, Plus } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
@@ -12,6 +12,13 @@ const getFirstDefined = (...values) => values.find((value) => value !== undefine
 const asNumber = (value, fallback = 0) => {
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const formatCompactNumber = (value, fallback = '0') => {
+  const numeric = asNumber(value, Number.NaN)
+  if (!Number.isFinite(numeric)) return fallback
+  if (Number.isInteger(numeric)) return String(numeric)
+  return String(numeric)
 }
 
 const toInputDate = (value) => {
@@ -73,6 +80,8 @@ const CreatePurchaseOrder = () => {
   const [addQty, setAddQty] = useState('')
   const [addUnitCost, setAddUnitCost] = useState('')
   const [addCaseQty, setAddCaseQty] = useState('')
+  const [buyAsBottle, setBuyAsBottle] = useState(false)
+  const [duplicateSku, setDuplicateSku] = useState('')
 
   const { data: vendorsData, loading: vendorsLoading, error: vendorsError } = useFetch('/people/vendors/')
   const { data: productsData, loading: productsLoading, error: productsError } = useFetch('/inventory/products/')
@@ -104,29 +113,52 @@ const CreatePurchaseOrder = () => {
       const size = getFirstDefined(product.size?.name, product.size_name, product.size, '')
       const pack = getFirstDefined(product.pack?.name, product.pack_name, product.pack, '')
       const sizePack = [size, pack].filter(Boolean).join(',')
-      const caseUnits = asNumber(getFirstDefined(product.case_units, product.bpc, product.units_per_case, product.pack_quantity, 1), 1)
+      const caseUnits = asNumber(
+        getFirstDefined(product.units_in_case, product.case_units, product.bpc, product.units_per_case, product.pack_quantity, 1),
+        1
+      )
       const unitCost = asNumber(
         getFirstDefined(
+          product.cost_pricing?.unit_cost,
           product.last_cost,
           product.cost_price,
           product.cost,
-          product.cost_pricing?.unit_price,
-          product.unit_price,
+          product.unit_cost,
           0
         ),
         0
       )
+      const unitPrice = asNumber(
+        getFirstDefined(product.cost_pricing?.unit_price, product.retail_price, product.price, product.unit_price, 0),
+        0
+      )
+      const upc = getFirstDefined(
+        product.stock_information?.enter_upcs,
+        product.upcs,
+        product.upc,
+        product.barcode,
+        product.sku,
+        ''
+      )
+      const itemDisplay = [getFirstDefined(product.name, product.product_name, product.title, 'N/A'), upc, size, pack, unitCost.toFixed(2)]
+        .filter(Boolean)
+        .join(' ')
 
       return {
         id: getFirstDefined(product.id, product.product_id, index + 1),
-        sku: getFirstDefined(product.sku, product.barcode, product.upc, '-'),
+        sku: getFirstDefined(product.sku, product.barcode, product.upc, upc, '-'),
         vendorCode: getFirstDefined(product.vendor_code, product.supplier_code, product.code, ''),
         itemName: getFirstDefined(product.name, product.product_name, product.title, 'N/A'),
+        itemDisplay,
+        size,
+        pack,
+        upc,
         lastCost: unitCost,
         caseUnits,
         sizePack: sizePack || '-',
         stock: asNumber(getFirstDefined(product.stock_quantity, product.quantity, 0)),
-        unitPrice: asNumber(getFirstDefined(product.retail_price, product.price, 0))
+        unitPrice,
+        buyAsBottle: Boolean(getFirstDefined(product.buy_as_bottle, product.buy_as_unit, false))
       }
     })
   }, [productsData])
@@ -165,7 +197,7 @@ const CreatePurchaseOrder = () => {
       setReceivedDate(toInputDate(receiveDay))
 
       if (Array.isArray(poData.items)) {
-        const mappedItems = poData.items.map((item, idx) => {
+      const mappedItems = poData.items.map((item, idx) => {
           const productIdValue = getFirstDefined(item.product?.id, item.product_id, item.product)
           
           // Hydrate product details from the products list
@@ -180,12 +212,13 @@ const CreatePurchaseOrder = () => {
             sku: getFirstDefined(fullProduct.sku, '-'),
             vendorCode: getFirstDefined(fullProduct.vendorCode, fullProduct.vendor_code, ''),
             itemName: getFirstDefined(fullProduct.itemName, fullProduct.name, fullProduct.product_name, 'N/A'),
-            lastCost: asNumber(item.unit_price),
+            unitCost: asNumber(item.unit_price),
+            caseCost: asNumber(item.unit_price) * caseUnits,
             caseUnits: caseUnits,
             qty: qty.toFixed(2),
-            receivedQty: asNumber(item.quantity_received).toFixed(2),
             caseQty: (qty / caseUnits).toFixed(2),
-            sizePack: getFirstDefined(fullProduct.sizePack, [fullProduct.size_name, fullProduct.pack_name].filter(Boolean).join(',') || '-')
+            sizePack: getFirstDefined(fullProduct.sizePack, [fullProduct.size_name, fullProduct.pack_name].filter(Boolean).join(',') || '-'),
+            buyAsCase: false
           }
         })
         setItems(mappedItems)
@@ -205,64 +238,97 @@ const CreatePurchaseOrder = () => {
   useEffect(() => {
     if (!selectedProduct) return
     setAddUnitCost(selectedProduct.lastCost.toFixed(2))
-    if (!addQty) setAddQty(selectedProduct.caseUnits.toFixed(2))
-    if (!addCaseQty) setAddCaseQty('1')
-  }, [selectedProduct, addQty, addCaseQty])
+    setAddQty('0')
+    setAddCaseQty('1')
+    setBuyAsBottle(false)
+  }, [selectedProduct])
+
+  const handleQtyChange = (val) => {
+    setAddQty(val)
+    const q = asNumber(val)
+    const u = asNumber(selectedProduct?.caseUnits, 1)
+    setAddCaseQty((q / u).toFixed(2))
+  }
+
+  const handleCaseQtyChange = (val) => {
+    setAddCaseQty(val)
+    const cq = asNumber(val)
+    const u = asNumber(selectedProduct?.caseUnits, 1)
+    setAddQty((cq * u).toFixed(2))
+  }
 
   const totalQty = useMemo(
     () => items.reduce((acc, item) => acc + asNumber(item.qty), 0),
     [items]
   )
+  const selectedCaseUnits = Math.max(asNumber(selectedProduct?.caseUnits, 1), 1)
+  const selectedCaseCost = asNumber(addUnitCost, selectedProduct?.lastCost) * selectedCaseUnits
+
   const totalAmount = useMemo(
-    () => items.reduce((acc, item) => acc + asNumber(item.lastCost) * asNumber(item.caseQty), 0),
+    () =>
+      items.reduce(
+        (acc, item) =>
+          acc + asNumber(item.qty) * asNumber(item.unitCost),
+        0
+      ),
     [items]
   )
 
-  const deleteItem = (id) => {
-    setItems((prev) => prev.filter((item) => item.id !== id))
-  }
-
   const updateItem = (id, field, value) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, [field]: value } : item)))
+    setItems((prev) =>
+      prev.map((item) => {
+        if (item.id !== id) return item
+        if (field === 'caseQty') {
+          const nextCaseQty = asNumber(value, 0)
+          return {
+            ...item,
+            caseQty: value,
+            qty: (asNumber(item.caseUnits, 1) * nextCaseQty).toFixed(2)
+          }
+        }
+        return { ...item, [field]: value }
+      })
+    )
   }
 
   const handleAddItem = () => {
     if (!selectedProduct) return
-    const normalizedQty = asNumber(addQty)
-    const normalizedCaseQty = asNumber(addCaseQty)
-    const normalizedCost = asNumber(addUnitCost, selectedProduct.lastCost)
+    const alreadyExists = items.some((item) => String(item.productId) === String(selectedProduct.id))
+    if (alreadyExists) {
+      const skuValue = selectedProduct.sku || selectedProduct.id
+      setDuplicateSku(String(skuValue))
+      return
+    }
 
-    setItems((prev) => {
-      const existing = prev.find((item) => String(item.productId) === String(selectedProduct.id))
-      if (existing) {
-        return prev.map((item) =>
-          item.id === existing.id
-            ? {
-                ...item,
-                qty: (asNumber(item.qty) + normalizedQty).toFixed(2),
-                caseQty: (asNumber(item.caseQty) + normalizedCaseQty).toString(),
-                lastCost: normalizedCost
-              }
-            : item
-        )
+    const isBuyAsCase = buyAsBottle
+    const normalizedUnitCost = asNumber(addUnitCost, selectedProduct.lastCost)
+    const normalizedCaseUnits = Math.max(asNumber(selectedProduct.caseUnits, 1), 1)
+    const normalizedCaseQty = Math.max(asNumber(addCaseQty, 0), 0)
+    const normalizedQty = Math.max(asNumber(addQty, 0), 0)
+    const effectiveQty = isBuyAsCase ? normalizedQty : normalizedCaseQty * normalizedCaseUnits
+    const effectiveCaseQty = isBuyAsCase ? 0 : normalizedCaseQty
+    const unitCost = normalizedUnitCost
+    const caseCost = normalizedUnitCost * normalizedCaseUnits
+
+    if (!(effectiveQty > 0)) return
+
+    setItems((prev) => [
+      ...prev,
+      {
+        id: `${selectedProduct.id}-${Date.now()}`,
+        productId: selectedProduct.id,
+        sku: selectedProduct.sku,
+        vendorCode: selectedProduct.vendorCode,
+        itemName: selectedProduct.itemName,
+        unitCost,
+        caseCost,
+        caseUnits: selectedProduct.caseUnits,
+        qty: effectiveQty.toFixed(2),
+        caseQty: effectiveCaseQty.toFixed(2),
+        sizePack: selectedProduct.sizePack,
+        buyAsCase: isBuyAsCase
       }
-
-      return [
-        ...prev,
-        {
-          id: `${selectedProduct.id}-${Date.now()}`,
-          productId: selectedProduct.id,
-          sku: selectedProduct.sku,
-          vendorCode: selectedProduct.vendorCode,
-          itemName: selectedProduct.itemName,
-          lastCost: normalizedCost,
-          caseUnits: selectedProduct.caseUnits,
-          qty: normalizedQty.toFixed(2),
-          caseQty: normalizedCaseQty.toString(),
-          sizePack: selectedProduct.sizePack
-        }
-      ]
-    })
+    ])
   }
 
   const handleSave = async () => {
@@ -282,7 +348,7 @@ const CreatePurchaseOrder = () => {
           product: Number(item.productId),
           quantity_ordered: asNumber(item.qty),
           quantity_received: 0,
-          unit_price: asNumber(item.lastCost).toFixed(2)
+          unit_price: asNumber(getFirstDefined(item.unitCost, item.lastCost, 0)).toFixed(2)
         }))
       }
 
@@ -302,6 +368,25 @@ const CreatePurchaseOrder = () => {
       {(apiError || vendorsError || productsError) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
           {apiError || vendorsError || productsError}
+        </div>
+      )}
+      {duplicateSku && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30" onClick={() => setDuplicateSku('')} />
+          <div className="relative w-full max-w-[560px] rounded-md border border-slate-300 bg-white p-6 shadow-2xl">
+            <div className="min-h-[170px] flex items-center justify-center text-center px-4">
+              <p className="text-[18px] leading-relaxed font-medium text-slate-900">
+                Item with sku '{duplicateSku}' already exist. please add another item.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setDuplicateSku('')}
+              className="w-full h-12 rounded-sm bg-[#0284C7] text-white text-[18px] font-semibold hover:bg-[#0369A1] transition-colors"
+            >
+              OK
+            </button>
+          </div>
         </div>
       )}
 
@@ -433,24 +518,21 @@ const CreatePurchaseOrder = () => {
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Item Name</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Last Cost</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center whitespace-nowrap">Case Units</th>
-                <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Qty Ordered</th>
-                <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Qty Received</th>
-                <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Case Qty</th>
+                <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Quantity</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right whitespace-nowrap">Line Total</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size/Pack</th>
-                {!isReadOnly && <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-center">Action</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {productsLoading ? (
                 <tr>
-                  <td colSpan="10" className="px-8 py-12 text-center text-slate-500 font-bold">
+                  <td colSpan="9" className="px-8 py-12 text-center text-slate-500 font-bold">
                     Loading products...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="px-8 py-12 text-center text-slate-500 font-bold">
+                  <td colSpan="9" className="px-8 py-12 text-center text-slate-500 font-bold">
                     No items found from API.
                   </td>
                 </tr>
@@ -460,57 +542,41 @@ const CreatePurchaseOrder = () => {
                     <td className="px-4 py-3 text-[13px] font-semibold text-slate-600">{item.sku}</td>
                     <td className="px-3 py-3 text-[13px] font-medium text-slate-500">{item.vendorCode || '-'}</td>
                     <td className="px-3 py-3 text-[14px] font-bold text-slate-700">{item.itemName}</td>
-                    <td className="px-3 py-3 text-[14px] font-semibold text-slate-700 text-right">{asNumber(item.lastCost).toFixed(2)}</td>
+                    <td className="px-3 py-3 text-[14px] font-semibold text-slate-700 text-right">
+                      {(
+                        item.buyAsCase
+                          ? asNumber(getFirstDefined(item.unitCost, item.lastCost, 0))
+                          : asNumber(
+                              getFirstDefined(
+                                item.caseCost,
+                                asNumber(getFirstDefined(item.unitCost, item.lastCost, 0)) * asNumber(item.caseUnits, 1)
+                              )
+                            )
+                      ).toFixed(2)}
+                    </td>
                     <td className="px-3 py-3 text-[14px] font-semibold text-slate-700 text-center">{asNumber(item.caseUnits).toFixed(0)}</td>
-                    <td className="px-3 py-3 text-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        readOnly={isReadOnly}
-                        className={`w-20 h-8 rounded border border-slate-200 bg-white text-center text-[13px] font-bold text-slate-800 outline-none focus:border-sky-500 transition-all ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-sky-500/10'}`}
-                        value={item.qty}
-                        onChange={(e) => updateItem(item.id, 'qty', e.target.value)}
-                      />
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className={`text-[14px] font-bold ${asNumber(item.receivedQty) > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                         {item.receivedQty}
-                      </span>
-                    </td>
-                    <td className="px-3 py-3 text-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        readOnly={isReadOnly}
-                        className={`w-20 h-8 rounded border border-slate-200 bg-white text-center text-[13px] font-bold text-slate-800 outline-none focus:border-sky-500 transition-all ${isReadOnly ? 'cursor-not-allowed opacity-60' : 'focus:ring-2 focus:ring-sky-500/10'}`}
-                        value={item.caseQty}
-                        onChange={(e) => updateItem(item.id, 'caseQty', e.target.value)}
-                      />
-                    </td>
+                    <td className="px-3 py-3 text-[14px] font-semibold text-slate-700 text-center">{formatCompactNumber(item.qty, '0')}</td>
                     <td className="px-3 py-3 text-[14px] font-bold text-slate-700 text-right">
-                      {(asNumber(item.lastCost) * asNumber(item.caseQty)).toFixed(2)}
+                      {(
+                        item.buyAsCase
+                          ? asNumber(item.qty) * asNumber(item.unitCost)
+                          : asNumber(item.caseQty) *
+                            asNumber(
+                              getFirstDefined(
+                                item.caseCost,
+                                asNumber(getFirstDefined(item.unitCost, item.lastCost, 0)) * asNumber(item.caseUnits, 1)
+                              )
+                            )
+                      ).toFixed(3)}
                     </td>
                     <td className="px-3 py-3 text-[13px] font-medium text-slate-500">{item.sizePack}</td>
-                    {!isReadOnly && (
-                      <td className="px-3 py-3 text-center">
-                        <button
-                          onClick={() => deleteItem(item.id)}
-                          className="p-1.5 rounded-lg text-slate-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    )}
                   </tr>
                 ))
               )}
             </tbody>
           </table>
         </div>
-        <div className="p-4 bg-white border-t border-slate-100 flex justify-between items-center text-[12px] font-bold">
-          <button className="px-4 py-2 rounded-lg border border-slate-300 text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all">
-            Custom Fields
-          </button>
+        <div className="p-4 bg-white border-t border-slate-100 flex justify-end items-center text-[12px] font-bold">
           <div className="flex gap-10 text-slate-600 uppercase tracking-wider">
             <span>Total Qty: <span className="text-slate-900 ml-1">{totalQty.toFixed(2)}</span></span>
             <span>Total: <span className="text-slate-900 ml-1">$ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
@@ -555,7 +621,7 @@ const CreatePurchaseOrder = () => {
               <input
                 type="text"
                 readOnly
-                value={selectedProduct?.itemName || ''}
+                value={selectedProduct?.itemDisplay || selectedProduct?.itemName || ''}
                 className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-bold text-slate-600 outline-none"
               />
             </div>
@@ -564,7 +630,7 @@ const CreatePurchaseOrder = () => {
               <input
                 type="text"
                 readOnly
-                value={(selectedProduct?.sizePack || '').split(',')[0] || ''}
+                value={selectedProduct?.size || ''}
                 className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
               />
             </div>
@@ -573,7 +639,7 @@ const CreatePurchaseOrder = () => {
               <input
                 type="text"
                 readOnly
-                value={(selectedProduct?.sizePack || '').split(',')[1] || ''}
+                value={selectedProduct?.pack || ''}
                 className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
               />
             </div>
@@ -601,8 +667,13 @@ const CreatePurchaseOrder = () => {
                 type="number"
                 step="0.01"
                 value={addQty}
-                onChange={(e) => setAddQty(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-sky-200 bg-white text-[14px] font-bold text-slate-800 outline-none focus:border-sky-500"
+                onChange={(e) => handleQtyChange(e.target.value)}
+                disabled={!buyAsBottle}
+                className={`w-full h-10 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
+                    buyAsBottle
+                      ? 'border border-sky-200 bg-white focus:border-sky-500'
+                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                  }`}
               />
             </div>
             <div className="flex flex-col gap-1.5">
@@ -612,17 +683,12 @@ const CreatePurchaseOrder = () => {
                 step="0.01"
                 value={addUnitCost}
                 onChange={(e) => setAddUnitCost(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-800 outline-none focus:border-sky-500"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Qty</label>
-              <input
-                type="number"
-                step="0.01"
-                value={addCaseQty}
-                onChange={(e) => setAddCaseQty(e.target.value)}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-800 outline-none focus:border-sky-500"
+                disabled={!buyAsBottle}
+                className={`w-full h-10 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
+                  buyAsBottle
+                    ? 'border border-sky-200 bg-white focus:border-sky-500'
+                    : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                }`}
               />
             </div>
             <div className="flex items-end">
@@ -640,15 +706,50 @@ const CreatePurchaseOrder = () => {
 
         <Card noPadding className="border-slate-200 shadow-sm !rounded-lg">
           <div className="p-6 flex flex-col h-full">
-            <div className="grid grid-cols-2 gap-6 mb-auto">
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Current Stock</span>
-                <span className="text-xl font-black text-slate-800">{asNumber(selectedProduct?.stock).toFixed(0)}</span>
+            <div className="space-y-3 mb-auto">
+              <div className="grid grid-cols-2 items-center gap-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Qty</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={addCaseQty}
+                  onChange={(e) => handleCaseQtyChange(e.target.value)}
+                  disabled={buyAsBottle}
+                  className={`h-9 px-3 rounded-md text-right text-[14px] font-bold text-slate-800 outline-none ${
+                    !buyAsBottle
+                      ? 'border border-slate-200 bg-white focus:border-sky-500'
+                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                  }`}
+                />
               </div>
-              <div className="flex flex-col gap-1 text-right">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Unit Price</span>
-                <span className="text-xl font-black text-slate-800">$ {asNumber(selectedProduct?.unitPrice).toFixed(2)}</span>
+              <div className="grid grid-cols-2 items-center gap-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Cost</span>
+                <div className="h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
+                  $ {selectedCaseCost.toFixed(2)}
+                </div>
               </div>
+              <div className="grid grid-cols-2 items-center gap-3">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Units</span>
+                <div className="h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
+                  {selectedCaseUnits.toFixed(0)}
+                </div>
+              </div>
+
+              <label className="pt-1 inline-flex items-center gap-2 text-[13px] font-bold text-slate-700 select-none cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={buyAsBottle}
+                  onChange={(e) => {
+                    const checked = e.target.checked
+                    setBuyAsBottle(checked)
+                    if (checked) {
+                      setAddCaseQty('0')
+                    }
+                  }}
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                />
+                Buy As Case
+              </label>
             </div>
 
             <div className="space-y-4 pt-6 mt-6 border-t border-slate-100">

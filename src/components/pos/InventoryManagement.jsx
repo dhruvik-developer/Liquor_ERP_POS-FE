@@ -96,22 +96,40 @@ const InventoryManagement = () => {
 
   // Map backend product data to match what the filter/table expects
   const mappedProducts = useMemo(() => {
-    return products.map(p => ({
-      id: p.id,
-      sku: p.sku || p.barcode || '',
-      name: p.name || p.product_name || '',
-      type: p.type || 'Standard',
-      department: p.department?.name || p.department_name || p.department || 'All',
-      category: p.category?.name || p.category_name || p.category || 'All',
-      size: p.size?.name || p.size_name || p.size || 'All',
-      pack: p.pack?.name || p.pack_name || p.pack || 'All',
-      brand: p.brand?.name || p.brand_name || p.brand || 'All',
-      supplier: p.supplier?.company_name || p.vendor || 'All',
-      price: Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0,
-      stock: Number(p.stock_quantity ?? p.quantity ?? 0) || 0,
-      total: (Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0) * (Number(p.stock_quantity ?? p.quantity ?? 0) || 0),
-      isInactive: p.item_is_inactive === true || p.is_active === false
-    }))
+    return products.map(p => {
+      const qty = Number(p.stock_quantity ?? p.quantity ?? p.stock_information?.quantity ?? 0) || 0
+      const price = Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0
+
+      return {
+        id: p.id,
+        sku: p.sku || p.barcode || '',
+        name: p.name || p.product_name || '',
+        type: p.type || '-',
+        department: p.department?.name || p.department_name || p.department || 'All',
+        category: p.category?.name || p.category_name || p.category || 'All',
+        size: p.size?.name || p.size_name || p.size || 'All',
+        pack: p.pack?.name || p.pack_name || p.pack || 'All',
+        brand: p.brand?.name || p.brand_name || p.brand || 'All',
+        supplier: p.supplier?.company_name || p.vendor || 'All',
+        price,
+        qty,
+        reorderLevel: Number(
+          p.reorder_level
+          ?? p.stock_information?.reorder_level
+          ?? p.stock_information?.reorder_qty
+          ?? 0
+        ) || 0,
+        minQty: Number(
+          p.min_qty
+          ?? p.minimum_qty
+          ?? p.stock_information?.min_qty
+          ?? p.stock_information?.min_warn_qty
+          ?? 0
+        ) || 0,
+        total: price * qty,
+        isInactive: p.item_is_inactive === true || p.is_active === false
+      }
+    })
   }, [products])
 
   const dropdownOptions = useMemo(() => {

@@ -2,6 +2,12 @@ import React from 'react'
 import { Pencil } from 'lucide-react'
 
 const InventoryTable = ({ products, onEdit }) => {
+  const formatNumber = (value) => {
+    const num = Number(value)
+    if (!Number.isFinite(num)) return '0'
+    return Number.isInteger(num) ? `${num}` : num.toFixed(3)
+  }
+
   return (
     <div className="flex-1 overflow-auto bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
       <table className="w-full text-left border-collapse">
@@ -12,8 +18,10 @@ const InventoryTable = ({ products, onEdit }) => {
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Size</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Pack</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Price</th>
-            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Total Qty</th>
-            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Total</th>
+            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Qty</th>
+            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Reorder Level</th>
+            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Min Qty</th>
+            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Type</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap text-center">Actions</th>
           </tr>
         </thead>
@@ -28,8 +36,10 @@ const InventoryTable = ({ products, onEdit }) => {
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.size}</td>
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.pack}</td>
                 <td className="px-6 py-4 text-[14px] font-bold text-[#1E293B]">{item.price.toFixed(2)}</td>
-                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.stock}</td>
-                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.total}</td>
+                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.qty)}</td>
+                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.reorderLevel)}</td>
+                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.minQty)}</td>
+                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.type || '-'}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button 
@@ -45,7 +55,7 @@ const InventoryTable = ({ products, onEdit }) => {
             ))
           ) : (
             <tr>
-              <td colSpan="8" className="px-6 py-20 text-center">
+              <td colSpan="10" className="px-6 py-20 text-center">
                 <p className="text-[#64748B] font-medium">No products found</p>
               </td>
             </tr>
