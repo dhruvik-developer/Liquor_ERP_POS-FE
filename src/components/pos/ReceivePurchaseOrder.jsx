@@ -7,7 +7,6 @@ import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
-import { postStockAdjustments } from '../../services/stockAdjustments'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -52,7 +51,6 @@ const ReceivePurchaseOrder = () => {
   const [note, setNote] = useState('')
   const [items, setItems] = useState([])
   const [otherCharges, setOtherCharges] = useState(0)
-  const [stockSyncError, setStockSyncError] = useState('')
 
   const { post, loading: isSaving, error: apiError } = useApi()
   const { data: responseData, loading, error } = useFetch('/purchasing/orders/')
@@ -255,23 +253,16 @@ const ReceivePurchaseOrder = () => {
     const selectedItems = items.filter((item) => item.selected && Math.trunc(asNumber(item.received)) > 0)
     if (selectedItems.length === 0) return
 
-    let receiveSaved = false
     try {
-      setStockSyncError('')
       const payloadItems = selectedItems
         .map((item) => {
           const receivedQuantity = Math.trunc(asNumber(item.received))
-          const itemId = Number(item.lineItemId)
           const productId = Number(item.productId)
 
           if (!(receivedQuantity > 0)) return null
 
-          if (Number.isFinite(itemId) && itemId > 0) {
-            return { item_id: itemId, received_quantity: receivedQuantity }
-          }
-
           if (Number.isFinite(productId) && productId > 0) {
-            return { product_id: productId, received_quantity: receivedQuantity }
+            return { product_id: productId, quantity_received: receivedQuantity }
           }
 
           return null
@@ -281,35 +272,20 @@ const ReceivePurchaseOrder = () => {
       if (payloadItems.length === 0) return
 
       await post(`/purchasing/orders/${selectedOrder.key}/receive/`, {
-        items: payloadItems
-      })
-      receiveSaved = true
-
-      await postStockAdjustments({
-        post,
-        entries: selectedItems.map((item) => ({
-          product: Number(item.productId),
-          quantity: Math.trunc(asNumber(item.received) * Math.max(asNumber(item.caseUnits, 1), 1))
-        })),
-        adjustmentType: 'add',
-        reason: 'PO Receive',
-        note: `PO ${selectedOrder.poNumber || selectedOrder.key} received on ${receiveDate || today}`
+        received_items: payloadItems
       })
 
       navigate('/pos/purchase-orders')
     } catch (err) {
-      if (receiveSaved) {
-        setStockSyncError('PO receive ho gaya, lekin stock adjustment sync nahi ho paya. Please inventory adjustments check karein.')
-      }
       console.error(err)
     }
   }
 
   return (
     <div className="space-y-6">
-      {(stockSyncError || apiError || error) && (
+      {(apiError || error) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
-          {stockSyncError || apiError || error}
+          {apiError || error}
         </div>
       )}
 

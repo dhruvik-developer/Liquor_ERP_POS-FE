@@ -32,3 +32,36 @@ export function normalizeUrl(url) {
 
   return normalizedPath + query;
 }
+
+/**
+ * Resolves relative media paths returned by backend into an absolute URL.
+ * Example: "/media/products/a.png" -> "http://localhost:8000/media/products/a.png"
+ *
+ * @param {string} imageUrl
+ * @returns {string}
+ */
+export function resolveMediaUrl(imageUrl) {
+  if (!imageUrl) return ''
+
+  const value = String(imageUrl).trim()
+  if (!value) return ''
+
+  // Base64 data URLs and absolute URLs are already directly consumable by <img src>.
+  if (
+    value.startsWith('data:') ||
+    value.startsWith('http://') ||
+    value.startsWith('https://') ||
+    value.startsWith('blob:')
+  ) {
+    return value
+  }
+
+  const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || ''
+  const apiBase = String(rawBaseUrl).replace(/\/+$/, '')
+  if (!apiBase) return value
+
+  // Convert ".../api" style base to site root for media files.
+  const siteBase = apiBase.replace(/\/api$/i, '')
+  const normalizedPath = value.startsWith('/') ? value : `/${value}`
+  return `${siteBase}${normalizedPath}`
+}

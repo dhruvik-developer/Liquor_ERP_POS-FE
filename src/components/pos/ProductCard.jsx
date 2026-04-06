@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { resolveMediaUrl } from '../../utils/url'
 
 const stockBadgeClass = stock => {
   if (stock <= 8) return 'bg-rose-50 text-rose-600 border-rose-100'
@@ -14,7 +15,7 @@ const ProductCard = ({ product, onAdd }) => (
   >
     <div className="h-32 w-full rounded-md overflow-hidden bg-[#F8FAFC] border border-[#F1F5F9]">
       <img
-        src={product.image}
+        src={resolveMediaUrl(product.image)}
         alt={product.name}
         loading="lazy"
         className="h-full w-full object-contain p-2 transition-transform group-hover:scale-110"

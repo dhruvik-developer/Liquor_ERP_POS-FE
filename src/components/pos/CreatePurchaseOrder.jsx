@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, Calculator, Plus } from 'lucide-react'
+import { ChevronDown, Calculator, Plus, Trash2 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
@@ -77,11 +77,14 @@ const CreatePurchaseOrder = () => {
   const [isReadOnly, setIsReadOnly] = useState(false)
 
   const [selectedProductId, setSelectedProductId] = useState('')
+  const [productCodeInput, setProductCodeInput] = useState('')
+  const [productCodeLookupMessage, setProductCodeLookupMessage] = useState('')
   const [addQty, setAddQty] = useState('')
   const [addUnitCost, setAddUnitCost] = useState('')
   const [addCaseQty, setAddCaseQty] = useState('')
   const [buyAsBottle, setBuyAsBottle] = useState(false)
   const [duplicateSku, setDuplicateSku] = useState('')
+  const [selectedItemIds, setSelectedItemIds] = useState([])
 
   const { data: vendorsData, loading: vendorsLoading, error: vendorsError } = useFetch('/people/vendors/')
   const { data: productsData, loading: productsLoading, error: productsError } = useFetch('/inventory/products/')
@@ -237,11 +240,36 @@ const CreatePurchaseOrder = () => {
 
   useEffect(() => {
     if (!selectedProduct) return
+    setProductCodeInput(selectedProduct.vendorCode || '')
+    setProductCodeLookupMessage('')
     setAddUnitCost(selectedProduct.lastCost.toFixed(2))
     setAddQty('0')
     setAddCaseQty('1')
     setBuyAsBottle(false)
   }, [selectedProduct])
+
+  const handleProductCodeSubmit = () => {
+    const normalizedCode = String(productCodeInput || '').trim().toLowerCase()
+    if (!normalizedCode) {
+      setProductCodeLookupMessage('')
+      return
+    }
+
+    const matchedProduct = products.find((product) => {
+      const vendorCode = String(product.vendorCode || '').trim().toLowerCase()
+      const skuCode = String(product.sku || '').trim().toLowerCase()
+      const upcCode = String(product.upc || '').trim().toLowerCase()
+      return vendorCode === normalizedCode || skuCode === normalizedCode || upcCode === normalizedCode
+    })
+
+    if (matchedProduct) {
+      setSelectedProductId(String(matchedProduct.id))
+      setProductCodeLookupMessage('')
+      return
+    }
+
+    setProductCodeLookupMessage('Product code not found.')
+  }
 
   const handleQtyChange = (val) => {
     setAddQty(val)
@@ -273,6 +301,12 @@ const CreatePurchaseOrder = () => {
       ),
     [items]
   )
+  const allItemsSelected = items.length > 0 && selectedItemIds.length === items.length
+  const hasSelectedItems = selectedItemIds.length > 0
+
+  useEffect(() => {
+    setSelectedItemIds((prev) => prev.filter((id) => items.some((item) => item.id === id)))
+  }, [items])
 
   const updateItem = (id, field, value) => {
     setItems((prev) =>
@@ -329,6 +363,38 @@ const CreatePurchaseOrder = () => {
         buyAsCase: isBuyAsCase
       }
     ])
+
+    // Clear selected product form after successful add
+    setSelectedProductId('')
+    setProductCodeInput('')
+    setProductCodeLookupMessage('')
+    setAddQty('')
+    setAddUnitCost('')
+    setAddCaseQty('')
+    setBuyAsBottle(false)
+  }
+
+  const toggleSelectItem = (itemId) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
+    )
+  }
+
+  const toggleSelectAllItems = () => {
+    setSelectedItemIds((prev) => (prev.length === items.length ? [] : items.map((item) => item.id)))
+  }
+
+  const handleRemoveSelectedItems = () => {
+    if (!hasSelectedItems) return
+    const selectedIds = new Set(selectedItemIds)
+    setItems((prev) => prev.filter((item) => !selectedIds.has(item.id)))
+    setSelectedItemIds([])
+  }
+
+  const handleRemoveAllItems = () => {
+    if (items.length === 0) return
+    setItems([])
+    setSelectedItemIds([])
   }
 
   const handleSave = async () => {
@@ -364,7 +430,8 @@ const CreatePurchaseOrder = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="h-full min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 pb-24 space-y-6">
       {(apiError || vendorsError || productsError) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
           {apiError || vendorsError || productsError}
@@ -391,128 +458,352 @@ const CreatePurchaseOrder = () => {
       )}
 
       <Card noPadding className="border-slate-200 shadow-sm mb-6 !rounded-lg overflow-visible">
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-5">
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Select Vendor</label>
-            <div className="relative">
-              <select
-                value={selectedVendor}
-                onChange={(e) => {
-                  setSelectedVendor(e.target.value)
-                  setAddress('')
-                }}
+        <div className="p-5 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Select Vendor</label>
+              <div className="relative">
+                <select
+                  value={selectedVendor}
+                  onChange={(e) => {
+                    setSelectedVendor(e.target.value)
+                    setAddress('')
+                  }}
+                  disabled={isReadOnly}
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
+                >
+                  <option value="">Select a Vendor</option>
+                  {vendors.map((vendor) => (
+                    <option key={vendor.id} value={vendor.id}>
+                      {vendor.vendor_name || vendor.company_name || vendor.name || `Vendor ${vendor.id}`}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO Number</label>
+              <input
+                type="text"
+                value={poNumberValue}
+                readOnly
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO ID</label>
+              <input
+                type="text"
+                value={poId}
+                readOnly
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
+              />
+            </div>
+            <DatePickerField label="PO Date" value={poDate} onChange={setPoDate} disabled={isReadOnly} />
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Vendor Order #</label>
+              <input
+                type="text"
+                value={vendorOrderNumber}
+                onChange={(e) => setVendorOrderNumber(e.target.value)}
+                placeholder="Enter Vendor Order #"
                 disabled={isReadOnly}
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-              >
-                <option value="">Select a Vendor</option>
-                {vendors.map((vendor) => (
-                  <option key={vendor.id} value={vendor.id}>
-                    {vendor.vendor_name || vendor.company_name || vendor.name || `Vendor ${vendor.id}`}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
+              />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO Number</label>
-            <input
-              type="text"
-              value={poNumberValue}
-              readOnly
-              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
-            />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship To</label>
+              <div className="relative">
+                <select
+                  value={shipTo}
+                  onChange={(e) => setShipTo(e.target.value)}
+                  disabled={isReadOnly}
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
+                >
+                  <option value="">Select Ship To</option>
+                  {SHIP_TO_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship By</label>
+              <input
+                type="text"
+                value={shipBy}
+                onChange={(e) => setShipBy(e.target.value)}
+                placeholder="Enter Ship By"
+                disabled={isReadOnly}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Address</label>
+              <input
+                type="text"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter Address"
+                disabled={isReadOnly}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
+              />
+            </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">PO ID</label>
-            <input
-              type="text"
-              value={poId}
-              readOnly
-              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
-            />
-          </div>
-          <DatePickerField label="PO Date" value={poDate} onChange={setPoDate} disabled={isReadOnly} />
+
           {isReadOnly && receivedDate && (
-             <div className="flex flex-col gap-1.5 min-w-[150px]">
-                <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Received Date</label>
-                <div className="w-full h-[38px] px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-[14px] font-bold text-emerald-700 flex items-center">
-                   {receivedDate}
-                </div>
-             </div>
+            <div className="max-w-[280px] flex flex-col gap-1.5">
+              <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Received Date</label>
+              <div className="w-full h-9 px-3 rounded-lg border border-emerald-200 bg-emerald-50 text-[14px] font-bold text-emerald-700 flex items-center">
+                {receivedDate}
+              </div>
+            </div>
           )}
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Vendor Order #</label>
-            <input
-              type="text"
-              value={vendorOrderNumber}
-              onChange={(e) => setVendorOrderNumber(e.target.value)}
-              placeholder="Enter Vendor Order #"
-              disabled={isReadOnly}
-              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
-            />
-          </div>
-          <div className="lg:col-span-3 flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Address</label>
-            <input
-              type="text"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Enter Address"
-              disabled={isReadOnly}
-              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship To</label>
-            <div className="relative">
-              <select
-                value={shipTo}
-                onChange={(e) => setShipTo(e.target.value)}
-                disabled={isReadOnly}
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-              >
-                <option value="">Select Ship To</option>
-                {SHIP_TO_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship By</label>
-            <input
-              type="text"
-              value={shipBy}
-              onChange={(e) => setShipBy(e.target.value)}
-              placeholder="Enter Ship By"
-              disabled={isReadOnly}
-              className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
-            />
-          </div>
-
-          <div className="lg:col-span-4 flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Note</label>
             <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Add a note..."
               disabled={isReadOnly}
-              className="w-full h-[38px] px-3 py-2 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all resize-none disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
+              className="w-full h-9 px-3 py-2 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all resize-none disabled:bg-slate-50 disabled:text-slate-500 shadow-inner"
             />
           </div>
         </div>
       </Card>
+
+      {!isReadOnly && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card noPadding className="lg:col-span-2 border-slate-200 shadow-sm !rounded-lg overflow-visible">
+            {/* ... Product selection logic ... */}
+          <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">SKU / UPC</label>
+              <div className="relative">
+                <select
+                  value={selectedProductId}
+                  onChange={(e) => setSelectedProductId(e.target.value)}
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500"
+                >
+                  <option value="">Select SKU / UPC</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.sku}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+              </div>
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-4">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Product Code</label>
+              <input
+                type="text"
+                value={productCodeInput}
+                onChange={(e) => {
+                  setProductCodeInput(e.target.value)
+                  if (productCodeLookupMessage) setProductCodeLookupMessage('')
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== 'Enter') return
+                  e.preventDefault()
+                  handleProductCodeSubmit()
+                }}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-700 outline-none"
+              />
+              {productCodeLookupMessage && (
+                <span className="text-[11px] font-semibold text-rose-600">{productCodeLookupMessage}</span>
+              )}
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-5">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Item Name</label>
+              <input
+                type="text"
+                readOnly
+                value={selectedProduct?.itemDisplay || selectedProduct?.itemName || ''}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-bold text-slate-600 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</label>
+              <input
+                type="text"
+                readOnly
+                value={selectedProduct?.size || ''}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pack</label>
+              <input
+                type="text"
+                readOnly
+                value={selectedProduct?.pack || ''}
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Last Order Qty</label>
+              <input
+                type="text"
+                readOnly
+                value="0"
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Last Order Date</label>
+              <input
+                type="text"
+                readOnly
+                value=""
+                className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-poppins text-sky-600">Quantity</label>
+              <input
+                type="number"
+                step="0.01"
+                value={addQty}
+                onChange={(e) => handleQtyChange(e.target.value)}
+                disabled={!buyAsBottle}
+                className={`w-full h-9 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
+                    buyAsBottle
+                      ? 'border border-sky-200 bg-white focus:border-sky-500'
+                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                  }`}
+              />
+            </div>
+            <div className="flex flex-col gap-1.5 lg:col-span-3">
+              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Unit Cost</label>
+              <input
+                type="number"
+                step="0.01"
+                value={addUnitCost}
+                onChange={(e) => setAddUnitCost(e.target.value)}
+                disabled={!buyAsBottle}
+                className={`w-full h-9 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
+                  buyAsBottle
+                    ? 'border border-sky-200 bg-white focus:border-sky-500'
+                    : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                }`}
+              />
+            </div>
+            <div className="flex items-end lg:col-span-3">
+              <button
+                onClick={handleAddItem}
+                disabled={!selectedProduct}
+                className="w-full h-9 rounded-lg bg-[#0EA5E9] text-white text-[12px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#0284C7] transition-all active:scale-95 shadow-md shadow-sky-500/10"
+              >
+                <Plus size={18} />
+                Add Item
+              </button>
+            </div>
+          </div>
+        </Card>
+
+        <Card noPadding className="border-slate-200 shadow-sm !rounded-lg">
+          <div className="p-6 flex flex-col h-full">
+            <div className="mb-auto grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Qty</span>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={addCaseQty}
+                  onChange={(e) => handleCaseQtyChange(e.target.value)}
+                  disabled={buyAsBottle}
+                  className={`w-full h-9 px-3 rounded-md text-right text-[14px] font-bold text-slate-800 outline-none ${
+                    !buyAsBottle
+                      ? 'border border-slate-200 bg-white focus:border-sky-500'
+                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
+                  }`}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Cost</span>
+                <div className="w-full h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
+                  $ {selectedCaseCost.toFixed(2)}
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <span className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Units</span>
+                <div className="w-full h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
+                  {selectedCaseUnits.toFixed(0)}
+                </div>
+              </div>
+              <div className="flex items-end pb-1">
+                <label className="inline-flex items-center gap-2 text-[13px] font-bold text-slate-700 select-none cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={buyAsBottle}
+                    onChange={(e) => {
+                      const checked = e.target.checked
+                      setBuyAsBottle(checked)
+                      if (checked) {
+                        setAddCaseQty('0')
+                      }
+                    }}
+                    className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  Buy As Case
+                </label>
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-6 mt-6 border-t border-slate-100">
+              <div className="flex justify-between items-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
+                <span>Total</span>
+                <span className="text-slate-800 font-black">$ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex justify-between items-center bg-[#f0f9ff]/50 p-4 rounded-xl border border-sky-100">
+                <h3 className="text-[16px] font-black text-slate-800 tracking-tight font-poppins">Total</h3>
+                <span className="text-2xl font-black text-sky-600 tracking-tighter">
+                  $ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
+      </div>
+      )}
+
+      {isReadOnly && (
+        <div className="flex justify-end pt-4">
+           <Card className="w-full lg:max-w-md border-emerald-100 bg-emerald-50/10 !rounded-xl">
+             <div className="flex justify-between items-center text-emerald-800">
+                <span className="text-sm font-black uppercase tracking-tight">Order Status</span>
+                <span className="text-xs font-black px-4 py-1.5 bg-emerald-100 rounded-full">{poData?.status}</span>
+             </div>
+           </Card>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-slate-200 shadow-sm overflow-hidden flex flex-col mb-6">
         <div className="overflow-x-auto scrollbar-hide">
           <table className="w-full text-left border-collapse table-auto">
             <thead className="bg-[#f9fafb] border-b border-slate-200">
               <tr>
+                {!isReadOnly && (
+                  <th className="px-4 py-3.5 text-center w-[48px]">
+                    <input
+                      type="checkbox"
+                      checked={allItemsSelected}
+                      onChange={toggleSelectAllItems}
+                      aria-label="Select all items"
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    />
+                  </th>
+                )}
                 <th className="px-4 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">SKU</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Vendor Code</th>
                 <th className="px-3 py-3.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Item Name</th>
@@ -526,19 +817,30 @@ const CreatePurchaseOrder = () => {
             <tbody className="divide-y divide-slate-100">
               {productsLoading ? (
                 <tr>
-                  <td colSpan="9" className="px-8 py-12 text-center text-slate-500 font-bold">
+                  <td colSpan={isReadOnly ? 8 : 9} className="px-8 py-12 text-center text-slate-500 font-bold">
                     Loading products...
                   </td>
                 </tr>
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan="9" className="px-8 py-12 text-center text-slate-500 font-bold">
+                  <td colSpan={isReadOnly ? 8 : 9} className="px-8 py-12 text-center text-slate-500 font-bold">
                     No items found from API.
                   </td>
                 </tr>
               ) : (
                 items.map((item) => (
                   <tr key={item.id} className="hover:bg-slate-50/80 transition-colors group">
+                    {!isReadOnly && (
+                      <td className="px-4 py-3 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedItemIds.includes(item.id)}
+                          onChange={() => toggleSelectItem(item.id)}
+                          aria-label={`Select ${item.itemName}`}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                      </td>
+                    )}
                     <td className="px-4 py-3 text-[13px] font-semibold text-slate-600">{item.sku}</td>
                     <td className="px-3 py-3 text-[13px] font-medium text-slate-500">{item.vendorCode || '-'}</td>
                     <td className="px-3 py-3 text-[14px] font-bold text-slate-700">{item.itemName}</td>
@@ -576,7 +878,31 @@ const CreatePurchaseOrder = () => {
             </tbody>
           </table>
         </div>
-        <div className="p-4 bg-white border-t border-slate-100 flex justify-end items-center text-[12px] font-bold">
+        <div className="p-4 bg-white border-t border-slate-100 flex justify-between items-center gap-3 text-[12px] font-bold">
+          {!isReadOnly ? (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleRemoveSelectedItems}
+                disabled={!hasSelectedItems}
+                className="h-10 min-w-[136px] px-5 rounded-2xl border border-rose-200 bg-white text-rose-600 text-[13px] font-extrabold uppercase tracking-[2px] inline-flex items-center justify-center gap-2 hover:bg-rose-50 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 size={14} strokeWidth={2.2} />
+                Remove
+              </button>
+              <button
+                type="button"
+                onClick={handleRemoveAllItems}
+                disabled={items.length === 0}
+                className="h-10 min-w-[170px] px-5 rounded-2xl border border-rose-200 bg-white text-rose-600 text-[13px] font-extrabold uppercase tracking-[2px] inline-flex items-center justify-center gap-2 hover:bg-rose-50 transition-all disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <Trash2 size={14} strokeWidth={2.2} />
+                Remove All
+              </button>
+            </div>
+          ) : (
+            <div />
+          )}
           <div className="flex gap-10 text-slate-600 uppercase tracking-wider">
             <span>Total Qty: <span className="text-slate-900 ml-1">{totalQty.toFixed(2)}</span></span>
             <span>Total: <span className="text-slate-900 ml-1">$ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></span>
@@ -584,203 +910,10 @@ const CreatePurchaseOrder = () => {
         </div>
       </div>
 
-      {!isReadOnly && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <Card noPadding className="lg:col-span-2 border-slate-200 shadow-sm !rounded-lg overflow-visible">
-            {/* ... Product selection logic ... */}
-          <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">SKU / UPC</label>
-              <div className="relative">
-                <select
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500"
-                >
-                  <option value="">Select SKU / UPC</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.sku}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-              </div>
-            </div>
-            <div className="lg:col-span-3 flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Product Code</label>
-              <input
-                type="text"
-                value={selectedProduct?.vendorCode || ''}
-                readOnly
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-700 outline-none"
-              />
-            </div>
-            <div className="lg:col-span-4 flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Item Name</label>
-              <input
-                type="text"
-                readOnly
-                value={selectedProduct?.itemDisplay || selectedProduct?.itemName || ''}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-bold text-slate-600 outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Size</label>
-              <input
-                type="text"
-                readOnly
-                value={selectedProduct?.size || ''}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Pack</label>
-              <input
-                type="text"
-                readOnly
-                value={selectedProduct?.pack || ''}
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-600 outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Last Order Qty</label>
-              <input
-                type="text"
-                readOnly
-                value="0"
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Last Order Date</label>
-              <input
-                type="text"
-                readOnly
-                value=""
-                className="w-full h-10 px-3 rounded-lg border border-slate-200 bg-[#f9fafb] text-[14px] font-medium text-slate-500 outline-none"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider font-poppins text-sky-600">Quantity</label>
-              <input
-                type="number"
-                step="0.01"
-                value={addQty}
-                onChange={(e) => handleQtyChange(e.target.value)}
-                disabled={!buyAsBottle}
-                className={`w-full h-10 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
-                    buyAsBottle
-                      ? 'border border-sky-200 bg-white focus:border-sky-500'
-                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
-                  }`}
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Unit Cost</label>
-              <input
-                type="number"
-                step="0.01"
-                value={addUnitCost}
-                onChange={(e) => setAddUnitCost(e.target.value)}
-                disabled={!buyAsBottle}
-                className={`w-full h-10 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
-                  buyAsBottle
-                    ? 'border border-sky-200 bg-white focus:border-sky-500'
-                    : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
-                }`}
-              />
-            </div>
-            <div className="flex items-end">
-              <button
-                onClick={handleAddItem}
-                disabled={!selectedProduct}
-                className="w-full h-10 rounded-lg bg-[#0EA5E9] text-white text-[12px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 hover:bg-[#0284C7] transition-all active:scale-95 shadow-md shadow-sky-500/10"
-              >
-                <Plus size={18} />
-                Add Item
-              </button>
-            </div>
-          </div>
-        </Card>
-
-        <Card noPadding className="border-slate-200 shadow-sm !rounded-lg">
-          <div className="p-6 flex flex-col h-full">
-            <div className="space-y-3 mb-auto">
-              <div className="grid grid-cols-2 items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Qty</span>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={addCaseQty}
-                  onChange={(e) => handleCaseQtyChange(e.target.value)}
-                  disabled={buyAsBottle}
-                  className={`h-9 px-3 rounded-md text-right text-[14px] font-bold text-slate-800 outline-none ${
-                    !buyAsBottle
-                      ? 'border border-slate-200 bg-white focus:border-sky-500'
-                      : 'border border-slate-200 bg-[#f9fafb] text-slate-500 cursor-not-allowed'
-                  }`}
-                />
-              </div>
-              <div className="grid grid-cols-2 items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Cost</span>
-                <div className="h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
-                  $ {selectedCaseCost.toFixed(2)}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 items-center gap-3">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Case Units</span>
-                <div className="h-9 px-3 rounded-md border border-slate-200 bg-[#f9fafb] text-right text-[14px] font-bold text-slate-700 flex items-center justify-end">
-                  {selectedCaseUnits.toFixed(0)}
-                </div>
-              </div>
-
-              <label className="pt-1 inline-flex items-center gap-2 text-[13px] font-bold text-slate-700 select-none cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={buyAsBottle}
-                  onChange={(e) => {
-                    const checked = e.target.checked
-                    setBuyAsBottle(checked)
-                    if (checked) {
-                      setAddCaseQty('0')
-                    }
-                  }}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                />
-                Buy As Case
-              </label>
-            </div>
-
-            <div className="space-y-4 pt-6 mt-6 border-t border-slate-100">
-              <div className="flex justify-between items-center text-[12px] font-bold text-slate-400 uppercase tracking-wider">
-                <span>Total</span>
-                <span className="text-slate-800 font-black">$ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div className="flex justify-between items-center bg-[#f0f9ff]/50 p-4 rounded-xl border border-sky-100">
-                <h3 className="text-[16px] font-black text-slate-800 tracking-tight font-poppins">Total</h3>
-                <span className="text-2xl font-black text-sky-600 tracking-tighter">
-                  $ {totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-          </div>
-        </Card>
       </div>
-      )}
 
-      {isReadOnly && (
-        <div className="flex justify-end pt-4">
-           <Card className="w-full lg:max-w-md border-emerald-100 bg-emerald-50/10 !rounded-xl">
-             <div className="flex justify-between items-center text-emerald-800">
-                <span className="text-sm font-black uppercase tracking-tight">Order Status</span>
-                <span className="text-xs font-black px-4 py-1.5 bg-emerald-100 rounded-full">{poData?.status}</span>
-             </div>
-           </Card>
-        </div>
-      )}
-
-      <div className="flex justify-between items-center mt-8 border-t border-slate-200 pt-6">
+      <div className="sticky bottom-0 z-20 mt-4 border-t border-slate-200 bg-[#F8FAFC] pt-4">
+        <div className="flex justify-between items-center">
         <button
           onClick={openCalculator}
           className="h-10 px-5 rounded-lg border border-slate-300 bg-white text-slate-600 text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95"
@@ -806,6 +939,7 @@ const CreatePurchaseOrder = () => {
             </button>
           )}
         </div>
+      </div>
       </div>
     </div>
   )

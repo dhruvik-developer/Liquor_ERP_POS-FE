@@ -39,7 +39,7 @@ export const postStockAdjustments = async ({
 
   const results = []
   for (const entry of normalized) {
-    const response = await post('/inventory/adjustments/', {
+    const response = await post('/inventory/stock-adjustments/', {
       product: entry.product,
       adjustment_type: adjustmentType,
       quantity: entry.quantity,
@@ -51,4 +51,3 @@ export const postStockAdjustments = async ({
 
   return results
 }
-

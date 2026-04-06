@@ -15,6 +15,7 @@ import {
 import { usePosStore } from '../../store/usePosStore'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
+import { resolveMediaUrl } from '../../utils/url'
 
 const PosTerminalView = () => {
   const [isCompleting, setIsCompleting] = useState(false)
@@ -39,7 +40,7 @@ const PosTerminalView = () => {
       categoryId: p.category?.id || p.category || 'all',
       barcode: p.sku || p.barcode || '',
       price: Number(p.retail_price || p.price || 0),
-      image: p.image || null,
+      image: resolveMediaUrl(p.image) || null,
       stock: p.stock_quantity || 0,
       color: 'bg-emerald-500' 
     }))

@@ -17,7 +17,6 @@ import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
-import { postStockAdjustments } from '../../services/stockAdjustments'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -107,7 +106,6 @@ const CreatePurchaseBill = () => {
   const [selectedVendorId, setSelectedVendorId] = useState('')
   const [selectedOrderId, setSelectedOrderId] = useState('')
   const [billItems, setBillItems] = useState([])
-  const [stockSyncError, setStockSyncError] = useState('')
   const [charges, setCharges] = useState({
     tax1: 0,
     tax2: 0,
@@ -294,9 +292,7 @@ const CreatePurchaseBill = () => {
   )
 
   const handleSave = async () => {
-    let billSaved = false
     try {
-      setStockSyncError('')
       if (billItems.length === 0 || !selectedVendorId) return
 
       const isBillFromPurchaseOrder = Boolean(selectedOrder)
@@ -311,6 +307,7 @@ const CreatePurchaseBill = () => {
         vendor: Number(selectedVendorId) || null,
         purchase_order: purchaseOrderId,
         sales_person: salesPerson || '',
+        bill_number: invoiceNumber || '',
         invoice_number: invoiceNumber || '',
         bill_date: billDate,
         due_date: dueDate,
@@ -339,35 +336,18 @@ const CreatePurchaseBill = () => {
       }
 
       await post('/purchasing/bills/', payload)
-      billSaved = true
-
-      if (!isBillFromPurchaseOrder) {
-        await postStockAdjustments({
-          post,
-          entries: billItems.map((item) => ({
-            product: Number(item.productId),
-            quantity: Math.trunc(asNumber(item.qty) * Math.max(asNumber(item.bpc, 1), 1))
-          })),
-          adjustmentType: 'add',
-          reason: 'Direct Purchase Bill',
-          note: `Bill ${invoiceNumber || '-'} dated ${billDate || today}`
-        })
-      }
 
       navigate('/pos/purchase-bills')
     } catch(err) {
-      if (billSaved) {
-        setStockSyncError('Purchase bill save ho gaya, lekin stock adjustment sync nahi ho paya. Please inventory adjustments check karein.')
-      }
       console.error(err)
     }
   }
 
   return (
     <div className="space-y-6">
-      {(stockSyncError || apiError || vendorsError || ordersError || billsError) && (
+      {(apiError || vendorsError || ordersError || billsError) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
-          {stockSyncError || apiError || vendorsError || ordersError || billsError}
+          {apiError || vendorsError || ordersError || billsError}
         </div>
       )}
       

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState, useRef } from 'react'
+﻿import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { X, Plus, Image as ImageIcon, Trash2, Search, Save } from 'lucide-react'
 import Loader from '../common/Loader'
 import SelectionModal from '../common/SelectionModal'
@@ -9,6 +9,7 @@ import usePacks from '../../hooks/usePacks'
 import useBrands from '../../hooks/useBrands'
 import useSubCategories from '../../hooks/useSubCategories'
 import useSizes from '../../hooks/useSizes'
+import { resolveMediaUrl } from '../../utils/url'
 
 const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "", disabled = false }) => (
   <div className={`flex flex-col gap-1.5 group ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -135,6 +136,10 @@ const INITIAL_FORM_DATA = {
 const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product = null }) => {
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA)
+  const [isUpcModalOpen, setIsUpcModalOpen] = useState(false)
+  const [upcInput, setUpcInput] = useState('')
+  const [showUpcKeypad, setShowUpcKeypad] = useState(true)
+  const [selectedUpcIndex, setSelectedUpcIndex] = useState(null)
 
   const [selector, setSelector] = useState({
     isOpen: false,
@@ -189,6 +194,10 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
   const resetModalState = () => {
     setFormData(INITIAL_FORM_DATA)
     setSelector({ isOpen: false, title: '', data: [], field: '' })
+    setIsUpcModalOpen(false)
+    setUpcInput('')
+    setShowUpcKeypad(true)
+    setSelectedUpcIndex(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -280,6 +289,13 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     return `${value}`
   }
 
+  const getNormalizedUpcs = (upcsValue) => (
+    `${upcsValue || ''}`
+      .split(/\r?\n|,/)
+      .map(item => item.trim())
+      .filter(Boolean)
+  )
+
   useEffect(() => {
     if (!formData.category) return
     const hasCategory = Boolean(findLookupByName(CATEGORIES, formData.category))
@@ -324,12 +340,26 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
         minPrice: product.cost_pricing?.min_price || 0,
         upcs: product.stock_information?.enter_upcs || '',
         minWarnQty: product.stock_information?.min_warn_qty || 0,
-        image: product.image || product.image_base64 || null
+        image: product.image_base64 || resolveMediaUrl(product.image) || null
       })
     } else if (!isOpen) {
       resetModalState()
     }
   }, [product, isOpen])
+
+  const normalizedUpcs = useMemo(() => getNormalizedUpcs(formData.upcs), [formData.upcs])
+  const hasUpcs = normalizedUpcs.length > 0
+
+  useEffect(() => {
+    if (!hasUpcs) {
+      setSelectedUpcIndex(null)
+      return
+    }
+    if (selectedUpcIndex === null) return
+    if (selectedUpcIndex >= normalizedUpcs.length) {
+      setSelectedUpcIndex(normalizedUpcs.length - 1)
+    }
+  }, [hasUpcs, normalizedUpcs.length, selectedUpcIndex])
 
   if (!isOpen) return null
 
@@ -338,6 +368,9 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       alert('Product image is mandatory.')
       return
     }
+
+    const normalizedImage = `${formData.image || ''}`.trim()
+    const isBase64Image = normalizedImage.startsWith('data:image/')
 
     const payload = {
       sku: `${formData.sku || ''}`.trim(),
@@ -368,8 +401,11 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       stock_information: {
         enter_upcs: `${formData.upcs || ''}`.trim(),
         min_warn_qty: toSafeStringNumber(formData.minWarnQty)
-      },
-      image: formData.image
+      }
+    }
+
+    if (isBase64Image) {
+      payload.image = normalizedImage
     }
 
     if (product?.id) {
@@ -382,6 +418,92 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     }
     resetModalState()
     onClose()
+  }
+
+  const openUpcModal = () => {
+    setUpcInput('')
+    setShowUpcKeypad(true)
+    setIsUpcModalOpen(true)
+  }
+
+  const handleUpcKeypadInput = (digit) => {
+    setUpcInput(prev => `${prev}${digit}`)
+  }
+
+  const handleUpcBackspace = () => {
+    setUpcInput(prev => prev.slice(0, -1))
+  }
+
+  const handleUpcDelete = () => {
+    setUpcInput('')
+  }
+
+  const appendUpcToList = (upcValue) => {
+    const cleanValue = `${upcValue || ''}`.trim()
+    if (!cleanValue) return
+
+    setFormData(prev => {
+      const currentUpcs = getNormalizedUpcs(prev.upcs)
+      if (!currentUpcs.includes(cleanValue)) {
+        currentUpcs.push(cleanValue)
+        setSelectedUpcIndex(currentUpcs.length - 1)
+      }
+      return {
+        ...prev,
+        upcs: currentUpcs.join('\n')
+      }
+    })
+  }
+
+  const removeSelectedUpcFromList = () => {
+    if (selectedUpcIndex === null) return
+    setFormData(prev => {
+      const currentUpcs = getNormalizedUpcs(prev.upcs)
+      if (currentUpcs.length === 0 || selectedUpcIndex < 0 || selectedUpcIndex >= currentUpcs.length) {
+        return prev
+      }
+      currentUpcs.splice(selectedUpcIndex, 1)
+      return {
+        ...prev,
+        upcs: currentUpcs.join('\n')
+      }
+    })
+  }
+
+  const generateUpcCheckDigit = (elevenDigits) => {
+    const digits = `${elevenDigits || ''}`.split('').map(Number)
+    if (digits.length !== 11 || digits.some(Number.isNaN)) return 0
+    const oddSum = digits.reduce((sum, digit, index) => (index % 2 === 0 ? sum + digit : sum), 0)
+    const evenSum = digits.reduce((sum, digit, index) => (index % 2 === 1 ? sum + digit : sum), 0)
+    const total = (oddSum * 3) + evenSum
+    return (10 - (total % 10)) % 10
+  }
+
+  const generateAutoUpc = () => {
+    let base = ''
+    for (let index = 0; index < 11; index += 1) {
+      base += Math.floor(Math.random() * 10)
+    }
+    const checkDigit = generateUpcCheckDigit(base)
+    return `${base}${checkDigit}`
+  }
+
+  const handleAutoUpc = () => {
+    if (hasUpcs) return
+    const generatedUpc = generateAutoUpc()
+    appendUpcToList(generatedUpc)
+  }
+
+  const handleUpcOk = () => {
+    const cleanValue = `${upcInput || ''}`.trim()
+    if (!cleanValue) {
+      alert('Please enter a UPC.')
+      return
+    }
+    appendUpcToList(cleanValue)
+
+    setIsUpcModalOpen(false)
+    setUpcInput('')
   }
 
   return (
@@ -663,17 +785,51 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
                     <div className="md:col-span-8 space-y-4">
                       <div className="flex flex-col gap-1.5 group">
                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Enter UPCs</label>
-                         <textarea 
-                           value={formData.upcs}
-                           onChange={(e) => handleChange('upcs', e.target.value)}
-                           placeholder="Enter UPCs"
-                           className="w-full h-32 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:bg-white resize-none"
-                         />
+                         <div className="w-full h-32 rounded-xl border border-slate-200 bg-slate-50 px-2 py-2 text-sm font-bold text-slate-700 overflow-y-auto">
+                           {normalizedUpcs.length === 0 ? (
+                             <div className="h-full flex items-start px-2 py-1 text-slate-400">Enter UPCs</div>
+                           ) : (
+                             normalizedUpcs.map((upc, index) => (
+                               <button
+                                 key={`${upc}-${index}`}
+                                 type="button"
+                                 onClick={() => setSelectedUpcIndex(index)}
+                                 className={`w-full text-left px-2 py-1 rounded-lg transition-all ${
+                                   selectedUpcIndex === index
+                                     ? 'bg-sky-100 text-sky-700'
+                                     : 'text-slate-700 hover:bg-slate-100'
+                                 }`}
+                               >
+                                 {upc}
+                               </button>
+                             ))
+                           )}
+                         </div>
                       </div>
                       <div className="grid grid-cols-3 gap-3">
-                         <button className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all">Add UPC</button>
-                         <button className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all">Auto UPC</button>
-                         <button className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-red-500 hover:text-red-500 transition-all">Remove</button>
+                         <button
+                           type="button"
+                           onClick={openUpcModal}
+                           className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all"
+                         >
+                           Add UPC
+                         </button>
+                         <button
+                           type="button"
+                           onClick={handleAutoUpc}
+                           disabled={hasUpcs}
+                           className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                         >
+                           Auto UPC
+                         </button>
+                         <button
+                           type="button"
+                           onClick={removeSelectedUpcFromList}
+                           disabled={selectedUpcIndex === null}
+                           className="h-10 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-red-500 hover:text-red-500 transition-all disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:text-slate-600"
+                         >
+                           Remove
+                         </button>
                       </div>
                     </div>
                     <div className="md:col-span-4">
@@ -724,10 +880,93 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
             onClose={() => setSelector({ ...selector, isOpen: false })}
           />
         )}
+
+        {isUpcModalOpen && (
+          <div className="fixed inset-0 z-[120] bg-black/50 flex items-center justify-center p-4">
+            <div className="w-full max-w-2xl rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Enter UPC</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsUpcModalOpen(false)}
+                  className="h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors flex items-center justify-center"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="flex items-center gap-3">
+                  <label className="text-sm font-black uppercase tracking-widest text-slate-500">UPC :</label>
+                  <input
+                    type="text"
+                    value={upcInput}
+                    onChange={(e) => setUpcInput(e.target.value.replace(/[^\d]/g, ''))}
+                    className="h-12 flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 text-base font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white focus:ring-4 focus:ring-sky-500/10 transition-all"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowUpcKeypad(prev => !prev)}
+                    className="h-11 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all"
+                  >
+                    {showUpcKeypad ? 'Keys <<' : 'Keys >>'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleUpcOk}
+                    className="h-11 rounded-xl bg-sky-500 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all"
+                  >
+                    Ok
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsUpcModalOpen(false)}
+                    className="h-11 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-rose-400 hover:text-rose-500 transition-all"
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {showUpcKeypad && (
+                  <div className="border-t border-slate-200 pt-5">
+                    <div className="grid grid-cols-4 gap-3">
+                      <button type="button" onClick={() => handleUpcKeypadInput('7')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">7</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('8')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">8</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('9')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">9</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('00')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">00</button>
+
+                      <button type="button" onClick={() => handleUpcKeypadInput('4')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">4</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('5')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">5</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('6')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">6</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('0')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">0</button>
+
+                      <button type="button" onClick={() => handleUpcKeypadInput('1')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">1</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('2')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">2</button>
+                      <button type="button" onClick={() => handleUpcKeypadInput('3')} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-base font-black text-slate-700 hover:border-sky-500 hover:bg-white transition-all">3</button>
+                      <button type="button" onClick={handleUpcDelete} className="h-12 rounded-xl border border-slate-200 bg-slate-50 text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-rose-400 hover:text-rose-500 hover:bg-white transition-all">Delete</button>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleUpcBackspace}
+                      className="mt-3 h-11 w-full rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all"
+                    >
+                      Backspace
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 export default AddProductModal
+
 
