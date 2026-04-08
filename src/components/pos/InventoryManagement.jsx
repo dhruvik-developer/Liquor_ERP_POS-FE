@@ -97,7 +97,14 @@ const InventoryManagement = () => {
   // Map backend product data to match what the filter/table expects
   const mappedProducts = useMemo(() => {
     return products.map(p => {
-      const qty = Number(p.stock_quantity ?? p.quantity ?? p.stock_information?.quantity ?? 0) || 0
+      const qty = Number(
+        p.total_stock_available
+        ?? p.stock
+        ?? p.stock_quantity
+        ?? p.quantity
+        ?? p.stock_information?.quantity
+        ?? 0
+      ) || 0
       const price = Number(p.unit_price ?? p.cost_pricing?.unit_price) || 0
 
       return {
@@ -275,4 +282,3 @@ const InventoryManagement = () => {
 }
 
 export default InventoryManagement
-

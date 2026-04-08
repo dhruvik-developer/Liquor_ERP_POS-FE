@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ChevronDown, Calculator, Plus, Trash2 } from 'lucide-react'
+import { ChevronDown, Calculator, Plus, Trash2, X, Search } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
@@ -85,6 +85,11 @@ const CreatePurchaseOrder = () => {
   const [buyAsBottle, setBuyAsBottle] = useState(false)
   const [duplicateSku, setDuplicateSku] = useState('')
   const [selectedItemIds, setSelectedItemIds] = useState([])
+  
+  const [showVendorModal, setShowVendorModal] = useState(false)
+  const [showProductModal, setShowProductModal] = useState(false)
+  const [vendorSearch, setVendorSearch] = useState('')
+  const [productSearch, setProductSearch] = useState('')
 
   const { data: vendorsData, loading: vendorsLoading, error: vendorsError } = useFetch('/people/vendors/')
   const { data: productsData, loading: productsLoading, error: productsError } = useFetch('/inventory/products/')
@@ -100,6 +105,30 @@ const CreatePurchaseOrder = () => {
     if (Array.isArray(vendorsData?.data)) return vendorsData.data
     return []
   }, [vendorsData])
+
+  const vendorOptions = useMemo(() => {
+    return vendors.map((v) => ({
+      ...v,
+      id: v.id,
+      name: v.vendor_name || v.company_name || v.name || `Vendor ${v.id}`,
+      subText: v.phone || v.email || '',
+      salesPerson: v.sales_person || v.contact_name || v.contact_person || 'N/A'
+    }))
+  }, [vendors])
+
+  const filteredVendorOptions = useMemo(() => {
+    const q = vendorSearch.toLowerCase().trim()
+    if (!q) return vendorOptions
+    return vendorOptions.filter(v => 
+      v.name.toLowerCase().includes(q) || 
+      String(v.id).includes(q) || 
+      v.salesPerson.toLowerCase().includes(q)
+    )
+  }, [vendorOptions, vendorSearch])
+
+  const selectedVendorLabel = useMemo(() => {
+    return vendorOptions.find((v) => String(v.id) === String(selectedVendor))?.name || ''
+  }, [vendorOptions, selectedVendor])
 
   const products = useMemo(() => {
     const productList = Array.isArray(productsData)
@@ -165,6 +194,27 @@ const CreatePurchaseOrder = () => {
       }
     })
   }, [productsData])
+
+  const productOptions = useMemo(() => {
+    return products.map((p) => ({
+      ...p,
+      name: p.sku || `Product ${p.id}`,
+      subText: p.itemName
+    }))
+  }, [products])
+
+  const filteredProductOptions = useMemo(() => {
+    const q = productSearch.toLowerCase().trim()
+    if (!q) return productOptions
+    return productOptions.filter(p => 
+      p.name.toLowerCase().includes(q) || 
+      p.subText.toLowerCase().includes(q)
+    )
+  }, [productOptions, productSearch])
+
+  const selectedProductLabel = useMemo(() => {
+    return productOptions.find((p) => String(p.id) === String(selectedProductId))?.name || ''
+  }, [productOptions, selectedProductId])
 
   const poNumberValue = useMemo(() => {
     if (poData) return getFirstDefined(poData.po_number, poData.po_no, poData.number, poData.order_number) || ''
@@ -463,23 +513,17 @@ const CreatePurchaseOrder = () => {
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Select Vendor</label>
               <div className="relative">
-                <select
-                  value={selectedVendor}
-                  onChange={(e) => {
-                    setSelectedVendor(e.target.value)
-                    setAddress('')
-                  }}
+                <button
+                  type="button"
+                  onClick={() => !isReadOnly && setShowVendorModal(true)}
                   disabled={isReadOnly}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none flex items-center justify-between focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500 shadow-sm"
                 >
-                  <option value="">Select a Vendor</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.vendor_name || vendor.company_name || vendor.name || `Vendor ${vendor.id}`}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <span className={selectedVendorLabel ? 'text-slate-700' : 'text-slate-400'}>
+                    {selectedVendorLabel || 'Select a Vendor'}
+                  </span>
+                  <ChevronDown className="text-slate-400" size={16} />
+                </button>
               </div>
             </div>
             <div className="flex flex-col gap-1.5">
@@ -588,19 +632,16 @@ const CreatePurchaseOrder = () => {
             <div className="flex flex-col gap-1.5 lg:col-span-3">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">SKU / UPC</label>
               <div className="relative">
-                <select
-                  value={selectedProductId}
-                  onChange={(e) => setSelectedProductId(e.target.value)}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500"
+                <button
+                  type="button"
+                  onClick={() => setShowProductModal(true)}
+                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none flex items-center justify-between focus:border-sky-500 transition-all shadow-sm"
                 >
-                  <option value="">Select SKU / UPC</option>
-                  {products.map((product) => (
-                    <option key={product.id} value={product.id}>
-                      {product.sku}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                  <span className={selectedProductLabel ? 'text-slate-700' : 'text-slate-400'}>
+                    {selectedProductLabel || 'Select SKU / UPC'}
+                  </span>
+                  <ChevronDown className="text-slate-400" size={16} />
+                </button>
               </div>
             </div>
             <div className="flex flex-col gap-1.5 lg:col-span-4">
@@ -914,33 +955,147 @@ const CreatePurchaseOrder = () => {
 
       <div className="sticky bottom-0 z-20 mt-4 border-t border-slate-200 bg-[#F8FAFC] pt-4">
         <div className="flex justify-between items-center">
-        <button
-          onClick={openCalculator}
-          className="h-10 px-5 rounded-lg border border-slate-300 bg-white text-slate-600 text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95"
-        >
-          <Calculator size={18} className="text-slate-400" />
-          Calculator
-        </button>
-
-        <div className="flex items-center gap-4">
           <button
-            onClick={() => navigate('/pos/purchase-orders')}
-            className="px-8 h-10 rounded-lg bg-slate-200 text-slate-700 text-[13px] font-bold uppercase tracking-wider hover:bg-slate-300 transition-all active:scale-95"
+            onClick={openCalculator}
+            className="h-10 px-5 rounded-lg border border-slate-300 bg-white text-slate-600 text-[12px] font-bold uppercase tracking-wider flex items-center gap-2 hover:border-[#0EA5E9] hover:text-[#0EA5E9] transition-all active:scale-95"
           >
-            Close
+            <Calculator size={18} className="text-slate-400" />
+            Calculator
           </button>
-          {!isReadOnly && (
+
+          <div className="flex items-center gap-4">
             <button
-              onClick={handleSave}
-              disabled={saving || vendorsLoading || productsLoading || ordersLoading}
-              className="px-10 h-10 rounded-lg bg-[#0EA5E9] text-white text-[13px] font-bold uppercase tracking-wider hover:bg-[#0284C7] transition-all active:scale-95 shadow-md shadow-sky-500/20 disabled:opacity-50"
+              onClick={() => navigate('/pos/purchase-orders')}
+              className="px-8 h-10 rounded-lg bg-slate-200 text-slate-700 text-[13px] font-bold uppercase tracking-wider hover:bg-slate-300 transition-all active:scale-95"
             >
-              {saving ? 'Saving...' : id ? 'Update' : 'Save'}
+              Close
             </button>
-          )}
+            {!isReadOnly && (
+              <button
+                onClick={handleSave}
+                disabled={saving}
+                className="px-10 h-10 rounded-lg bg-[#0EA5E9] text-white text-[13px] font-bold uppercase tracking-wider hover:bg-[#0284C7] transition-all active:scale-95 shadow-md shadow-sky-500/20 disabled:opacity-50"
+              >
+                {saving ? 'Saving...' : id ? 'Update' : 'Save'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
-      </div>
+
+      {showVendorModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="h-14 border-b border-slate-100 px-6 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Select Vendor</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowVendorModal(false)
+                  setVendorSearch('')
+                }}
+                className="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={vendorSearch}
+                  onChange={(e) => setVendorSearch(e.target.value)}
+                  placeholder="Search vendor..."
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                />
+                <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+
+              <div className="max-h-80 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100">
+                {filteredVendorOptions.length === 0 ? (
+                  <div className="px-4 py-6 text-sm font-bold text-slate-400 text-center">
+                    No vendor found.
+                  </div>
+                ) : (
+                  filteredVendorOptions.map((vendor) => (
+                    <button
+                      key={vendor.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedVendor(String(vendor.id))
+                        setAddress('')
+                        setShowVendorModal(false)
+                        setVendorSearch('')
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-sky-50 transition-all"
+                    >
+                      <div className="text-sm font-black text-slate-700">{vendor.name}</div>
+                      <div className="text-xs font-bold text-slate-400">ID: {vendor.id}</div>
+                      <div className="text-xs font-bold text-slate-400">Sales Person: {vendor.salesPerson || '-'}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showProductModal && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="h-14 border-b border-slate-100 px-6 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Select Product</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowProductModal(false)
+                  setProductSearch('')
+                }}
+                className="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Search SKU / UPC..."
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                />
+                <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+
+              <div className="max-h-80 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100">
+                {filteredProductOptions.length === 0 ? (
+                  <div className="px-4 py-6 text-sm font-bold text-slate-400 text-center">
+                    No product found.
+                  </div>
+                ) : (
+                  filteredProductOptions.map((product) => (
+                    <button
+                      key={product.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedProductId(String(product.id))
+                        setShowProductModal(false)
+                        setProductSearch('')
+                      }}
+                      className="w-full px-4 py-3 text-left hover:bg-sky-50 transition-all"
+                    >
+                      <div className="text-sm font-black text-slate-700">{product.name}</div>
+                      <div className="text-xs font-bold text-slate-400">{product.subText}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

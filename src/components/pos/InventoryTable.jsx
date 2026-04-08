@@ -21,7 +21,6 @@ const InventoryTable = ({ products, onEdit }) => {
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Qty</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Reorder Level</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Min Qty</th>
-            <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap">Type</th>
             <th className="px-6 py-4 text-[12px] font-bold text-[#64748B] uppercase tracking-wider whitespace-nowrap text-center">Actions</th>
           </tr>
         </thead>
@@ -39,7 +38,6 @@ const InventoryTable = ({ products, onEdit }) => {
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.qty)}</td>
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.reorderLevel)}</td>
                 <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{formatNumber(item.minQty)}</td>
-                <td className="px-6 py-4 text-[14px] font-medium text-[#64748B]">{item.type || '-'}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center justify-center gap-2">
                     <button 

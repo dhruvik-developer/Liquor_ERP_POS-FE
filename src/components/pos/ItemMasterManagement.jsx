@@ -115,7 +115,6 @@ const getDefaultForm = activeTab => {
     return {
       name: '',
       localized_name: '',
-      category: '',
       uom: '',
       no_of_units: '',
       units_in_case: '',
@@ -124,6 +123,7 @@ const getDefaultForm = activeTab => {
       unit_price_uom: '',
     }
   }
+  if (activeTab === 'pack') return { name: '', localized_name: '', units_in_pack: '' }
   return { name: '', localized_name: '' }
 }
 
@@ -181,6 +181,7 @@ const ItemMasterManagement = () => {
         item?.category_display,
         item?.category_department_name,
         normalizeRelationName(item, 'uom', 'uom_name'),
+        item?.units_in_pack,
       ]
       return tokens.some(token => String(token || '').toLowerCase().includes(query))
     })
@@ -213,13 +214,16 @@ const ItemMasterManagement = () => {
       next.category = String(getId(item?.category) || '')
     }
     if (activeTab === 'size') {
-      next.category = String(getId(item?.category) || '')
       next.uom = String(getId(item?.uom) || '')
       next.no_of_units = item?.no_of_units !== undefined && item?.no_of_units !== null ? String(item.no_of_units) : ''
       next.units_in_case = item?.units_in_case !== undefined && item?.units_in_case !== null ? String(item.units_in_case) : ''
       next.tax_factor = item?.tax_factor !== undefined && item?.tax_factor !== null ? String(item.tax_factor) : ''
       next.unit_price_factor = item?.unit_price_factor !== undefined && item?.unit_price_factor !== null ? String(item.unit_price_factor) : ''
       next.unit_price_uom = String(getId(item?.unit_price_uom) || '')
+    }
+    if (activeTab === 'pack') {
+      const packUnits = item?.units_in_pack ?? item?.units_in_case
+      next.units_in_pack = packUnits !== undefined && packUnits !== null ? String(packUnits) : ''
     }
 
     setEditingItem(item)
@@ -273,9 +277,7 @@ const ItemMasterManagement = () => {
     }
 
     if (activeTab === 'size') {
-      const categoryId = Number(formData.category)
       const uomId = Number(formData.uom)
-      if (!categoryId) throw new Error('Category is required.')
       if (!uomId) throw new Error('UOM is required.')
       const noOfUnits = formData.no_of_units === '' ? null : Number(formData.no_of_units)
       const unitsInCase = formData.units_in_case === '' ? null : Number(formData.units_in_case)
@@ -291,13 +293,21 @@ const ItemMasterManagement = () => {
       return {
         name: baseName,
         localized_name: formData.localized_name?.trim() || '',
-        category: categoryId,
         uom: uomId,
         ...(noOfUnits !== null ? { no_of_units: noOfUnits } : {}),
         ...(unitsInCase !== null ? { units_in_case: unitsInCase } : {}),
         ...(taxFactor !== null ? { tax_factor: taxFactor } : {}),
         ...(unitPriceFactor !== null ? { unit_price_factor: unitPriceFactor } : {}),
         ...(unitPriceUomId !== null ? { unit_price_uom: unitPriceUomId } : {}),
+      }
+    }
+    if (activeTab === 'pack') {
+      const unitsInPack = formData.units_in_pack === '' ? null : Number(formData.units_in_pack)
+      if (unitsInPack !== null && Number.isNaN(unitsInPack)) throw new Error('Units In Pack must be numeric.')
+      return {
+        name: baseName,
+        localized_name: formData.localized_name?.trim() || '',
+        ...(unitsInPack !== null ? { units_in_pack: unitsInPack } : {}),
       }
     }
 
@@ -366,7 +376,6 @@ const ItemMasterManagement = () => {
       return [
         { key: 'id', title: 'ID', render: item => item.id ?? '-' },
         { key: 'name', title: 'SIZE', render: item => item.name || '-' },
-        { key: 'category', title: 'CATEGORY', render: item => normalizeRelationName(item, 'category', 'category_name') },
         { key: 'uom', title: 'UOM', render: item => normalizeRelationName(item, 'uom', 'uom_name') },
         { key: 'no_of_units', title: 'UNITS', render: item => item.no_of_units || '-' },
         { key: 'units_in_case', title: 'CASE QTY', render: item => item.units_in_case || '-' },
@@ -383,6 +392,7 @@ const ItemMasterManagement = () => {
       return [
         { key: 'id', title: 'ID', render: item => item.id ?? '-' },
         { key: 'name', title: 'PACK', render: item => item.name || '-' },
+        { key: 'units_in_pack', title: 'UNITS IN PACK', render: item => item.units_in_pack ?? item.units_in_case ?? '-' },
       ]
     }
     return [
@@ -587,19 +597,6 @@ const ItemMasterManagement = () => {
               {activeTab === 'size' && (
                 <>
                   <select
-                    value={formData.category || ''}
-                    onChange={event => setFormData(prev => ({ ...prev, category: event.target.value }))}
-                    className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
-                  >
-                    <option value="">Select Category *</option>
-                    {categories.map(category => (
-                      <option key={category.id || category.name} value={String(category.id || '')}>
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
                     value={formData.uom || ''}
                     onChange={event => setFormData(prev => ({ ...prev, uom: event.target.value }))}
                     className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
@@ -664,6 +661,16 @@ const ItemMasterManagement = () => {
                       </div>
                     </div>
                 </>
+              )}
+
+              {activeTab === 'pack' && (
+                <input
+                  type="number"
+                  value={formData.units_in_pack || ''}
+                  onChange={event => setFormData(prev => ({ ...prev, units_in_pack: event.target.value }))}
+                  placeholder="Units In Pack"
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                />
               )}
             </div>
 

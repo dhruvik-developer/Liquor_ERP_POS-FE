@@ -119,10 +119,18 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
           setFormError('Pack Name is required.')
           return
         }
+        const unitsInPack = formData.units_in_pack === '' || formData.units_in_pack === undefined
+          ? null
+          : Number(formData.units_in_pack)
+        if (unitsInPack !== null && Number.isNaN(unitsInPack)) {
+          setFormError('Units In Pack must be numeric.')
+          return
+        }
 
         const payload = {
           name: formData.name.trim(),
           localized_name: (formData.localName || '').trim(),
+          ...(unitsInPack !== null ? { units_in_pack: unitsInPack } : {}),
         }
 
         const response = await post('/lookups/packs/', payload)
@@ -132,12 +140,6 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
       } else if (isSize) {
         if (!formData.name?.trim()) {
           setFormError('Size Name is required.')
-          return
-        }
-
-        const categoryId = Number(formData.category) || null
-        if (!categoryId) {
-          setFormError('Category is required.')
           return
         }
 
@@ -174,7 +176,6 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
         const payload = {
           name: formData.name.trim(),
           localized_name: (formData.localName || '').trim(),
-          category: categoryId,
           uom: uomId,
           ...(noOfUnits !== null ? { no_of_units: noOfUnits } : {}),
           ...(unitsInCase !== null ? { units_in_case: unitsInCase } : {}),
@@ -303,23 +304,6 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                   onChange={(e) => handleChange('localName', e.target.value)}
                   className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <select 
-                  value={formData.category || ''}
-                  onChange={(e) => handleChange('category', e.target.value)}
-                  disabled={categoriesLoading}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <option value="">
-                    {categoriesLoading ? 'Loading Categories...' : 'Select Category'}
-                  </option>
-                  {categories.map(category => (
-                    <option key={category.id || category.name} value={String(category.id || '')}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
               </div>
               <div className="flex flex-col gap-1.5">
                 <select 
@@ -522,6 +506,15 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                   placeholder="Localized Name"
                   value={formData.localName || ''}
                   onChange={(e) => handleChange('localName', e.target.value)}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <input
+                  type="number"
+                  placeholder="Units In Pack"
+                  value={formData.units_in_pack || ''}
+                  onChange={(e) => handleChange('units_in_pack', e.target.value)}
                   className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                 />
               </div>

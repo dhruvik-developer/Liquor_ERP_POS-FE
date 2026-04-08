@@ -133,6 +133,8 @@ const INITIAL_FORM_DATA = {
   image: null
 }
 
+const UPC_LOOKUP_BASE_URL = import.meta.env.VITE_UPC_LOOKUP_BASE_URL || '/upc-lookup'
+
 const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product = null }) => {
   const fileInputRef = useRef(null);
   const [formData, setFormData] = useState(INITIAL_FORM_DATA)
@@ -140,6 +142,9 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
   const [upcInput, setUpcInput] = useState('')
   const [showUpcKeypad, setShowUpcKeypad] = useState(true)
   const [selectedUpcIndex, setSelectedUpcIndex] = useState(null)
+  const [isImageSourceModalOpen, setIsImageSourceModalOpen] = useState(false)
+  const [isUpcImageSelectorOpen, setIsUpcImageSelectorOpen] = useState(false)
+  const [isFetchingUpcImage, setIsFetchingUpcImage] = useState(false)
 
   const [selector, setSelector] = useState({
     isOpen: false,
@@ -198,6 +203,9 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     setUpcInput('')
     setShowUpcKeypad(true)
     setSelectedUpcIndex(null)
+    setIsImageSourceModalOpen(false)
+    setIsUpcImageSelectorOpen(false)
+    setIsFetchingUpcImage(false)
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -257,8 +265,63 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     setSelector({ ...selector, isOpen: false })
   }
 
+  const triggerManualImageUpload = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click()
+    }
+  }
+
+  const fetchImageFromUpc = async (upc) => {
+    const cleanUpc = `${upc || ''}`.trim()
+    if (!cleanUpc) return
+
+    setIsFetchingUpcImage(true)
+    try {
+      const response = await fetch(`${UPC_LOOKUP_BASE_URL}/${encodeURIComponent(cleanUpc)}`)
+      if (!response.ok) {
+        throw new Error(`Lookup failed with status ${response.status}`)
+      }
+
+      const lookupData = await response.json()
+      const fetchedImageUrl = lookupData?.product?.imageUrl
+      if (!fetchedImageUrl) {
+        alert('Selected UPC ke liye image nahi mili.')
+        return
+      }
+
+      setFormData(prev => ({ ...prev, image: fetchedImageUrl }))
+      setIsImageSourceModalOpen(false)
+      setIsUpcImageSelectorOpen(false)
+    } catch (err) {
+      console.error('UPC image lookup failed:', err)
+      alert('UPC se image fetch nahi ho paayi. Please manual image upload karein.')
+    } finally {
+      setIsFetchingUpcImage(false)
+    }
+  }
+
+  const handleFetchFromUpcOption = async () => {
+    if (!hasUpcs) {
+      alert('Please add at least one UPC first.')
+      setIsImageSourceModalOpen(false)
+      return
+    }
+
+    if (normalizedUpcs.length === 1) {
+      await fetchImageFromUpc(normalizedUpcs[0])
+      return
+    }
+
+    setIsImageSourceModalOpen(false)
+    setIsUpcImageSelectorOpen(true)
+  }
+
   const handleImageClick = () => {
-    fileInputRef.current.click()
+    if (!hasUpcs) {
+      triggerManualImageUpload()
+      return
+    }
+    setIsImageSourceModalOpen(true)
   }
 
   const handleFileChange = (e) => {
@@ -370,7 +433,6 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     }
 
     const normalizedImage = `${formData.image || ''}`.trim()
-    const isBase64Image = normalizedImage.startsWith('data:image/')
 
     const payload = {
       sku: `${formData.sku || ''}`.trim(),
@@ -404,7 +466,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       }
     }
 
-    if (isBase64Image) {
+    if (normalizedImage) {
       payload.image = normalizedImage
     }
 
@@ -706,11 +768,11 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 
                 <div className="space-y-4">
                   {formData.image ? (
-                    <div className="relative group aspect-video w-full rounded-xl overflow-hidden border border-slate-200 bg-slate-50 mb-4">
+                    <div className="relative group aspect-video w-full rounded-xl overflow-hidden border border-slate-200 bg-white mb-4">
                       <img 
                         src={formData.image} 
                         alt="Product Preview" 
-                        className="w-full h-full object-cover" 
+                        className="w-full h-full object-contain p-2" 
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button 
@@ -956,6 +1018,79 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
                     >
                       Backspace
                     </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isImageSourceModalOpen && (
+          <div className="fixed inset-0 z-[130] bg-black/50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Select Image Source</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsImageSourceModalOpen(false)}
+                  className="h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors flex items-center justify-center"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-6 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsImageSourceModalOpen(false)
+                    triggerManualImageUpload()
+                  }}
+                  disabled={isFetchingUpcImage}
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-white text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Upload Manually
+                </button>
+                <button
+                  type="button"
+                  onClick={handleFetchFromUpcOption}
+                  disabled={isFetchingUpcImage}
+                  className="w-full h-11 rounded-xl bg-sky-500 text-[11px] font-black uppercase tracking-widest text-white shadow-lg shadow-sky-500/20 hover:bg-sky-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Fetch From UPC
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isUpcImageSelectorOpen && (
+          <div className="fixed inset-0 z-[131] bg-black/50 flex items-center justify-center p-4">
+            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 bg-slate-50">
+                <h3 className="text-sm font-black uppercase tracking-widest text-slate-800">Select UPC</h3>
+                <button
+                  type="button"
+                  onClick={() => setIsUpcImageSelectorOpen(false)}
+                  className="h-8 w-8 rounded-full border border-slate-200 bg-white text-slate-500 hover:text-slate-800 hover:border-slate-300 transition-colors flex items-center justify-center"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="p-6 space-y-3 max-h-[60vh] overflow-y-auto">
+                {normalizedUpcs.map((upc, index) => (
+                  <button
+                    key={`${upc}-${index}`}
+                    type="button"
+                    onClick={() => fetchImageFromUpc(upc)}
+                    disabled={isFetchingUpcImage}
+                    className="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 text-left text-[11px] font-black uppercase tracking-widest text-slate-600 hover:border-sky-500 hover:text-sky-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {upc}
+                  </button>
+                ))}
+                {isFetchingUpcImage && (
+                  <div className="text-[11px] font-black uppercase tracking-widest text-sky-500 text-center pt-1">
+                    Fetching image...
                   </div>
                 )}
               </div>

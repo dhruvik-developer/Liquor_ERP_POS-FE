@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
-  Calendar, 
   ChevronDown, 
   Search, 
   Calculator, 
@@ -9,73 +8,433 @@ import {
   X,
   Trash2,
   CheckCircle2,
-  RefreshCcw,
-  MinusCircle
+  RefreshCcw
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
+import useFetch from '../../hooks/useFetch'
+
+const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
+const toSearchValue = (value) => String(value ?? '').trim().toLowerCase()
+const toInputDate = (value) => {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+const reindexItems = (list) => list.map((item, index) => ({ ...item, sr: index + 1 }))
 
 const CreatePurchaseReturn = () => {
   const { openCalculator } = useCalculator()
   const navigate = useNavigate()
-  const [returnDate, setReturnDate] = useState('2025-11-26')
-  const [billDate, setBillDate] = useState('2025-11-25')
-  const [dueDate, setDueDate] = useState('2025-11-26')
-  const [items, setItems] = useState([
-    { id: 1, sr: 1, sku: '6409', description: 'CAMPO VIEJO CRIANZA', sizePack: '750 ML', unitCost: 10.20, qtyReceived: 12.000, qtyReturn: 12.000, landingCost: 122.990, amount: 122.990, selected: true },
-    { id: 2, sr: 2, sku: '5302', description: 'SUTTER HOME CABERNET', sizePack: '187 ML 4-Pack', unitCost: 6.000, qtyReceived: 12.000, qtyReturn: 6.000, landingCost: 36.000, amount: 36.000, selected: true },
-    { id: 3, sr: 3, sku: '5301', description: 'SUTTER HOME CHARDONNAY', sizePack: '187 ML 4-Pack', unitCost: 6.000, qtyReceived: 12.000, qtyReturn: 6.000, landingCost: 36.000, amount: 36.000, selected: true },
-    { id: 4, sr: 4, sku: '5955', description: 'SUTTER HOME PINOT GRIGIO', sizePack: '187 ML 4-Pack', unitCost: 6.000, qtyReceived: 12.000, qtyReturn: 6.000, landingCost: 36.000, amount: 36.000, selected: true },
-    { id: 5, sr: 5, sku: '7201', description: 'SUTTER HOME SAUVIGNON BLAN', sizePack: '187 ML 4-Pack', unitCost: 6.000, qtyReceived: 12.000, qtyReturn: 6.000, landingCost: 36.000, amount: 36.000, selected: true },
-  ])
+  const today = toInputDate(new Date())
+  const [returnDate, setReturnDate] = useState(today)
+  const [billDate, setBillDate] = useState('')
+  const [dueDate, setDueDate] = useState('')
+  const [items, setItems] = useState([])
 
-  const [totalReturns, setTotalReturns] = useState(47)
-  const [subTotal, setSubTotal] = useState(303.960)
-  const [otherCharges, setOtherCharges] = useState(0.000)
+  const totalReturns = useMemo(
+    () => items.reduce((acc, item) => acc + (Number(item.qtyReturn) || 0), 0),
+    [items]
+  )
+  const subTotal = useMemo(
+    () => items.reduce((acc, item) => acc + (item.unitCost * (Number(item.qtyReturn) || 0)), 0),
+    [items]
+  )
+  const [otherCharges, setOtherCharges] = useState(0)
+  const [selectedVendorId, setSelectedVendorId] = useState('')
+  const [selectedBillId, setSelectedBillId] = useState('')
+  const [vendorSearch, setVendorSearch] = useState('')
+  const [isVendorModalOpen, setIsVendorModalOpen] = useState(false)
+  const [vendorContact, setVendorContact] = useState('')
+  const [billInternalId, setBillInternalId] = useState('')
+  const [returnBillNumber, setReturnBillNumber] = useState('')
+  const [invoiceSearchValue, setInvoiceSearchValue] = useState('')
+  const [invoiceSearchMessage, setInvoiceSearchMessage] = useState('')
+  const [paidStatus, setPaidStatus] = useState('Paid')
+  const [note, setNote] = useState('')
 
-  useEffect(() => {
-    const qty = items.reduce((acc, item) => acc + (Number(item.qtyReturn) || 0), 0)
-    const sub = items.reduce((acc, item) => acc + (item.unitCost * (Number(item.qtyReturn) || 0)), 0)
-    // Synchronize for demo purposes if needed, but keeping user numbers for static look
-  }, [items])
+  const selectedItemsCount = useMemo(
+    () => items.filter((item) => item.selected).length,
+    [items]
+  )
+  const allItemsSelected = items.length > 0 && selectedItemsCount === items.length
+  const someItemsSelected = selectedItemsCount > 0 && selectedItemsCount < items.length
 
-  const handleReturnChange = (id, val) => {
-    setItems(items.map(item => item.id === id ? { ...item, qtyReturn: val } : item))
+  const handleReturnChange = (lineKey, val) => {
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.lineKey === lineKey ? { ...item, qtyReturn: val } : item
+      )
+    )
   }
 
-  const toggleSelect = (id) => {
-    setItems(items.map(item => item.id === id ? { ...item, selected: !item.selected } : item))
+  const toggleSelect = (lineKey) => {
+    setItems((currentItems) =>
+      currentItems.map((item) =>
+        item.lineKey === lineKey ? { ...item, selected: !item.selected } : item
+      )
+    )
+  }
+
+  const toggleSelectAll = () => {
+    const nextSelectedState = !allItemsSelected
+    setItems((currentItems) =>
+      currentItems.map((item) => ({ ...item, selected: nextSelectedState }))
+    )
+  }
+
+  const resetPurchaseReturnForm = () => {
+    setReturnDate(today)
+    setBillDate('')
+    setDueDate('')
+    setItems([])
+    setOtherCharges(0)
+    setSelectedVendorId('')
+    setSelectedBillId('')
+    setVendorContact('')
+    setBillInternalId('')
+    setReturnBillNumber('')
+    setInvoiceSearchValue('')
+    setInvoiceSearchMessage('')
+    setPaidStatus('Paid')
+    setNote('')
+  }
+
+  const handleRemoveSelected = () => {
+    if (selectedItemsCount === 0) return
+    const remainingItems = reindexItems(items.filter((item) => !item.selected))
+    if (remainingItems.length === 0) {
+      resetPurchaseReturnForm()
+      return
+    }
+    setItems(remainingItems)
+  }
+
+  const handleRemoveAll = () => {
+    if (items.length === 0) return
+    resetPurchaseReturnForm()
   }
 
   const { post, loading, error: apiError } = useApi()
+  const { data: billsData, loading: billsLoading, error: billsError } = useFetch('/purchasing/bills/')
+  const { data: vendorsData, error: vendorsError } = useFetch('/people/vendors/')
+  const { data: productsData, error: productsError } = useFetch('/inventory/products/')
+
+  const purchaseBills = useMemo(() => {
+    if (Array.isArray(billsData)) return billsData
+    if (Array.isArray(billsData?.results)) return billsData.results
+    if (Array.isArray(billsData?.data?.results)) return billsData.data.results
+    if (Array.isArray(billsData?.data)) return billsData.data
+    return []
+  }, [billsData])
+
+  const vendors = useMemo(() => {
+    if (Array.isArray(vendorsData)) return vendorsData
+    if (Array.isArray(vendorsData?.results)) return vendorsData.results
+    if (Array.isArray(vendorsData?.data?.results)) return vendorsData.data.results
+    if (Array.isArray(vendorsData?.data)) return vendorsData.data
+    return []
+  }, [vendorsData])
+
+  const vendorsById = useMemo(() => {
+    const map = new Map()
+    vendors.forEach((vendor, index) => {
+      const vendorId = String(getFirstDefined(vendor?.id, vendor?.vendor_id, '')).trim()
+      if (!vendorId) return
+      map.set(vendorId, {
+        id: vendorId,
+        name: String(getFirstDefined(vendor?.vendor_name, vendor?.company_name, vendor?.name, `Vendor ${index + 1}`)).trim(),
+        contact: String(
+          getFirstDefined(
+            vendor?.contact_name,
+            vendor?.contact_person,
+            vendor?.phone,
+            vendor?.email,
+            vendor?.company_name,
+            ''
+          )
+        ).trim()
+      })
+    })
+    return map
+  }, [vendors])
+
+  const products = useMemo(() => {
+    if (Array.isArray(productsData)) return productsData
+    if (Array.isArray(productsData?.results)) return productsData.results
+    if (Array.isArray(productsData?.data?.results)) return productsData.data.results
+    if (Array.isArray(productsData?.data)) return productsData.data
+    return []
+  }, [productsData])
+
+  const productsById = useMemo(() => {
+    const map = new Map()
+    products.forEach((product) => {
+      const productId = String(getFirstDefined(product?.id, product?.product_id, '')).trim()
+      if (!productId) return
+      const size = getFirstDefined(product?.size?.name, product?.size_name, product?.size, '')
+      const pack = getFirstDefined(product?.pack?.name, product?.pack_name, product?.pack, '')
+      map.set(productId, {
+        sku: String(getFirstDefined(product?.sku, product?.barcode, product?.upc, '-')),
+        description: String(getFirstDefined(product?.item_name, product?.name, product?.product_name, 'N/A')),
+        sizePack: [size, pack].filter(Boolean).join(' / ') || '-'
+      })
+    })
+    return map
+  }, [products])
+
+  const vendorOptions = useMemo(() => {
+    const lookup = new Map()
+
+    purchaseBills.forEach((bill) => {
+      const vendorId = String(getFirstDefined(bill?.vendor?.id, bill?.vendor_id, bill?.vendor, '')).trim()
+      if (!vendorId) return
+
+      const vendorFromPeople = vendorsById.get(vendorId)
+      const billSalesPerson = String(getFirstDefined(bill?.sales_person, bill?.salesperson, '')).trim()
+
+      if (lookup.has(vendorId)) {
+        if (billSalesPerson && !lookup.get(vendorId).salesPerson) {
+          lookup.set(vendorId, { ...lookup.get(vendorId), salesPerson: billSalesPerson })
+        }
+        return
+      }
+
+      const vendorName = String(
+        getFirstDefined(
+          vendorFromPeople?.name,
+          bill?.vendor?.vendor_name,
+          bill?.vendor?.company_name,
+          bill?.vendor?.name,
+          bill?.vendor_name,
+          `Vendor ${vendorId}`
+        )
+      ).trim()
+
+      const vendorContact = String(
+        getFirstDefined(
+          vendorFromPeople?.contact,
+          bill?.vendor?.contact_name,
+          bill?.vendor?.contact_person,
+          bill?.vendor?.phone,
+          bill?.vendor?.email,
+          ''
+        )
+      ).trim()
+
+      lookup.set(vendorId, {
+        id: vendorId,
+        name: vendorName || `Vendor ${vendorId}`,
+        contact: vendorContact,
+        salesPerson: billSalesPerson || '-'
+      })
+    })
+
+    return Array.from(lookup.values()).sort((a, b) => a.name.localeCompare(b.name))
+  }, [purchaseBills, vendorsById])
+
+  const filteredVendorOptions = useMemo(() => {
+    const query = String(vendorSearch || '').trim().toLowerCase()
+    if (!query) return vendorOptions
+    return vendorOptions.filter((vendor) => `${vendor.name} ${vendor.id} ${vendor.salesPerson}`.toLowerCase().includes(query))
+  }, [vendorOptions, vendorSearch])
+
+  const filteredBills = useMemo(() => {
+    if (!selectedVendorId) return []
+    return purchaseBills.filter((bill) => String(getFirstDefined(bill?.vendor?.id, bill?.vendor_id, bill?.vendor, '')).trim() === selectedVendorId)
+  }, [purchaseBills, selectedVendorId])
+
+  const selectedVendorLabel = useMemo(() => {
+    return vendorOptions.find((vendor) => vendor.id === selectedVendorId)?.name || ''
+  }, [vendorOptions, selectedVendorId])
+
+  const getBillValue = (bill, index = 0) =>
+    String(getFirstDefined(bill?.id, bill?.bill_id, bill?.invoice_number, `bill-${index}`))
+
+  const mapBillItems = (bill) => {
+    if (!Array.isArray(bill?.items_detail)) return []
+    return bill.items_detail.map((line, idx) => ({
+      lineKey: `${String(getFirstDefined(line.id, line.item_id, line.product, 'line')).trim() || 'line'}-${idx}`,
+      id: getFirstDefined(line.id, line.item_id, idx + 1),
+      productId: getFirstDefined(line.product, line.product_id, null),
+      sr: idx + 1,
+      selected: false,
+      sku: String(
+        getFirstDefined(
+          line.sku,
+          line.barcode,
+          line.upc,
+          productsById.get(String(getFirstDefined(line.product, line.product_id, '')))?.sku,
+          '-'
+        )
+      ),
+      description: String(
+        getFirstDefined(
+          line.item_name,
+          line.description,
+          productsById.get(String(getFirstDefined(line.product, line.product_id, '')))?.description,
+          'N/A'
+        )
+      ),
+      sizePack: String(
+        getFirstDefined(
+          line.size_pack,
+          line.sizePack,
+          line.size,
+          productsById.get(String(getFirstDefined(line.product, line.product_id, '')))?.sizePack,
+          '-'
+        )
+      ),
+      unitCost: Number(getFirstDefined(line.unit_price, line.unit_cost, line.cost, 0)) || 0,
+      qtyReceived: Number(getFirstDefined(line.quantity_received, line.qty, line.quantity, 0)) || 0,
+      qtyReturn: Number(getFirstDefined(line.quantity_received, line.qty, line.quantity, 0)) || 0,
+      landingCost: Number(getFirstDefined(line.landing_cost, line.unit_price, line.unit_cost, line.cost, 0)) || 0,
+      amount:
+        Number(getFirstDefined(line.amount, line.total_amount, null)) ||
+        (Number(getFirstDefined(line.unit_price, line.unit_cost, line.cost, 0)) || 0) *
+          (Number(getFirstDefined(line.quantity_received, line.qty, line.quantity, 0)) || 0)
+    }))
+  }
+
+  const applySelectedBill = (bill) => {
+    if (!bill) {
+      resetPurchaseReturnForm()
+      return
+    }
+
+    const vendorId = String(getFirstDefined(bill?.vendor?.id, bill?.vendor_id, bill?.vendor, '')).trim()
+    const vendorFromPeople = vendorsById.get(vendorId)
+    const vendorContactValue = String(
+      getFirstDefined(
+        vendorFromPeople?.contact,
+        bill?.vendor?.contact_name,
+        bill?.vendor?.contact_person,
+        bill?.vendor?.phone,
+        bill?.vendor?.email,
+        ''
+      )
+    ).trim()
+
+    setSelectedVendorId(vendorId)
+    setVendorContact(vendorContactValue)
+    setSelectedBillId(getBillValue(bill))
+    setBillInternalId(String(getFirstDefined(bill.id, bill.bill_id, '') || ''))
+    setReturnBillNumber(String(getFirstDefined(bill.invoice_number, bill.bill_number, bill.bill_no, bill.id, '') || ''))
+    setBillDate(String(getFirstDefined(bill.bill_date, bill.date, bill.created_at, '') || ''))
+    setDueDate(String(getFirstDefined(bill.due_date, '') || ''))
+    setItems(mapBillItems(bill))
+  }
+
+  const selectVendorFromModal = (vendor) => {
+    const nextVendorId = String(vendor?.id || '').trim()
+    setSelectedVendorId(nextVendorId)
+    setVendorContact(vendor?.contact || '')
+    setSelectedBillId('')
+    setBillInternalId('')
+    setReturnBillNumber('')
+    setItems([])
+    setIsVendorModalOpen(false)
+    setVendorSearch('')
+  }
+
+  const handleBillChange = (event) => {
+    const nextBillId = event.target.value
+    const selectedBill = filteredBills.find((bill) => String(getFirstDefined(bill.id, bill.bill_id, bill.invoice_number, '')) === nextBillId)
+    applySelectedBill(selectedBill)
+    setInvoiceSearchMessage(selectedBill ? 'Bill loaded successfully.' : 'Selected bill not found.')
+  }
+
+  const handleInvoiceSearch = () => {
+    const query = toSearchValue(invoiceSearchValue)
+    if (!query) {
+      setInvoiceSearchMessage('Please enter invoice number or bill id.')
+      return
+    }
+
+    const exactMatch = purchaseBills.find((bill) => {
+      const candidates = [
+        bill?.invoice_number,
+        bill?.bill_number,
+        bill?.bill_no,
+        bill?.id,
+        bill?.bill_id
+      ]
+      return candidates.some((value) => toSearchValue(value) === query)
+    })
+
+    const partialMatch = purchaseBills.find((bill) => {
+      const combined = [
+        bill?.invoice_number,
+        bill?.bill_number,
+        bill?.bill_no,
+        bill?.id,
+        bill?.bill_id,
+        bill?.vendor_name,
+        bill?.vendor?.vendor_name,
+        bill?.vendor?.company_name,
+        bill?.vendor?.name
+      ]
+      return combined.some((value) => toSearchValue(value).includes(query))
+    })
+
+    const matchedBill = exactMatch || partialMatch
+    if (!matchedBill) {
+      setInvoiceSearchMessage('No matching purchase bill found.')
+      return
+    }
+
+    applySelectedBill(matchedBill)
+    setInvoiceSearchMessage('Matching bill found and loaded.')
+  }
 
   const handleSave = async () => {
+    const payloadItems = items
+
+    if (payloadItems.length === 0) {
+      return
+    }
+
+    const payload = {
+      vendor_id: selectedVendorId || 1,
+      bill_id: billInternalId || selectedBillId || null,
+      return_bill_number: returnBillNumber || null,
+      return_date: returnDate,
+      bill_date: billDate || null,
+      due_date: dueDate || null,
+      paid_status: paidStatus,
+      note,
+      other_charges: otherCharges,
+      total_returns: totalReturns,
+      sub_total: subTotal,
+      total_payable: subTotal + otherCharges,
+      items: payloadItems.map((item) => ({
+        product_id: item.productId ?? item.id,
+        quantity_received: item.qtyReceived,
+        quantity_returned: Number(item.qtyReturn) || 0,
+        unit_price: item.unitCost,
+        landing_cost: item.landingCost
+      }))
+    }
+
     try {
-      const selectedItems = items.filter(i => i.selected)
-      if (selectedItems.length === 0) return
-      
-      await post('/purchasing/returns/', {
-        vendor_id: 1, // static representation
-        return_date: returnDate,
-        items: selectedItems.map(i => ({
-          product_id: i.id,
-          quantity_returned: i.qtyReturn,
-          unit_price: i.unitCost
-        }))
-      })
+      await post('/purchasing/returns/', payload)
       navigate('/pos/purchase-return')
-    } catch(err) {
-      console.error(err)
+    } catch (error) {
+      console.error(error)
     }
   }
 
   return (
     <div className="space-y-6">
-      {apiError && (
+      {(apiError || billsError || vendorsError || productsError) && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
-          {apiError}
+          {apiError || billsError || vendorsError || productsError}
         </div>
       )}
         
@@ -86,117 +445,171 @@ const CreatePurchaseReturn = () => {
 
         <Card noPadding className="border-slate-200 shadow-sm !rounded-lg overflow-visible bg-white p-6 lg:p-8">
           <div className="space-y-6">
-            {/* Search Section */}
-            <div className="flex flex-col gap-1.5">
-               <label className="text-[12px] font-bold text-slate-400 ml-0.5">Search Inv *</label>
-               <div className="flex gap-4">
-                  <div className="relative flex-[0.8]">
-                     <input 
-                       type="text" 
-                       defaultValue="175936"
-                       className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-sm"
-                     />
-                  </div>
-                  <button className="flex-[0.2] h-[42px] rounded-lg bg-[#0EA5E9] text-white text-[13px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-[#0284C7] transition-all active:scale-95 shadow-lg shadow-sky-500/20">
-                     <Search size={18} />
-                     Search
-                  </button>
-               </div>
-            </div>
-
             {/* Grid Form Section */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-              {/* Row 1 */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Select Vendor</label>
-                <div className="relative">
-                  <select className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer">
-                    <option>Allied Beverages</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+            <div className="space-y-6">
+              {/* Row 1: Search Inv, Select Vendor, Select Bill, ID */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Search Inv *</label>
+                  <div className="flex gap-2">
+                    <input 
+                      type="text" 
+                      placeholder="Search..."
+                      value={invoiceSearchValue}
+                      onChange={(e) => setInvoiceSearchValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          handleInvoiceSearch()
+                        }
+                      }}
+                      className="flex-1 h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleInvoiceSearch}
+                      className="w-[42px] h-[42px] flex-shrink-0 rounded-lg bg-[#0EA5E9] text-white flex items-center justify-center hover:bg-[#0284C7] transition-all active:scale-95 shadow-lg shadow-sky-500/20"
+                      title="Search"
+                    >
+                      <Search size={18} />
+                    </button>
+                  </div>
+                  {invoiceSearchMessage && (
+                    <p className="text-[11px] font-bold text-slate-500 ml-0.5">{invoiceSearchMessage}</p>
+                  )}
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Select Vendor</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsVendorModalOpen(true)}
+                      className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all cursor-pointer flex items-center justify-between"
+                    >
+                      <span className={`truncate ${selectedVendorLabel ? 'text-slate-700' : 'text-slate-400'}`}>
+                        {selectedVendorLabel || (billsLoading ? 'Loading...' : 'Select Vendor')}
+                      </span>
+                      <ChevronDown className="text-slate-400 flex-shrink-0" size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Select Bill</label>
+                  <div className="relative">
+                    <select
+                      value={selectedBillId}
+                      onChange={handleBillChange}
+                      disabled={!selectedVendorId}
+                      className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
+                    >
+                      <option value="">Select Bill</option>
+                      {filteredBills.map((bill, index) => {
+                        const optionValue = getBillValue(bill, index)
+                        const optionLabel = getFirstDefined(
+                          bill.invoice_number,
+                          bill.bill_number,
+                          bill.bill_no,
+                          bill.id,
+                          `Bill ${index + 1}`
+                        )
+                        return (
+                          <option key={optionValue} value={optionValue}>
+                            {optionLabel}
+                          </option>
+                        )
+                      })}
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">ID</label>
+                  <input 
+                    type="text" 
+                    readOnly 
+                    value={selectedVendorId}
+                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+                  />
                 </div>
               </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Select Bill</label>
-                <div className="relative">
-                  <select className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer">
-                    <option>175936</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+
+              {/* Row 2: Vendor Contact, Bill ID, Return Bill, Return Date, Bill Date */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Vendor Contact</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={vendorContact}
+                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+                  />
                 </div>
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">ID</label>
-                <input 
-                  type="text" 
-                  readOnly 
-                  value="PBL25112603541649053"
-                  className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Bill ID</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={billInternalId}
+                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Return Bill *</label>
+                  <input 
+                    type="text" 
+                    readOnly
+                    value={returnBillNumber}
+                    className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+                  />
+                </div>
+                <DatePickerField 
+                  label="Return Date"
+                  value={returnDate}
+                  onChange={setReturnDate}
+                />
+                <DatePickerField 
+                  label="Bill Date"
+                  value={billDate}
+                  onChange={setBillDate}
                 />
               </div>
 
-              {/* Row 2 */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Vendor Contact</label>
-                <input 
-                  type="text" 
-                  readOnly
-                  value="Allied Beverages"
-                  className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
+              {/* Row 3: Due Date, Paid Status, Note */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                <DatePickerField 
+                  label="Due Date"
+                  value={dueDate}
+                  onChange={setDueDate}
                 />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Bill ID</label>
-                <input 
-                  type="text" 
-                  readOnly
-                  value="PBL25112513070928189"
-                  className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Return Bill *</label>
-                <input 
-                  type="text" 
-                  readOnly
-                  value="PBL25112603541649053"
-                  className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-[#f8fafc] text-[14px] font-bold text-slate-400 outline-none"
-                />
-              </div>
-
-              {/* Row 3 */}
-              <DatePickerField 
-                label="Return Date"
-                value={returnDate}
-                onChange={setReturnDate}
-              />
-              <DatePickerField 
-                label="Bill Date"
-                value={billDate}
-                onChange={setBillDate}
-              />
-              <DatePickerField 
-                label="Due Date"
-                value={dueDate}
-                onChange={setDueDate}
-              />
-
-              {/* Row 4 */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-[12px] font-bold text-slate-400 ml-0.5">Paid Status</label>
-                <div className="relative">
-                  <select className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer">
-                    <option>Paid</option>
-                    <option>Unpaid</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[12px] font-bold text-slate-400 ml-0.5">Paid Status</label>
+                  <div className="relative">
+                    <select
+                      value={paidStatus}
+                      onChange={(e) => setPaidStatus(e.target.value)}
+                      className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer"
+                    >
+                      <option value="Paid">Paid</option>
+                      <option value="Unpaid">Unpaid</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                  </div>
                 </div>
-              </div>
-              <div className="lg:col-span-2 flex flex-col gap-1.5">
-                 <label className="text-[12px] font-bold text-slate-400 ml-0.5">Note</label>
-                 <textarea className="w-full h-[42px] px-4 py-2 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all resize-none shadow-sm"></textarea>
+                <div className="lg:col-span-2 flex flex-col gap-1.5">
+                   <label className="text-[12px] font-bold text-slate-400 ml-0.5">Note</label>
+                   <textarea
+                     value={note}
+                     onChange={(e) => setNote(e.target.value)}
+                     className="w-full h-[42px] px-4 py-2 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all resize-none shadow-sm"
+                   ></textarea>
+                </div>
               </div>
             </div>
+
+
           </div>
         </Card>
 
@@ -208,9 +621,25 @@ const CreatePurchaseReturn = () => {
                    <tr>
                       <th className="px-4 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider text-center">SR #</th>
                       <th className="px-4 py-4 w-12 text-center">
-                         <div className="w-4 h-4 rounded border-2 border-sky-500 bg-sky-500 flex items-center justify-center">
-                            <CheckCircle2 size={12} className="text-white" />
-                         </div>
+                         <button
+                           type="button"
+                           onClick={toggleSelectAll}
+                           aria-label={allItemsSelected ? 'Deselect all items' : 'Select all items'}
+                           aria-checked={someItemsSelected ? 'mixed' : allItemsSelected}
+                           className={`w-4 h-4 rounded border-2 m-auto flex items-center justify-center transition-all ${
+                             allItemsSelected
+                               ? 'border-sky-500 bg-sky-500'
+                               : someItemsSelected
+                                 ? 'border-sky-500 bg-white'
+                                 : 'border-slate-300 bg-white'
+                           }`}
+                         >
+                            {allItemsSelected ? (
+                              <CheckCircle2 size={12} className="text-white" />
+                            ) : someItemsSelected ? (
+                              <span className="block h-[2px] w-2 rounded-full bg-sky-500" />
+                            ) : null}
+                         </button>
                       </th>
                       <th className="px-3 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">SKU</th>
                       <th className="px-3 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Item Description</th>
@@ -223,15 +652,17 @@ const CreatePurchaseReturn = () => {
                    </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                   {items.map((item) => (
+                   {items.map((item) => {
+                     const rowAmount = item.unitCost * (Number(item.qtyReturn) || 0)
+                     return (
                      <tr 
-                       key={item.id} 
+                       key={item.lineKey} 
                        className="group hover:bg-slate-50 transition-colors"
                      >
                         <td className="px-4 py-4 text-[13px] font-bold text-slate-400 text-center">{item.sr}</td>
                         <td className="px-4 py-4 text-center">
                            <div 
-                             onClick={() => toggleSelect(item.id)}
+                             onClick={() => toggleSelect(item.lineKey)}
                              className={`w-4 h-4 rounded border-2 m-auto flex items-center justify-center cursor-pointer transition-all ${
                                item.selected ? 'border-[#0EA5E9] bg-[#0EA5E9]' : 'border-slate-300 bg-white'
                              }`}
@@ -248,14 +679,14 @@ const CreatePurchaseReturn = () => {
                            <input 
                              type="text" 
                              className="w-[80px] h-[34px] rounded border border-yellow-200 bg-yellow-50 text-center text-[13px] font-black text-slate-800 outline-none focus:border-yellow-400 transition-all"
-                             value={item.qtyReturn.toFixed(3)}
-                             onChange={(e) => handleReturnChange(item.id, e.target.value)}
+                             value={Number(item.qtyReturn || 0).toFixed(3)}
+                             onChange={(e) => handleReturnChange(item.lineKey, e.target.value)}
                            />
                         </td>
                         <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.landingCost.toFixed(3)}</td>
-                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.amount.toFixed(3)}</td>
+                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{rowAmount.toFixed(3)}</td>
                      </tr>
-                   ))}
+                   )})}
                 </tbody>
              </table>
           </div>
@@ -265,12 +696,30 @@ const CreatePurchaseReturn = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
            {/* Left side actions */}
            <div className="flex flex-wrap items-center gap-4">
-              <button className="h-[44px] px-6 rounded-lg bg-[#F43F5E] text-white text-[12px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-rose-600 transition-all active:scale-95 shadow-lg shadow-rose-500/20">
-                 <Trash2 size={20} className="p-0.5 bg-white/20 rounded-full" />
+              <button
+                type="button"
+                onClick={handleRemoveSelected}
+                disabled={selectedItemsCount === 0}
+                className={`h-[40px] px-5 rounded-[16px] border bg-white text-[12px] font-black uppercase tracking-[0.24em] flex items-center gap-2 transition-all active:scale-95 shadow-sm ${
+                  selectedItemsCount > 0
+                    ? 'border-rose-200 text-[#E11D48] hover:bg-rose-50'
+                    : 'border-rose-100 text-[#FDA4AF]'
+                }`}
+              >
+                 <Trash2 size={15} strokeWidth={2.2} />
                  Remove
               </button>
-              <button className="h-[44px] px-6 rounded-lg bg-[#9F1239] text-white text-[12px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-rose-900 transition-all active:scale-95 shadow-lg shadow-rose-900/20">
-                 <X size={20} className="p-0.5 bg-white/20 rounded-full" />
+              <button
+                type="button"
+                onClick={handleRemoveAll}
+                disabled={items.length === 0}
+                className={`h-[40px] px-5 rounded-[16px] border bg-white text-[12px] font-black uppercase tracking-[0.24em] flex items-center gap-2 transition-all active:scale-95 shadow-sm ${
+                  items.length > 0
+                    ? 'border-rose-200 text-[#E11D48] hover:bg-rose-50'
+                    : 'border-rose-100 text-[#FDA4AF]'
+                }`}
+              >
+                 <Trash2 size={15} strokeWidth={2.2} />
                  Remove All
               </button>
               <button 
@@ -306,6 +755,7 @@ const CreatePurchaseReturn = () => {
                       type="text" 
                       className="w-[160px] h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-right text-[16px] font-black text-slate-800 outline-none focus:border-sky-500 transition-all shadow-inner italic"
                       value={otherCharges.toFixed(3)}
+                      onChange={(e) => setOtherCharges(Number(e.target.value) || 0)}
                     />
                  </div>
               </div>
@@ -340,6 +790,59 @@ const CreatePurchaseReturn = () => {
               Close
            </button>
         </div>
+
+      {isVendorModalOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4">
+          <div className="w-full max-w-2xl bg-white rounded-2xl border border-slate-200 shadow-2xl overflow-hidden">
+            <div className="h-14 border-b border-slate-100 px-6 flex items-center justify-between">
+              <h3 className="text-sm font-black text-slate-700 uppercase tracking-widest">Select Vendor</h3>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsVendorModalOpen(false)
+                  setVendorSearch('')
+                }}
+                className="h-9 w-9 rounded-lg border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 transition-all flex items-center justify-center"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  value={vendorSearch}
+                  onChange={(e) => setVendorSearch(e.target.value)}
+                  placeholder="Search vendor..."
+                  className="w-full h-11 rounded-xl border border-slate-200 bg-white px-4 pr-10 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 focus:ring-4 focus:ring-sky-500/10"
+                />
+                <Search size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400" />
+              </div>
+
+              <div className="max-h-80 overflow-y-auto border border-slate-100 rounded-xl divide-y divide-slate-100">
+                {filteredVendorOptions.length === 0 ? (
+                  <div className="px-4 py-6 text-sm font-bold text-slate-400 text-center">
+                    No vendor found from purchase bills.
+                  </div>
+                ) : (
+                  filteredVendorOptions.map((vendor) => (
+                    <button
+                      key={vendor.id}
+                      type="button"
+                      onClick={() => selectVendorFromModal(vendor)}
+                      className="w-full px-4 py-3 text-left hover:bg-sky-50 transition-all"
+                    >
+                      <div className="text-sm font-black text-slate-700">{vendor.name}</div>
+                      <div className="text-xs font-bold text-slate-400">ID: {vendor.id}</div>
+                      <div className="text-xs font-bold text-slate-400">Sales Person: {vendor.salesPerson || '-'}</div>
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       </div>
   )

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import useFetch from "../../hooks/useFetch";
 import Loader from "../common/Loader";
+import { resolveMediaUrl } from "../../utils/url";
 
 const KPICard = ({ title, value, change, isPositive }) => (
   <div className="bg-[#FFFFFF] rounded-lg border border-[#E2E8F0] p-6 shadow-sm relative overflow-hidden group">
@@ -76,7 +77,9 @@ const DashboardOverview = () => {
     );
   }
 
-  const topSelling = Array.isArray(statsData?.top_selling) ? statsData.top_selling : [];
+  const topSelling = Array.isArray(statsData?.top_selling)
+    ? statsData.top_selling
+    : [];
   const alerts = Array.isArray(statsData?.alerts) ? statsData.alerts : [];
 
   const totalRevenue = statsData?.total_revenue || {};
@@ -112,25 +115,25 @@ const DashboardOverview = () => {
           title="Total Revenue"
           value={totalRevenue.value ?? "-"}
           change={totalRevenue.change ?? 0}
-          isPositive={Boolean(totalRevenue.isPositive)}
+          isPositive={Boolean(totalRevenue.isPositive ?? totalRevenue.is_positive)}
         />
         <KPICard
           title="Profit"
           value={profit.value ?? "-"}
           change={profit.change ?? 0}
-          isPositive={Boolean(profit.isPositive)}
+          isPositive={Boolean(profit.isPositive ?? profit.is_positive)}
         />
         <KPICard
           title="Transactions"
           value={transactions.value ?? "-"}
           change={transactions.change ?? 0}
-          isPositive={Boolean(transactions.isPositive)}
+          isPositive={Boolean(transactions.isPositive ?? transactions.is_positive)}
         />
         <KPICard
           title="Avg. Order Value"
           value={avgOrderValue.value ?? "-"}
           change={avgOrderValue.change ?? 0}
-          isPositive={Boolean(avgOrderValue.isPositive)}
+          isPositive={Boolean(avgOrderValue.isPositive ?? avgOrderValue.is_positive)}
         />
       </div>
 
@@ -175,41 +178,52 @@ const DashboardOverview = () => {
               {alerts.length === 0 && (
                 <p className="text-[13px] text-[#64748B] font-medium">No low stock alerts.</p>
               )}
-              {alerts.map((alert, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between group py-2"
-                >
-                  <div className="flex items-center gap-4">
-                    <div
-                      className="h-10 w-10 rounded-lg flex items-center justify-center border transition-colors shadow-sm"
-                      style={{
-                        backgroundColor: `${alert.color}0D`,
-                        borderColor: `${alert.color}33`,
-                        color: alert.color,
-                      }}
-                    >
-                      <AlertTriangle size={20} />
+              {alerts.map((alert, idx) => {
+                const stockLeft = alert.left ?? alert.stock_left ?? 0;
+                const alertColor =
+                  alert.color ||
+                  (alert.status === "critical"
+                    ? "#EF4444"
+                    : alert.status === "warning"
+                      ? "#F59E0B"
+                      : "#22C55E");
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between group py-2"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div
+                        className="h-10 w-10 rounded-lg flex items-center justify-center border transition-colors shadow-sm"
+                        style={{
+                          backgroundColor: `${alertColor}0D`,
+                          borderColor: `${alertColor}33`,
+                          color: alertColor,
+                        }}
+                      >
+                        <AlertTriangle size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-[14px] font-bold text-[#1E293B] group-hover:text-[#0EA5E9] transition-colors">
+                          {alert.name}
+                        </h4>
+                        <p className="text-[12px] text-[#64748B] font-medium">
+                          SKU: {alert.sku}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-[14px] font-bold text-[#1E293B] group-hover:text-[#0EA5E9] transition-colors">
-                        {alert.name}
-                      </h4>
-                      <p className="text-[12px] text-[#64748B] font-medium">
-                        SKU: {alert.sku}
-                      </p>
+                    <div className="text-right">
+                      <span
+                        className="text-[14px] font-bold"
+                        style={{ color: alertColor }}
+                      >
+                        {stockLeft} left
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span
-                      className="text-[14px] font-bold"
-                      style={{ color: alert.color }}
-                    >
-                      {alert.left} left
-                    </span>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -224,35 +238,42 @@ const DashboardOverview = () => {
               {topSelling.length === 0 && (
                 <p className="text-[13px] text-[#64748B] font-medium">No top selling product data.</p>
               )}
-              {topSelling.map((product, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between group cursor-pointer hover:bg-[#F8FAFC] -mx-4 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#E2E8F0] shadow-sm bg-[#F8FAFC]">
-                      <img
-                        src={product.img || "https://placehold.co/100x100?text=No+Image"}
-                        alt={product.name}
-                        className="w-full h-full object-cover"
-                      />
+              {topSelling.map((product, idx) => {
+                const imageUrl = resolveMediaUrl(product.image || product.img);
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between group cursor-pointer hover:bg-[#F8FAFC] -mx-4 px-4 py-2 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-[#E2E8F0] shadow-sm bg-[#F8FAFC]">
+                        <img
+                          src={imageUrl || "https://placehold.co/100x100?text=No+Image"}
+                          alt={product.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.src = "https://placehold.co/100x100?text=No+Image";
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <h4 className="text-[14px] font-bold text-[#1E293B] group-hover:text-[#0EA5E9] transition-colors">
+                          {product.name}
+                        </h4>
+                        <p className="text-[12px] text-[#64748B] font-medium uppercase tracking-tight">
+                          {product.sold} units sold
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="text-[14px] font-bold text-[#1E293B] group-hover:text-[#0EA5E9] transition-colors">
-                        {product.name}
-                      </h4>
-                      <p className="text-[12px] text-[#64748B] font-medium uppercase tracking-tight">
-                        {product.sold} units sold
+                    <div className="text-right">
+                      <p className="text-[14px] font-bold text-[#1E293B]">
+                        {product.revenue}
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-[14px] font-bold text-[#1E293B]">
-                      {product.price}
-                    </p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>

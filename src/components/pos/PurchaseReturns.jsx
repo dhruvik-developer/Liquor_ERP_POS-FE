@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Filter, 
@@ -8,31 +8,124 @@ import {
   Plus, 
   Pencil,
   Trash2,
-  ChevronDown
+  ChevronDown,
+  Check
 } from 'lucide-react'
 import Loader from '../common/Loader'
 import Card from '../common/Card'
 import useFetch from '../../hooks/useFetch'
 
+const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
+const toDateValue = (value) => {
+  if (!value) return null
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+const formatDate = (value) => {
+  const date = toDateValue(value)
+  if (!date) return 'N/A'
+  return date.toLocaleDateString('en-US')
+}
+
+const formatAmount = (value) => {
+  const amount = Number(value)
+  return `$${Number.isFinite(amount) ? amount.toFixed(2) : '0.00'}`
+}
+
+const FILTER_BY_OPTIONS = ['SKU/UPC', 'Product Code', 'Vendor', 'Date Range', 'Status']
+
 const PurchaseReturns = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
+  const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterValue, setFilterValue] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [isFilterByOpen, setIsFilterByOpen] = useState(false)
+  const filterByRef = useRef(null)
 
-  const { data: responseData, loading, error } = useFetch('/purchasing/returns/')
-  const purchaseReturns = Array.isArray(responseData) ? responseData : responseData?.results || []
+  const { data: responseData, loading, error, refetch } = useFetch('/purchasing/returns/')
+  const { data: vendorsData } = useFetch('/people/vendors/')
+
+  const purchaseReturns = React.useMemo(() => {
+    if (Array.isArray(responseData)) return responseData
+    if (Array.isArray(responseData?.results)) return responseData.results
+    if (Array.isArray(responseData?.data?.results)) return responseData.data.results
+    if (Array.isArray(responseData?.data)) return responseData.data
+    return []
+  }, [responseData])
 
   const mappedReturns = React.useMemo(() => {
-    return purchaseReturns.map(ret => ({
-      billNo: ret.return_number || `RET-${ret.id}`,
-      date: ret.return_date ? new Date(ret.return_date).toLocaleDateString() : 'N/A',
-      vendor: ret.vendor?.company_name || ret.vendor || 'N/A',
-      status: ret.status || 'Committed',
-      total: `$${Number(ret.total_amount || 0).toFixed(2)}`,
-      dueDate: '',
-      paidStatus: 'Open'
-    }))
-  }, [purchaseReturns])
+    const vendorList = Array.isArray(vendorsData)
+      ? vendorsData
+      : Array.isArray(vendorsData?.results)
+      ? vendorsData.results
+      : Array.isArray(vendorsData?.data?.results)
+      ? vendorsData.data.results
+      : Array.isArray(vendorsData?.data)
+      ? vendorsData.data
+      : []
+
+    const vendorLookup = vendorList.reduce((acc, vendor) => {
+      const id = String(getFirstDefined(vendor?.id, vendor?.vendor_id, '')).trim()
+      const name = getFirstDefined(vendor?.vendor_name, vendor?.company_name, vendor?.name, vendor?.vendor_code)
+      if (id && name) acc[id] = name
+      return acc
+    }, {})
+
+    return purchaseReturns.map((ret, index) => {
+      const vendorId = String(getFirstDefined(ret?.vendor?.id, ret?.vendor_id, ret?.vendor, '')).trim()
+      const vendorName = getFirstDefined(
+        ret?.vendor?.vendor_name,
+        ret?.vendor?.company_name,
+        ret?.vendor?.name,
+        ret?.vendor_name,
+        vendorLookup[vendorId],
+        typeof ret?.vendor === 'string' ? ret.vendor : null
+      )
+      const totalAmount = getFirstDefined(
+        ret?.total_payable,
+        ret?.sub_total,
+        ret?.total_amount,
+        ret?.grand_total,
+        ret?.net_total
+      )
+      const paidStatus = getFirstDefined(ret?.paid_status, ret?.payment_status, ret?.status_label, 'Open')
+
+      return {
+        key: getFirstDefined(ret?.id, ret?.uuid, ret?.return_bill_number, index),
+        billNo: getFirstDefined(ret?.return_bill_number, ret?.return_number, ret?.bill_id, `RET-${ret?.id ?? index + 1}`),
+        date: formatDate(getFirstDefined(ret?.return_date, ret?.created_at)),
+        vendor: vendorName || 'N/A',
+        status: getFirstDefined(ret?.status, 'Committed'),
+        total: formatAmount(totalAmount),
+        dueDate: formatDate(getFirstDefined(ret?.due_date, ret?.payment_due_date)),
+        paidStatus
+      }
+    })
+  }, [purchaseReturns, vendorsData])
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!filterByRef.current?.contains(event.target)) {
+        setIsFilterByOpen(false)
+      }
+    }
+
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setIsFilterByOpen(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleEscape)
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -62,23 +155,64 @@ const PurchaseReturns = () => {
 
            {/* Right side: Filters */}
            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 flex-1 xl:max-w-3xl items-end">
-              <div className="sm:col-span-4 flex flex-col gap-1.5">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
-                 <div className="relative group">
-                    <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner">
-                      <option>Vendor</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                 </div>
-              </div>
-              <div className="sm:col-span-5 flex flex-col gap-1.5">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
-                 <input 
-                   type="text" 
-                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
-                   placeholder=""
-                 />
-              </div>
+               <div className="sm:col-span-4 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
+                  <div ref={filterByRef} className="relative">
+                     <button
+                       type="button"
+                       onClick={() => setIsFilterByOpen((current) => !current)}
+                       className={`w-full h-11 px-4 rounded-xl border text-[14px] font-bold outline-none transition-all shadow-inner flex items-center justify-between ${
+                         isFilterByOpen
+                           ? 'border-sky-500 bg-white ring-4 ring-sky-500/10'
+                           : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
+                       }`}
+                     >
+                       <span className="truncate">{filterBy}</span>
+                       <ChevronDown
+                         className={`text-slate-400 transition-transform ${isFilterByOpen ? 'rotate-180' : ''}`}
+                         size={16}
+                       />
+                     </button>
+
+                     {isFilterByOpen && (
+                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+                         <div className="py-2">
+                           {FILTER_BY_OPTIONS.map((option) => {
+                             const isActive = option === filterBy
+                             return (
+                               <button
+                                 key={option}
+                                 type="button"
+                                 onClick={() => {
+                                   setFilterBy(option)
+                                   setIsFilterByOpen(false)
+                                 }}
+                                 className={`flex w-full items-center justify-between px-4 py-3 text-left text-[14px] font-bold transition-all ${
+                                   isActive
+                                     ? 'bg-sky-50 text-sky-600'
+                                     : 'text-slate-700 hover:bg-slate-50'
+                                 }`}
+                               >
+                                 <span>{option}</span>
+                                 {isActive && <Check size={16} className="text-sky-500" />}
+                               </button>
+                             )
+                           })}
+                         </div>
+                       </div>
+                     )}
+                  </div>
+               </div>
+               <div className="sm:col-span-5 flex flex-col gap-1.5">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
+                  <input 
+                    type="text" 
+                    value={filterValue}
+                    onChange={(e) => setFilterValue(e.target.value)}
+                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                    placeholder={`Enter ${filterBy.toLowerCase()}`}
+                  />
+               </div>
               <div className="sm:col-span-3">
                  <button className="w-full h-11 rounded-xl bg-white border-2 border-[#0EA5E9] text-[#0EA5E9] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-50 transition-all shadow-sm active:scale-95">
                     <Filter size={16} />
@@ -117,7 +251,11 @@ const PurchaseReturns = () => {
                <button className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
                   Export To CSV
                </button>
-               <button className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200">
+               <button
+                 type="button"
+                 onClick={refetch}
+                 className="h-10 px-5 rounded-xl bg-slate-100/50 text-slate-500 text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200"
+               >
                   <RefreshCcw size={16} />
                   Refresh
                </button>
@@ -177,9 +315,9 @@ const PurchaseReturns = () => {
                       </td>
                     </tr>
                   ) : (
-                    mappedReturns.map((record, idx) => (
+                    mappedReturns.map((record) => (
                       <tr 
-                        key={idx} 
+                        key={record.key} 
                         className="hover:bg-sky-50/30 transition-colors group cursor-pointer"
                       >
                          <td className="px-8 py-5 text-sm font-black text-sky-500 hover:underline tracking-tight">

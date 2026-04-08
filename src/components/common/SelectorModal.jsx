@@ -8,7 +8,8 @@ import {
   Keyboard, 
   XCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Plus
 } from 'lucide-react'
 
 const SelectorModal = ({ title, data = [], onSelect, onClose, onAddNew }) => {

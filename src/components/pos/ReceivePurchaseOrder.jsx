@@ -54,6 +54,7 @@ const ReceivePurchaseOrder = () => {
 
   const { post, loading: isSaving, error: apiError } = useApi()
   const { data: responseData, loading, error } = useFetch('/purchasing/orders/')
+  const { data: productsData } = useFetch('/inventory/products/')
 
   const purchaseOrders = useMemo(() => {
     if (Array.isArray(responseData)) return responseData
@@ -62,6 +63,21 @@ const ReceivePurchaseOrder = () => {
     if (Array.isArray(responseData?.data)) return responseData.data
     return []
   }, [responseData])
+  const products = useMemo(() => {
+    if (Array.isArray(productsData)) return productsData
+    if (Array.isArray(productsData?.results)) return productsData.results
+    if (Array.isArray(productsData?.data?.results)) return productsData.data.results
+    if (Array.isArray(productsData?.data)) return productsData.data
+    return []
+  }, [productsData])
+  const productsById = useMemo(() => {
+    const map = new Map()
+    products.forEach((product) => {
+      const key = String(getFirstDefined(product?.id, product?.product_id, '')).trim()
+      if (key) map.set(key, product)
+    })
+    return map
+  }, [products])
 
   const normalizedOrders = useMemo(() => {
     return purchaseOrders.map((order, index) => {
@@ -107,8 +123,16 @@ const ReceivePurchaseOrder = () => {
         purchaseBillDate: getFirstDefined(order.purchase_bill_date, order.bill_date, order.updated_at) ?? '',
         dueDate: getFirstDefined(order.due_date) ?? '',
         items: orderItems.map((line, itemIndex) => {
-          const product = line.product || {}
-          const caseUnits = asNumber(getFirstDefined(line.case_units, line.bpc, line.units_per_case, product.case_units, 1), 1)
+          const rawProduct = line?.product
+          const lineProductId = getFirstDefined(line?.product_id, typeof rawProduct === 'number' ? rawProduct : null)
+          const lookupProduct = productsById.get(String(lineProductId ?? '')) || {}
+          const product = typeof rawProduct === 'object' && rawProduct !== null
+            ? { ...lookupProduct, ...rawProduct }
+            : lookupProduct
+          const caseUnits = asNumber(
+            getFirstDefined(line.case_units, line.bpc, line.units_per_case, line.units_in_case, product.case_units, product.units_in_case, 1),
+            1
+          )
           const orderQty = asNumber(
             getFirstDefined(line.quantity_ordered, line.order_qty, line.ordered_qty, line.quantity, line.qty, 0),
             0
@@ -117,18 +141,43 @@ const ReceivePurchaseOrder = () => {
             getFirstDefined(line.received_qty, line.received_quantity, line.quantity_received, 0),
             0
           )
-          const unitCost = asNumber(getFirstDefined(line.cost, line.unit_cost, line.unit_price, product.cost, 0), 0)
+          const unitCost = asNumber(
+            getFirstDefined(line.cost, line.unit_cost, line.unit_price, product.cost_pricing?.unit_cost, product.cost, 0),
+            0
+          )
           const caseCost = asNumber(getFirstDefined(line.case_cost, unitCost * caseUnits), 0)
           const lineItemId = getFirstDefined(line.id, line.item_id, null)
-          const productId = getFirstDefined(line.product_id, product.id, null)
+          const productId = getFirstDefined(line.product_id, lineProductId, product.id, null)
+          const size = getFirstDefined(line.size_name, line.size, product.size?.name, product.size_name, product.size, '')
+          const pack = getFirstDefined(line.pack_name, line.pack, product.pack?.name, product.pack_name, product.pack, '')
+          const sizePack = [size, pack].filter(Boolean).join(' / ') || '-'
 
           return {
             id: `${orderId}-${itemIndex}`,
             lineItemId,
             productId,
-            sku: getFirstDefined(line.sku, product.sku, product.upc, product.barcode, '-'),
-            description: getFirstDefined(line.item_description, line.description, product.name, product.item_name, 'N/A'),
-            sizePack: getFirstDefined(line.size_pack, product.size_pack, product.pack_size, '-'),
+            sku: getFirstDefined(
+              line.sku,
+              line.product_sku,
+              line.item_sku,
+              line.upc,
+              line.barcode,
+              product.sku,
+              product.upc,
+              product.barcode,
+              '-'
+            ),
+            description: getFirstDefined(
+              line.item_name,
+              line.product_name,
+              line.item_description,
+              line.description,
+              product.name,
+              product.product_name,
+              product.item_name,
+              'N/A'
+            ),
+            sizePack: getFirstDefined(line.size_pack, sizePack, product.size_pack, product.pack_size, '-'),
             cost: unitCost,
             caseCost,
             caseUnits,
@@ -140,7 +189,7 @@ const ReceivePurchaseOrder = () => {
         })
       }
     })
-  }, [purchaseOrders])
+  }, [purchaseOrders, productsById])
 
   const receivableOrders = useMemo(
     () =>
@@ -216,7 +265,7 @@ const ReceivePurchaseOrder = () => {
 
   const totals = useMemo(() => {
     const totalReceived = items.reduce((acc, item) => acc + asNumber(item.received), 0)
-    const subTotal = items.reduce((acc, item) => acc + asNumber(item.received) * asNumber(item.caseCost), 0)
+    const subTotal = items.reduce((acc, item) => acc + asNumber(item.received) * asNumber(item.cost), 0)
     return {
       totalReceived,
       subTotal,
@@ -430,8 +479,8 @@ const ReceivePurchaseOrder = () => {
                     asNumber(item.orderQty) - asNumber(item.alreadyReceivedQty) - asNumber(item.received),
                     0
                   )
-                  const totalQty = asNumber(item.received) * asNumber(item.caseUnits)
-                  const lineAmount = asNumber(item.received) * asNumber(item.caseCost)
+                  const totalQty = asNumber(item.received)
+                  const lineAmount = asNumber(item.received) * asNumber(item.cost)
                   return (
                     <tr
                       key={item.id}
