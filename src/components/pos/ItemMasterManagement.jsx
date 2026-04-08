@@ -23,6 +23,7 @@ import { refetchSubCategories } from '../../hooks/useSubCategories'
 import { refetchSizes } from '../../hooks/useSizes'
 import { refetchPacks } from '../../hooks/usePacks'
 import { refetchBrands } from '../../hooks/useBrands'
+import StyledDropdown from '../common/StyledDropdown'
 
 const MASTER_TABS = [
   { key: 'department', label: 'Department', endpoint: '/lookups/departments/', icon: Building2 },
@@ -560,27 +561,27 @@ const ItemMasterManagement = () => {
               )}
 
               {activeTab === 'category' && (
-                <select
+                <StyledDropdown
                   value={formData.department || ''}
                   onChange={event => setFormData(prev => ({ ...prev, department: event.target.value }))}
-                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                  triggerClassName="!h-10 border-[#E2E8F0] bg-[#F8FAFC] !text-[#1E293B]"
+                  placeholder="Select Department *"
                 >
-                  <option value="">Select Department *</option>
                   {departments.map(department => (
                     <option key={department.id || department.name} value={String(department.id || '')}>
                       {department.name}
                     </option>
                   ))}
-                </select>
+                </StyledDropdown>
               )}
 
               {activeTab === 'sub-category' && (
-                <select
+                <StyledDropdown
                   value={formData.category || ''}
                   onChange={event => setFormData(prev => ({ ...prev, category: event.target.value }))}
-                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                  triggerClassName="!h-10 border-[#E2E8F0] bg-[#F8FAFC] !text-[#1E293B]"
+                  placeholder="Select Category *"
                 >
-                  <option value="">Select Category *</option>
                   {categories.map(category => (
                     <option key={category.id || category.name} value={String(category.id || '')}>
                       {(() => {
@@ -591,23 +592,23 @@ const ItemMasterManagement = () => {
                       })()}
                     </option>
                   ))}
-                </select>
+                </StyledDropdown>
               )}
 
               {activeTab === 'size' && (
                 <>
-                  <select
+                  <StyledDropdown
                     value={formData.uom || ''}
                     onChange={event => setFormData(prev => ({ ...prev, uom: event.target.value }))}
-                    className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
+                    triggerClassName="!h-10 border-[#E2E8F0] bg-[#F8FAFC] !text-[#1E293B]"
+                    placeholder="Select UOM *"
                   >
-                    <option value="">Select UOM *</option>
                     {uoms.map(uom => (
                       <option key={uom.id || uom.name} value={String(uom.id || '')}>
                         {uom.name || '-'}
                       </option>
                     ))}
-                  </select>
+                  </StyledDropdown>
 
                   <div className="grid grid-cols-2 gap-3">
                     <input
@@ -646,18 +647,18 @@ const ItemMasterManagement = () => {
                           placeholder="Factor"
                           className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white"
                         />
-                        <select
+                        <StyledDropdown
                           value={String(formData.unit_price_uom || '')}
                           onChange={event => setFormData(prev => ({ ...prev, unit_price_uom: event.target.value }))}
-                          className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:bg-white appearance-none cursor-pointer"
+                          triggerClassName="!h-10 border-[#E2E8F0] bg-[#F8FAFC] !text-[#1E293B]"
+                          placeholder="Select UOM"
                         >
-                          <option value="">Select UOM</option>
                           {uoms.map(uom => (
                             <option key={uom.id} value={String(uom.id)}>
                               {uom.name || '-'}
                             </option>
                           ))}
-                        </select>
+                        </StyledDropdown>
                       </div>
                     </div>
                 </>
@@ -690,3 +691,4 @@ const ItemMasterManagement = () => {
 }
 
 export default ItemMasterManagement
+ Greenland

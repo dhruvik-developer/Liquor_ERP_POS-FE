@@ -6,6 +6,7 @@ import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
+import StyledDropdown from '../common/StyledDropdown'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -561,22 +562,20 @@ const CreatePurchaseOrder = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship To</label>
-              <div className="relative">
-                <select
-                  value={shipTo}
-                  onChange={(e) => setShipTo(e.target.value)}
-                  disabled={isReadOnly}
-                  className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all disabled:bg-slate-50 disabled:text-slate-500"
-                >
-                  <option value="">Select Ship To</option>
-                  {SHIP_TO_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-              </div>
+              <StyledDropdown
+                value={shipTo}
+                onChange={(e) => setShipTo(e.target.value)}
+                disabled={isReadOnly}
+                triggerClassName="border-slate-200 bg-white !text-slate-700 !font-medium !h-9"
+                placeholder="Select Ship To"
+              >
+                <option value="">Select Ship To</option>
+                {SHIP_TO_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </StyledDropdown>
             </div>
             <div className="flex flex-col gap-1.5">
               <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Ship By</label>
@@ -627,7 +626,6 @@ const CreatePurchaseOrder = () => {
       {!isReadOnly && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <Card noPadding className="lg:col-span-2 border-slate-200 shadow-sm !rounded-lg overflow-visible">
-            {/* ... Product selection logic ... */}
           <div className="p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-3">
             <div className="flex flex-col gap-1.5 lg:col-span-3">
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">SKU / UPC</label>
@@ -908,9 +906,9 @@ const CreatePurchaseOrder = () => {
                               getFirstDefined(
                                 item.caseCost,
                                 asNumber(getFirstDefined(item.unitCost, item.lastCost, 0)) * asNumber(item.caseUnits, 1)
-                              )
+                                )
                             )
-                      ).toFixed(3)}
+                      ).toFixed(2)}
                     </td>
                     <td className="px-3 py-3 text-[13px] font-medium text-slate-500">{item.sizePack}</td>
                   </tr>
@@ -1101,3 +1099,4 @@ const CreatePurchaseOrder = () => {
 }
 
 export default CreatePurchaseOrder
+ Greenland

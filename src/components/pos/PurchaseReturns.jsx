@@ -14,6 +14,7 @@ import {
 import Loader from '../common/Loader'
 import Card from '../common/Card'
 import useFetch from '../../hooks/useFetch'
+import StyledDropdown from '../common/StyledDropdown'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 const toDateValue = (value) => {
@@ -33,16 +34,38 @@ const formatAmount = (value) => {
   return `$${Number.isFinite(amount) ? amount.toFixed(2) : '0.00'}`
 }
 
+const PERIOD_MONTHS = {
+  'Last Month': 1,
+  'Last 3 Months': 3,
+  'Last 6 Months': 6
+}
 const FILTER_BY_OPTIONS = ['SKU/UPC', 'Product Code', 'Vendor', 'Date Range', 'Status']
+
+const getPeriodRange = (period, now = new Date()) => {
+  const months = PERIOD_MONTHS[period]
+  if (!months) return null
+
+  const rangeEnd = new Date(now)
+  rangeEnd.setHours(23, 59, 59, 999)
+
+  const rangeStart = new Date(now)
+  rangeStart.setMonth(rangeStart.getMonth() - months)
+  rangeStart.setDate(rangeStart.getDate() + 1)
+  rangeStart.setHours(0, 0, 0, 0)
+
+  return { rangeStart, rangeEnd }
+}
 
 const PurchaseReturns = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
-  const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterBy, setFilterBy] = useState('SKU/UPC')
   const [filterValue, setFilterValue] = useState('')
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
+  const [fromDateFilter, setFromDateFilter] = useState('')
+  const [toDateFilter, setToDateFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
-  const [isFilterByOpen, setIsFilterByOpen] = useState(false)
-  const filterByRef = useRef(null)
 
   const { data: responseData, loading, error, refetch } = useFetch('/purchasing/returns/')
   const { data: vendorsData } = useFetch('/people/vendors/')
@@ -91,41 +114,119 @@ const PurchaseReturns = () => {
         ret?.net_total
       )
       const paidStatus = getFirstDefined(ret?.paid_status, ret?.payment_status, ret?.status_label, 'Open')
+      const returnDateRaw = getFirstDefined(ret?.return_date, ret?.created_at)
+      const returnDateValue = toDateValue(returnDateRaw)
+      const lineItems = Array.isArray(ret?.items_detail)
+        ? ret.items_detail
+        : Array.isArray(ret?.items)
+        ? ret.items
+        : []
+      const skuUpcText = lineItems
+        .map((item) => getFirstDefined(item?.sku, item?.upc, item?.barcode, ''))
+        .join(' ')
+      const productCodeText = lineItems
+        .map((item) => getFirstDefined(item?.product_code, item?.vendor_code, item?.code, ''))
+        .join(' ')
 
       return {
         key: getFirstDefined(ret?.id, ret?.uuid, ret?.return_bill_number, index),
         billNo: getFirstDefined(ret?.return_bill_number, ret?.return_number, ret?.bill_id, `RET-${ret?.id ?? index + 1}`),
-        date: formatDate(getFirstDefined(ret?.return_date, ret?.created_at)),
+        date: formatDate(returnDateRaw),
+        returnDateValue,
         vendor: vendorName || 'N/A',
         status: getFirstDefined(ret?.status, 'Committed'),
         total: formatAmount(totalAmount),
         dueDate: formatDate(getFirstDefined(ret?.due_date, ret?.payment_due_date)),
-        paidStatus
+        paidStatus,
+        skuUpcText: String(skuUpcText || '').toLowerCase(),
+        productCodeText: String(productCodeText || '').toLowerCase()
       }
     })
   }, [purchaseReturns, vendorsData])
 
+  const vendorFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedReturns.map((record) => String(record.vendor || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedReturns])
+
+  const statusFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedReturns.map((record) => String(record.status || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedReturns])
+
+  const filteredReturns = React.useMemo(() => {
+    const normalizedFilterValue = String(filterValue || '').trim().toLowerCase()
+    const normalizedSearch = String(searchQuery || '').trim().toLowerCase()
+
+    return mappedReturns.filter((record) => {
+      if (filterPeriod !== 'All') {
+        const periodRange = getPeriodRange(filterPeriod)
+        if (!record.returnDateValue || !periodRange) return false
+        if (record.returnDateValue < periodRange.rangeStart || record.returnDateValue > periodRange.rangeEnd) return false
+      }
+
+      let matchesFilterBy = true
+
+      if (filterBy === 'SKU/UPC') {
+        matchesFilterBy = !normalizedFilterValue || record.skuUpcText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Product Code') {
+        matchesFilterBy = !normalizedFilterValue || record.productCodeText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Vendor') {
+        matchesFilterBy = !selectedVendorFilter || record.vendor === selectedVendorFilter
+      } else if (filterBy === 'Status') {
+        matchesFilterBy = !selectedStatusFilter || record.status === selectedStatusFilter
+      } else if (filterBy === 'Date Range') {
+        const rowDate = record.returnDateValue
+        if (!rowDate) {
+          matchesFilterBy = false
+        } else {
+          const fromDate = fromDateFilter ? new Date(fromDateFilter) : null
+          const toDate = toDateFilter ? new Date(toDateFilter) : null
+          if (fromDate && Number.isFinite(fromDate.getTime())) {
+            fromDate.setHours(0, 0, 0, 0)
+          }
+          if (toDate && Number.isFinite(toDate.getTime())) {
+            toDate.setHours(23, 59, 59, 999)
+          }
+          matchesFilterBy =
+            (!fromDate || rowDate >= fromDate) &&
+            (!toDate || rowDate <= toDate)
+        }
+      }
+
+      if (!matchesFilterBy) return false
+
+      if (!normalizedSearch) return true
+      const combinedSearch = [
+        record.billNo,
+        record.date,
+        record.vendor,
+        record.status,
+        record.total,
+        record.dueDate,
+        record.paidStatus
+      ]
+      return combinedSearch.some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
+    })
+  }, [
+    mappedReturns,
+    filterPeriod,
+    filterBy,
+    filterValue,
+    selectedVendorFilter,
+    selectedStatusFilter,
+    fromDateFilter,
+    toDateFilter,
+    searchQuery
+  ])
+
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (!filterByRef.current?.contains(event.target)) {
-        setIsFilterByOpen(false)
-      }
-    }
-
-    const handleEscape = (event) => {
-      if (event.key === 'Escape') {
-        setIsFilterByOpen(false)
-      }
-    }
-
-    document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleEscape)
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleEscape)
-    }
-  }, [])
+    setFilterValue('')
+    setSelectedVendorFilter('')
+    setSelectedStatusFilter('')
+    setFromDateFilter('')
+    setToDateFilter('')
+  }, [filterBy])
 
   return (
     <div className="space-y-6">
@@ -157,61 +258,90 @@ const PurchaseReturns = () => {
            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 flex-1 xl:max-w-3xl items-end">
                <div className="sm:col-span-4 flex flex-col gap-1.5">
                   <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
-                  <div ref={filterByRef} className="relative">
-                     <button
-                       type="button"
-                       onClick={() => setIsFilterByOpen((current) => !current)}
-                       className={`w-full h-11 px-4 rounded-xl border text-[14px] font-bold outline-none transition-all shadow-inner flex items-center justify-between ${
-                         isFilterByOpen
-                           ? 'border-sky-500 bg-white ring-4 ring-sky-500/10'
-                           : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
-                       }`}
-                     >
-                       <span className="truncate">{filterBy}</span>
-                       <ChevronDown
-                         className={`text-slate-400 transition-transform ${isFilterByOpen ? 'rotate-180' : ''}`}
-                         size={16}
-                       />
-                     </button>
-
-                     {isFilterByOpen && (
-                       <div className="absolute left-0 right-0 top-[calc(100%+8px)] z-30 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
-                         <div className="py-2">
-                           {FILTER_BY_OPTIONS.map((option) => {
-                             const isActive = option === filterBy
-                             return (
-                               <button
-                                 key={option}
-                                 type="button"
-                                 onClick={() => {
-                                   setFilterBy(option)
-                                   setIsFilterByOpen(false)
-                                 }}
-                                 className={`flex w-full items-center justify-between px-4 py-3 text-left text-[14px] font-bold transition-all ${
-                                   isActive
-                                     ? 'bg-sky-50 text-sky-600'
-                                     : 'text-slate-700 hover:bg-slate-50'
-                                 }`}
-                               >
-                                 <span>{option}</span>
-                                 {isActive && <Check size={16} className="text-sky-500" />}
-                               </button>
-                             )
-                           })}
-                         </div>
-                       </div>
-                     )}
-                  </div>
+                  <StyledDropdown
+                    value={filterBy}
+                    onChange={(e) => setFilterBy(e.target.value)}
+                    triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                    placeholder={filterBy}
+                  >
+                    {FILTER_BY_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </StyledDropdown>
                </div>
                <div className="sm:col-span-5 flex flex-col gap-1.5">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
-                  <input 
-                    type="text" 
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                    className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
-                    placeholder={`Enter ${filterBy.toLowerCase()}`}
-                  />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                    {filterBy === 'Vendor'
+                      ? 'Select Vendor'
+                      : filterBy === 'Date Range'
+                      ? 'Date Range'
+                      : filterBy === 'Status'
+                      ? 'Select Status'
+                      : 'Filter Value'}
+                  </label>
+                  {(filterBy === 'SKU/UPC' || filterBy === 'Product Code') && (
+                    <input
+                      type="text"
+                      value={filterValue}
+                      onChange={(e) => setFilterValue(e.target.value)}
+                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                      placeholder={`Enter ${filterBy.toLowerCase()}`}
+                    />
+                  )}
+                  {filterBy === 'Vendor' && (
+                    <StyledDropdown
+                      value={selectedVendorFilter}
+                      onChange={(e) => setSelectedVendorFilter(e.target.value)}
+                      triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                      placeholder="All Vendors"
+                    >
+                      <option value="">All Vendors</option>
+                      {vendorFilterOptions.map((vendorOption) => (
+                        <option key={vendorOption} value={vendorOption}>
+                          {vendorOption}
+                        </option>
+                      ))}
+                    </StyledDropdown>
+                  )}
+                  {filterBy === 'Status' && (
+                    <StyledDropdown
+                      value={selectedStatusFilter}
+                      onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                      triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                      placeholder="All Status"
+                    >
+                      <option value="">All Status</option>
+                      {statusFilterOptions.map((statusOption) => (
+                        <option key={statusOption} value={statusOption}>
+                          {statusOption}
+                        </option>
+                      ))}
+                    </StyledDropdown>
+                  )}
+                  {filterBy === 'Date Range' && (
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From Date</span>
+                        <input
+                          type="date"
+                          value={fromDateFilter}
+                          onChange={(e) => setFromDateFilter(e.target.value)}
+                          className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To Date</span>
+                        <input
+                          type="date"
+                          value={toDateFilter}
+                          onChange={(e) => setToDateFilter(e.target.value)}
+                          className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                        />
+                      </div>
+                    </div>
+                  )}
                </div>
               <div className="sm:col-span-3">
                  <button className="w-full h-11 rounded-xl bg-white border-2 border-[#0EA5E9] text-[#0EA5E9] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-50 transition-all shadow-sm active:scale-95">
@@ -308,14 +438,14 @@ const PurchaseReturns = () => {
                         </div>
                       </td>
                     </tr>
-                  ) : mappedReturns.length === 0 ? (
+                  ) : filteredReturns.length === 0 ? (
                     <tr>
                       <td colSpan="7" className="px-8 py-16 text-center">
                         <p className="text-slate-500 font-bold">No purchase returns found.</p>
                       </td>
                     </tr>
                   ) : (
-                    mappedReturns.map((record) => (
+                    filteredReturns.map((record) => (
                       <tr 
                         key={record.key} 
                         className="hover:bg-sky-50/30 transition-colors group cursor-pointer"
@@ -344,7 +474,7 @@ const PurchaseReturns = () => {
 
          <div className="px-8 py-5 bg-slate-50/30 border-t border-slate-100">
             <span className="text-xs font-black text-slate-400 uppercase tracking-widest">
-               Total Purchase Returns : {mappedReturns.length}
+               Total Purchase Returns : {filteredReturns.length}
             </span>
          </div>
       </div>
@@ -353,3 +483,4 @@ const PurchaseReturns = () => {
 }
 
 export default PurchaseReturns
+ Greenland

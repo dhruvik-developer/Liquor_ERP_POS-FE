@@ -6,6 +6,7 @@ import DataEntryModal from '../common/DataEntryModal'
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import StyledDropdown from '../common/StyledDropdown'
 import { 
   DEPARTMENTS, 
   SIZES, 
@@ -19,18 +20,16 @@ const AttributeRow = ({ label, options = [], value, onChange, onOpenSelector }) 
   <div className="flex flex-col gap-1.5">
     <label className="text-[12px] font-bold uppercase tracking-wider text-[#64748B] ml-0.5">{label}</label>
     <div className="flex gap-2">
-      <div className="relative flex-1 group">
-        <select
+      <div className="flex-1">
+        <StyledDropdown
           value={value}
           onChange={onChange}
-          className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] font-bold text-[#1E293B] outline-none transition-all focus:border-[#0EA5E9] focus:bg-white focus:ring-4 focus:ring-[#0EA5E90D] appearance-none cursor-pointer"
+          triggerClassName="border-[#E2E8F0] bg-[#F8FAFC] !h-10 !text-[14px] !font-bold !text-[#1E293B]"
+          placeholder="Select"
         >
           <option value="">Select</option>
           {options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-        </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-[#94A3B8] group-focus-within:text-[#0EA5E9] transition-colors">
-          <Plus size={16} />
-        </div>
+        </StyledDropdown>
       </div>
       <button 
         onClick={onOpenSelector}
@@ -195,3 +194,4 @@ const AddProduct = () => {
 }
 
 export default AddProduct
+ Greenland

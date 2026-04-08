@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import ModalShell from './ModalShell'
+import StyledDropdown from '../../common/StyledDropdown'
 
 const StoreAssignmentModal = ({
   isOpen,
@@ -47,14 +48,15 @@ const StoreAssignmentModal = ({
       <form onSubmit={submit} className="space-y-8">
         <div className="flex flex-col gap-2 group">
            <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">Target System User</label>
-           <select
+           <StyledDropdown
             value={userId}
             onChange={event => setUserId(event.target.value)}
-            className="w-full h-12 px-5 rounded-2xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-black text-neutral-800 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+            triggerClassName="w-full !h-12 border-neutral-200 bg-neutral-50 !text-neutral-800 !font-black rounded-2xl"
+            placeholder="Select Operator..."
           >
             <option value="">Select Operator...</option>
             {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-          </select>
+          </StyledDropdown>
         </div>
 
         <div className="space-y-4">
@@ -87,3 +89,4 @@ const StoreAssignmentModal = ({
 }
 
 export default StoreAssignmentModal
+ Greenland

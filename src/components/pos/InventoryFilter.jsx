@@ -2,22 +2,23 @@ import React from 'react'
 import { Search, Filter, RotateCcw, Plus } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
+import StyledDropdown from '../common/StyledDropdown'
 
-const FilterSelect = ({ label, options, value, onChange, name, disabled = false }) => (
+const FilterSelect = ({ label, options = [], value, onChange, name, disabled = false }) => (
   <div className="flex flex-col gap-1.5 flex-1 min-w-[150px]">
     <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-1">{label}</label>
-    <select
+    <StyledDropdown
       name={name}
       value={value}
       onChange={onChange}
       disabled={disabled}
-      className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60 disabled:cursor-not-allowed"
+      triggerClassName="!h-10 !rounded-lg border-[#E2E8F0] bg-[#F8FAFC] !font-bold !text-[13px] !text-[#1E293B]"
+      placeholder={options.length === 0 ? "No options" : "Select..."}
     >
-      {options?.length === 0 && <option value="">No options</option>}
-      {options?.map((opt, index) => (
+      {options.map((opt, index) => (
         <option key={`${name}-${opt}-${index}`} value={opt}>{opt}</option>
       ))}
-    </select>
+    </StyledDropdown>
   </div>
 )
 
@@ -33,18 +34,18 @@ const InventoryFilter = ({ filters, onFilterChange, onReset, onAdd, dropdownOpti
         {/* Row 1 */}
         <div className="flex flex-col gap-1.5">
           <label className="text-[12px] font-bold text-[#64748B] uppercase tracking-wider ml-1">Search Items</label>
-          <select
+          <StyledDropdown
             name="searchType"
             value={filters.searchType}
             onChange={handleChange}
             disabled={dropdownLoading}
-            className="w-full h-10 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] font-bold text-[#1E293B] outline-none transition focus:border-[#0EA5E9] focus:bg-white disabled:opacity-60"
+            triggerClassName="!h-10 !rounded-lg border-[#E2E8F0] bg-[#F8FAFC] !font-bold !text-[13px] !text-[#1E293B]"
+            placeholder={dropdownOptions.searchTypes.length === 0 ? "No options" : "Select Search Type"}
           >
-            {dropdownOptions.searchTypes.length === 0 && <option value="">No options</option>}
             {dropdownOptions.searchTypes.map((opt, index) => (
               <option key={`searchType-${opt}-${index}`} value={opt}>{opt}</option>
             ))}
-          </select>
+          </StyledDropdown>
         </div>
 
         <Input 

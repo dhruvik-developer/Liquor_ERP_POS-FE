@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState, useRef } from 'react'
+import React, { useEffect, useMemo, useState, useRef } from 'react'
 import { X, Plus, Image as ImageIcon, Trash2, Search, Save } from 'lucide-react'
 import Loader from '../common/Loader'
 import SelectionModal from '../common/SelectionModal'
@@ -10,6 +10,7 @@ import useBrands from '../../hooks/useBrands'
 import useSubCategories from '../../hooks/useSubCategories'
 import useSizes from '../../hooks/useSizes'
 import { resolveMediaUrl } from '../../utils/url'
+import StyledDropdown from '../common/StyledDropdown'
 
 const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "", disabled = false }) => (
   <div className={`flex flex-col gap-1.5 group ${className} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
@@ -42,26 +43,24 @@ const SelectField = ({ label, value, options = [], onChange, onOpenSelector, cla
     </label>
     <div className="flex gap-2">
       <div className="relative flex-1">
-        <select
+        <StyledDropdown
           value={value || ''}
           onChange={(e) => onChange?.(e.target.value)}
           disabled={disabled}
-          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-bold text-slate-700 outline-none transition-all focus:border-sky-500 appearance-none disabled:cursor-not-allowed disabled:opacity-60"
+          triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11 rounded-xl"
+          placeholder={disabled ? 'Select Category First' : 'Select'}
         >
           <option value="">{disabled ? 'Select Category First' : 'Select'}</option>
           {(Array.isArray(options) ? options : []).map((option, index) => {
-            const label = getLookupName(option)
-            if (!label) return null
+            const labelValue = getLookupName(option)
+            if (!labelValue) return null
             return (
-              <option key={`opt-${label}-${index}`} value={label}>
-                {label}
+              <option key={`opt-${labelValue}-${index}`} value={labelValue}>
+                {labelValue}
               </option>
             )
           })}
-        </select>
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
-        </div>
+        </StyledDropdown>
       </div>
       <button 
         onClick={onOpenSelector}
@@ -351,6 +350,12 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     if (value === null || value === undefined || value === '') return fallback
     return `${value}`
   }
+  const toTwoDecimalString = (value, fallback = '0.00') => {
+    if (value === null || value === undefined || value === '') return fallback
+    const parsed = Number(value)
+    if (!Number.isFinite(parsed)) return fallback
+    return (Math.round((parsed + Number.EPSILON) * 100) / 100).toFixed(2)
+  }
 
   const getNormalizedUpcs = (upcsValue) => (
     `${upcsValue || ''}`
@@ -449,16 +454,16 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       item_is_inactive: Boolean(formData.isInactive),
       buy_as_case: Boolean(formData.buyAsCase),
       units_in_case: toSafeStringNumber(formData.unitsInCase),
-      case_cost: toSafeStringNumber(formData.caseCost),
-      case_price: toSafeStringNumber(formData.casePrice),
+      case_cost: toTwoDecimalString(formData.caseCost),
+      case_price: toTwoDecimalString(formData.casePrice),
       cost_pricing: {
-        unit_cost: toSafeStringNumber(formData.unitCost),
-        margin: toSafeStringNumber(formData.margin),
-        buydown: toSafeStringNumber(formData.buyDown),
-        markup: toSafeStringNumber(formData.markup),
-        unit_price: toSafeStringNumber(formData.unitPrice),
-        msrp: toSafeStringNumber(formData.msrp),
-        min_price: toSafeStringNumber(formData.minPrice)
+        unit_cost: toTwoDecimalString(formData.unitCost),
+        margin: toTwoDecimalString(formData.margin),
+        buydown: toTwoDecimalString(formData.buyDown),
+        markup: toTwoDecimalString(formData.markup),
+        unit_price: toTwoDecimalString(formData.unitPrice),
+        msrp: toTwoDecimalString(formData.msrp),
+        min_price: toTwoDecimalString(formData.minPrice)
       },
       stock_information: {
         enter_upcs: `${formData.upcs || ''}`.trim(),
@@ -676,11 +681,12 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 
               <div className="flex flex-col gap-1.5 min-w-[200px]">
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Tax</label>
-                <select 
+                <StyledDropdown 
                   value={formData.tax}
                   onChange={(e) => handleChange('tax', e.target.value)}
                   disabled={taxRatesLoading}
-                  className="w-full h-10 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500"
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-10 rounded-xl"
+                  placeholder={taxRatesLoading ? 'Loading tax rates...' : 'Select Tax Rate'}
                 >
                   {TAX_RATES.length === 0 ? (
                     <option value="">{taxRatesLoading ? 'Loading tax rates...' : 'No tax rates found'}</option>
@@ -691,7 +697,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
                       </option>
                     ))
                   )}
-                </select>
+                </StyledDropdown>
               </div>
 
               <label className="flex items-center gap-3 cursor-pointer group">
@@ -1103,5 +1109,4 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 }
 
 export default AddProductModal
-
-
+ Greenland

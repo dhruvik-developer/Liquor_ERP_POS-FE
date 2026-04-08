@@ -17,6 +17,7 @@ import Input from '../common/Input'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import Toggle from '../common/Toggle'
+import StyledDropdown from '../common/StyledDropdown'
 
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -130,12 +131,13 @@ const UsersTab = () => {
             placeholder="User Name or Email" 
             className="w-64 h-10 px-4 rounded-lg bg-[#F1F5F9] border-none text-[14px] font-medium text-[#1E293B] outline-none placeholder:text-[#94A3B8] focus:bg-white focus:ring-2 focus:ring-[#0EA5E933] transition-all"
           />
-          <div className="relative w-48">
-            <select className="w-full h-10 px-4 pr-10 rounded-lg bg-[#F1F5F9] border-none text-[14px] font-bold text-[#1E293B] outline-none appearance-none focus:bg-white focus:ring-2 focus:ring-[#0EA5E933] transition-all cursor-pointer">
-              <option>Filter By Role</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] pointer-events-none" size={18} />
-          </div>
+          <StyledDropdown
+            className="w-48"
+            triggerClassName="!h-10 !rounded-lg border-none bg-[#F1F5F9] !font-bold !text-[#1E293B] !px-4"
+            placeholder="Filter By Role"
+          >
+             <option>Filter By Role</option>
+          </StyledDropdown>
           <input 
             placeholder="Filter Value" 
             className="w-48 h-10 px-4 rounded-lg bg-[#F1F5F9] border-none text-[14px] font-medium text-[#1E293B] outline-none placeholder:text-[#94A3B8] focus:bg-white focus:ring-2 focus:ring-[#0EA5E933] transition-all"
@@ -434,3 +436,4 @@ const VendorsTab = () => {
 }
 
 export default PeopleManagement
+ Greenland

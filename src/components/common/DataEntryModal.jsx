@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { X, Save, ChevronDown, Check } from 'lucide-react'
+import StyledDropdown from './StyledDropdown'
 
 const DataEntryModal = ({ type, onClose, onSave }) => {
   const configs = {
@@ -72,7 +73,7 @@ const DataEntryModal = ({ type, onClose, onSave }) => {
       <div className="bg-white rounded-[32px] shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in duration-300 border border-neutral-100 flex flex-col">
         
         {/* Header */}
-        <div className="flex items-center justify-between px-8 py-6 border-b border-neutral-50 bg-neutral-50/20">
+        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-50 bg-slate-50/20">
           <div className="flex items-center gap-3">
             <div className="h-8 w-1.5 bg-primary rounded-full"></div>
             <h2 className="text-xl font-black text-neutral-800 tracking-tight">{config.title}</h2>
@@ -96,16 +97,16 @@ const DataEntryModal = ({ type, onClose, onSave }) => {
               <div key={field.id} className="relative group">
                 {field.type === 'select' ? (
                   <div className="relative">
-                    <select
+                    <StyledDropdown
                       value={formData[field.id] || ''}
                       onChange={(e) => handleChange(field.id, e.target.value)}
-                      className="w-full h-16 px-5 pt-5 rounded-2xl border border-neutral-200 bg-neutral-50/50 text-sm font-bold text-neutral-800 outline-none focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10 transition-all appearance-none cursor-pointer"
+                      triggerClassName="!h-16 border-neutral-200 bg-neutral-50/50 !text-neutral-800 !font-bold rounded-2xl !pt-4"
+                      placeholder={field.placeholder}
                     >
                       <option value="" disabled>{field.placeholder}</option>
                       {field.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                    </select>
-                    <ChevronDown className="absolute right-5 top-1/2 -translate-y-1/2 text-neutral-400 pointer-events-none group-focus-within:text-primary transition-colors" size={20} />
-                    <span className="absolute top-2.5 left-5 text-[10px] font-black text-primary uppercase tracking-widest">{field.label}</span>
+                    </StyledDropdown>
+                    <span className="absolute top-2.5 left-5 text-[10px] font-black text-primary uppercase tracking-widest z-10 pointer-events-none">{field.label}</span>
                   </div>
                 ) : (
                   <div className="relative">
@@ -151,3 +152,4 @@ const DataEntryModal = ({ type, onClose, onSave }) => {
 }
 
 export default DataEntryModal
+ Greenland

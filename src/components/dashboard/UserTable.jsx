@@ -1,4 +1,5 @@
 import SectionCard from './SectionCard'
+import StyledDropdown from '../common/StyledDropdown'
 
 const statusClass = isActive => (
   isActive ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-neutral-100 text-neutral-500 border-neutral-200'
@@ -32,10 +33,11 @@ const UserTable = ({
       </div>
       <div className="group flex flex-col gap-2">
          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">By Access Level</label>
-        <select
+        <StyledDropdown
           value={filters.role}
           onChange={event => onFiltersChange({ role: event.target.value })}
-          className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-bold text-neutral-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+          triggerClassName="border-neutral-200 bg-neutral-50 !text-neutral-700 !font-bold rounded-xl !h-[42px]"
+          placeholder="All Roles Defined"
         >
           <option value="all">All Roles Defined</option>
           {roles.map(role => (
@@ -43,14 +45,15 @@ const UserTable = ({
               {role.name}
             </option>
           ))}
-        </select>
+        </StyledDropdown>
       </div>
       <div className="group flex flex-col gap-2">
          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">By Branch Office</label>
-        <select
+        <StyledDropdown
           value={filters.store}
           onChange={event => onFiltersChange({ store: event.target.value })}
-          className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-bold text-neutral-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+          triggerClassName="border-neutral-200 bg-neutral-50 !text-neutral-700 !font-bold rounded-xl !h-[42px]"
+          placeholder="All Licensed Stores"
         >
           <option value="all">All Licensed Stores</option>
           {stores.map(store => (
@@ -58,17 +61,18 @@ const UserTable = ({
               {store.name}
             </option>
           ))}
-        </select>
+        </StyledDropdown>
       </div>
       <div className="group flex flex-col gap-2">
          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">Display Volume</label>
-        <select
+        <StyledDropdown
           value={pagination.pageSize}
           onChange={event => onPageSizeChange(Number(event.target.value))}
-          className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-bold text-neutral-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+          triggerClassName="border-neutral-200 bg-neutral-50 !text-neutral-700 !font-bold rounded-xl !h-[42px]"
+          placeholder="Records / Page"
         >
           {[10, 20, 50].map(size => <option key={size} value={size}>{size} Records / Page</option>)}
-        </select>
+        </StyledDropdown>
       </div>
     </div>
 
@@ -171,3 +175,4 @@ const UserTable = ({
 )
 
 export default UserTable
+ Greenland

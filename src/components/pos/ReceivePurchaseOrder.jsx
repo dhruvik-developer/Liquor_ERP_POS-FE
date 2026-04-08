@@ -7,6 +7,7 @@ import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
+import StyledDropdown from '../common/StyledDropdown'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -351,37 +352,33 @@ const ReceivePurchaseOrder = () => {
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Select Vendor</label>
-            <div className="relative">
-              <select
-                value={selectedVendorKey}
-                onChange={(e) => setSelectedVendorKey(e.target.value)}
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all"
-              >
-                {vendorOptions.map((vendor) => (
-                  <option key={vendor.vendorKey} value={vendor.vendorKey}>
-                    {vendor.vendorName}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
+            <StyledDropdown
+              value={selectedVendorKey}
+              onChange={(e) => setSelectedVendorKey(e.target.value)}
+              triggerClassName="border-slate-200 bg-white !text-slate-700 !font-medium !h-[38px]"
+              placeholder="Select Vendor"
+            >
+              {vendorOptions.map((vendor) => (
+                <option key={vendor.vendorKey} value={vendor.vendorKey}>
+                  {vendor.vendorName}
+                </option>
+              ))}
+            </StyledDropdown>
           </div>
           <div className="flex flex-col gap-1.5">
             <label className="text-[12px] font-semibold text-slate-500 ml-0.5">Select PO</label>
-            <div className="relative">
-              <select
-                value={selectedPoId}
-                onChange={(e) => setSelectedPoId(e.target.value)}
-                className="w-full h-[38px] px-3 rounded-lg border border-slate-200 bg-white text-[14px] font-medium text-slate-700 outline-none appearance-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/10 transition-all"
-              >
-                {filteredOrders.map((order) => (
-                  <option key={order.key} value={order.key}>
-                    {order.poNumber}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-            </div>
+            <StyledDropdown
+              value={selectedPoId}
+              onChange={(e) => setSelectedPoId(e.target.value)}
+              triggerClassName="border-slate-200 bg-white !text-slate-700 !font-medium !h-[38px]"
+              placeholder="Select PO"
+            >
+              {filteredOrders.map((order) => (
+                <option key={order.key} value={order.key}>
+                  {order.poNumber}
+                </option>
+              ))}
+            </StyledDropdown>
           </div>
 
           <DatePickerField label="PO Date" value={poDate} onChange={setPoDate} />
@@ -591,3 +588,4 @@ const ReceivePurchaseOrder = () => {
 }
 
 export default ReceivePurchaseOrder
+ Greenland

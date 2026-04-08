@@ -17,6 +17,7 @@ import Card from '../common/Card'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import Loader from '../common/Loader'
+import StyledDropdown from '../common/StyledDropdown'
 
 const AddUserPage = ({ onCancel, onSave }) => {
   const { id } = useParams()
@@ -232,13 +233,19 @@ const AddUserPage = ({ onCancel, onSave }) => {
             </div>
 
             <div className="col-span-1 md:col-span-2 space-y-1.5">
-              <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">System Role & Permissions</label>
-              <select name="role" value={formData.role} onChange={handleChange} className="w-full h-10 px-4 rounded-lg border border-[#E2E8F0] bg-white text-[14px] font-medium text-[#1E293B] outline-none focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E90D] transition-all">
+              <label className="text-[14px] font-bold text-[#1E293B] ml-0.5 uppercase tracking-widest text-[#64748B]">System Role & Permissions</label>
+              <StyledDropdown
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                placeholder="Select Role"
+                triggerClassName="border-[#E2E8F0] bg-white !text-[14px] !font-medium !text-[#1E293B]"
+              >
                 <option value="">Select Role</option>
                 <option value="Administrator">Administrator</option>
                 <option value="Purchase Manager">Purchase Manager</option>
                 <option value="Sales Associate">Sales Associate</option>
-              </select>
+              </StyledDropdown>
             </div>
           </div>
         </div>
@@ -248,3 +255,4 @@ const AddUserPage = ({ onCancel, onSave }) => {
 }
 
 export default AddUserPage
+ Greenland

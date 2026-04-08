@@ -17,6 +17,11 @@ import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import { resolveMediaUrl } from '../../utils/url'
 
+const roundToTwo = (value) => {
+  const num = Number(value) || 0
+  return Math.round((num + Number.EPSILON) * 100) / 100
+}
+
 const PosTerminalView = () => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState('')
@@ -97,13 +102,13 @@ const PosTerminalView = () => {
       const payload = {
         status: 'Completed',
         payment_method: paymentMethod || 'Cash',
-        total_amount: totals.grandTotal,
-        discount_amount: totals.discount || 0,
-        tax_amount: totals.tax || 0,
+        total_amount: roundToTwo(totals.grandTotal),
+        discount_amount: roundToTwo(totals.discount || 0),
+        tax_amount: roundToTwo(totals.tax || 0),
         items: cartItems.map(item => ({
             product_id: item.id,
             quantity: item.cartQuantity,
-            unit_price: item.price
+            unit_price: roundToTwo(item.price)
         }))
       }
       const response = await post('/sales/orders/', payload)
@@ -113,7 +118,7 @@ const PosTerminalView = () => {
         {
           id: response?.id ? `SO-${response.id}` : `SO-${Date.now()}`,
           storeName: 'Main Store',
-          total: totals.grandTotal,
+          total: roundToTwo(totals.grandTotal),
           status: 'Completed',
           createdAt: new Date().toISOString(),
         },

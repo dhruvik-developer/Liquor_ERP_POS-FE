@@ -1,15 +1,17 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Filter, Search, RefreshCcw, Plus, Trash2, ChevronDown } from 'lucide-react'
+import { Filter, Search, RefreshCcw, Plus, Trash2, ChevronDown, Check } from 'lucide-react'
 import Loader from '../common/Loader'
 import Card from '../common/Card'
 import useFetch from '../../hooks/useFetch'
+import StyledDropdown from '../common/StyledDropdown'
 
-const PERIOD_DAYS = {
-  'Last Month': 30,
-  'Last 3 Months': 90,
-  'Last 6 Months': 180
+const PERIOD_MONTHS = {
+  'Last Month': 1,
+  'Last 3 Months': 3,
+  'Last 6 Months': 6
 }
+const FILTER_BY_OPTIONS = ['SKU/UPC', 'Product Code', 'Vendor', 'Date Range', 'Status']
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -30,10 +32,24 @@ const formatAmount = (value) => {
   return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 }
 
+const getPeriodRange = (period, now = new Date()) => {
+  const months = PERIOD_MONTHS[period]
+  if (!months) return null
+
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const rangeStart = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth() - months, 1, 0, 0, 0, 0)
+  const rangeEnd = new Date(currentMonthStart.getFullYear(), currentMonthStart.getMonth(), 0, 23, 59, 59, 999)
+  return { rangeStart, rangeEnd }
+}
+
 const PurchaseBills = () => {
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
-  const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterBy, setFilterBy] = useState('SKU/UPC')
   const [filterValue, setFilterValue] = useState('')
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
+  const [fromDateFilter, setFromDateFilter] = useState('')
+  const [toDateFilter, setToDateFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(null)
 
@@ -114,114 +130,240 @@ const PurchaseBills = () => {
         bill.grand_total,
         bill.net_total
       )
+      const lineItems = Array.isArray(bill.items_detail)
+        ? bill.items_detail
+        : Array.isArray(bill.items)
+        ? bill.items
+        : []
+      const skuUpcText = lineItems
+        .map((item) => getFirstDefined(item?.sku, item?.upc, item?.barcode, ''))
+        .join(' ')
+      const productCodeText = lineItems
+        .map((item) => getFirstDefined(item?.product_code, item?.vendor_code, item?.code, ''))
+        .join(' ')
+      const status = getFirstDefined(
+        bill.status,
+        bill.bill_status,
+        bill.payment_status,
+        bill.paid_status,
+        'Open'
+      )
 
       return {
         key: getFirstDefined(bill.id, bill.uuid, billNumber, index),
         id: billNumber || `BILL-${index + 1}`,
         dateRaw: billDateRaw,
+        dateValue: toDateValue(billDateRaw),
         date: formatDateTime(billDateRaw),
         vendor: vendorName || 'N/A',
+        status,
         total: formatAmount(totalAmount),
         dueDate: formatDateTime(dueDateRaw),
-        note: getFirstDefined(bill.note, bill.notes, '')
+        note: getFirstDefined(bill.note, bill.notes, ''),
+        skuUpcText: String(skuUpcText || '').toLowerCase(),
+        productCodeText: String(productCodeText || '').toLowerCase()
       }
     })
   }, [purchaseBills, vendorsData])
 
+  const vendorFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedBills.map((record) => String(record.vendor || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedBills])
+
+  const statusFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedBills.map((record) => String(record.status || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedBills])
+
   const displayedBills = React.useMemo(() => {
+    const normalizedFilterValue = String(filterValue || '').trim().toLowerCase()
+    const normalizedSearch = String(searchQuery || '').trim().toLowerCase()
+
     return mappedBills.filter((bill) => {
-      const date = toDateValue(bill.dateRaw)
       if (filterPeriod !== 'All') {
-        const days = PERIOD_DAYS[filterPeriod]
-        if (days && date) {
-          const diffDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
-          if (diffDays > days) return false
+        const periodRange = getPeriodRange(filterPeriod)
+        if (!bill.dateValue || !periodRange) return false
+        if (bill.dateValue < periodRange.rangeStart || bill.dateValue > periodRange.rangeEnd) return false
+      }
+
+      let matchesFilterBy = true
+
+      if (filterBy === 'SKU/UPC') {
+        matchesFilterBy = !normalizedFilterValue || bill.skuUpcText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Product Code') {
+        matchesFilterBy = !normalizedFilterValue || bill.productCodeText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Vendor') {
+        matchesFilterBy = !selectedVendorFilter || bill.vendor === selectedVendorFilter
+      } else if (filterBy === 'Status') {
+        matchesFilterBy = !selectedStatusFilter || bill.status === selectedStatusFilter
+      } else if (filterBy === 'Date Range') {
+        const rowDate = bill.dateValue
+        if (!rowDate) {
+          matchesFilterBy = false
+        } else {
+          const fromDate = fromDateFilter ? new Date(fromDateFilter) : null
+          const toDate = toDateFilter ? new Date(toDateFilter) : null
+          if (fromDate && Number.isFinite(fromDate.getTime())) fromDate.setHours(0, 0, 0, 0)
+          if (toDate && Number.isFinite(toDate.getTime())) toDate.setHours(23, 59, 59, 999)
+          matchesFilterBy =
+            (!fromDate || rowDate >= fromDate) &&
+            (!toDate || rowDate <= toDate)
         }
       }
 
-      const normalizedFilterValue = filterValue.trim().toLowerCase()
-      if (normalizedFilterValue) {
-        const filterTarget = (
-          filterBy === 'Bill #'
-            ? bill.id
-            : bill.vendor
-        )
-          .toString()
-          .toLowerCase()
-        if (!filterTarget.includes(normalizedFilterValue)) return false
-      }
+      if (!matchesFilterBy) return false
 
-      const normalizedSearch = searchQuery.trim().toLowerCase()
       if (!normalizedSearch) return true
 
-      const combinedSearch = [bill.id, bill.vendor, bill.note, bill.total, bill.date, bill.dueDate]
-        .join(' ')
-        .toLowerCase()
-      return combinedSearch.includes(normalizedSearch)
+      const combinedSearch = [bill.id, bill.vendor, bill.note, bill.status, bill.total, bill.date, bill.dueDate]
+      return combinedSearch.some((value) => String(value || '').toLowerCase().includes(normalizedSearch))
     })
-  }, [mappedBills, filterPeriod, filterBy, filterValue, searchQuery])
+  }, [
+    mappedBills,
+    filterPeriod,
+    filterBy,
+    filterValue,
+    selectedVendorFilter,
+    selectedStatusFilter,
+    fromDateFilter,
+    toDateFilter,
+    searchQuery
+  ])
+
+  useEffect(() => {
+    setFilterValue('')
+    setSelectedVendorFilter('')
+    setSelectedStatusFilter('')
+    setFromDateFilter('')
+    setToDateFilter('')
+  }, [filterBy])
 
   return (
     <div className="space-y-6">
       
       {/* Filter Criteria Section */}
-      <Card className="!p-4 bg-white shadow-sm border border-slate-200">
-        <div className="flex items-center gap-8">
-          {/* Radio Group */}
-          <div className="flex flex-col gap-1.5 min-w-max">
+      <Card noPadding className="border-slate-200 shadow-sm overflow-visible">
+        <div className="p-8 flex flex-col xl:flex-row xl:items-center justify-between gap-8">
+          <div className="flex flex-col gap-4 min-w-fit">
             <h3 className="text-[15px] font-black text-slate-800 tracking-tight font-poppins">Filter Criteria</h3>
-            <div className="flex items-center gap-5">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-4">
               {['Last Month', 'Last 3 Months', 'Last 6 Months', 'All'].map((period) => (
-                <label key={period} className="flex items-center gap-2 cursor-pointer group">
-                  <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                    filterPeriod === period ? 'border-sky-500' : 'border-slate-200 group-hover:border-slate-300'
+                <label key={period} className="flex items-center gap-3 cursor-pointer group">
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                    filterPeriod === period ? 'border-[#0EA5E9] bg-white' : 'border-slate-300 group-hover:border-slate-400'
                   }`}>
-                    {filterPeriod === period && <div className="w-2 h-2 rounded-full bg-sky-500" />}
+                    {filterPeriod === period && <div className="w-2.5 h-2.5 rounded-full bg-[#0EA5E9]" />}
                   </div>
                   <input type="radio" className="hidden" name="period" checked={filterPeriod === period} onChange={() => setFilterPeriod(period)} />
                   <span className={`text-[13px] font-bold transition-colors ${
-                    filterPeriod === period ? 'text-slate-800' : 'text-slate-500 group-hover:text-slate-800'
+                    filterPeriod === period ? 'text-slate-900' : 'text-slate-400 group-hover:text-slate-600'
                   }`}>{period}</span>
                 </label>
               ))}
             </div>
           </div>
 
-          <div className="h-10 w-px bg-slate-100 mx-2" />
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 flex-1 xl:max-w-3xl items-end">
+            <div className="sm:col-span-4 flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
+              <StyledDropdown
+                value={filterBy}
+                onChange={(e) => setFilterBy(e.target.value)}
+                triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                placeholder={filterBy}
+              >
+                {FILTER_BY_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </StyledDropdown>
+            </div>
 
-          {/* Filter By Dropdown */}
-          <div className="flex flex-col gap-1.5 w-48">
-             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
-             <div className="relative">
-                <select 
-                  value={filterBy}
-                  onChange={(e) => setFilterBy(e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 appearance-none cursor-pointer"
+            <div className="sm:col-span-5 flex flex-col gap-1.5">
+              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                {filterBy === 'Vendor'
+                  ? 'Select Vendor'
+                  : filterBy === 'Date Range'
+                  ? 'Date Range'
+                  : filterBy === 'Status'
+                  ? 'Select Status'
+                  : 'Filter Value'}
+              </label>
+
+              {(filterBy === 'SKU/UPC' || filterBy === 'Product Code') && (
+                <input
+                  type="text"
+                  value={filterValue}
+                  onChange={(e) => setFilterValue(e.target.value)}
+                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                  placeholder={`Enter ${filterBy.toLowerCase()}`}
+                />
+              )}
+
+              {filterBy === 'Vendor' && (
+                <StyledDropdown
+                  value={selectedVendorFilter}
+                  onChange={(e) => setSelectedVendorFilter(e.target.value)}
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                  placeholder="All Vendors"
                 >
-                  <option>Vendor</option>
-                  <option>Bill #</option>
-                </select>
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-             </div>
-          </div>
+                  <option value="">All Vendors</option>
+                  {vendorFilterOptions.map((vendorOption) => (
+                    <option key={vendorOption} value={vendorOption}>
+                      {vendorOption}
+                    </option>
+                  ))}
+                </StyledDropdown>
+              )}
 
-          {/* Filter Value */}
-          <div className="flex flex-col gap-1.5 flex-1">
-             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
-             <input
-               type="text"
-               value={filterValue}
-               onChange={(e) => setFilterValue(e.target.value)}
-               placeholder="Search Value"
-               className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-inner"
-             />
-          </div>
+              {filterBy === 'Status' && (
+                <StyledDropdown
+                  value={selectedStatusFilter}
+                  onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                  placeholder="All Status"
+                >
+                  <option value="">All Status</option>
+                  {statusFilterOptions.map((statusOption) => (
+                    <option key={statusOption} value={statusOption}>
+                      {statusOption}
+                    </option>
+                  ))}
+                </StyledDropdown>
+              )}
 
-          <div className="pt-6">
-            <button className="h-11 px-6 rounded-xl border border-sky-400 bg-white text-sky-500 flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-sm hover:bg-sky-50 transition-all active:scale-95">
-              <Filter size={16} />
-              Filter
-            </button>
+              {filterBy === 'Date Range' && (
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From Date</span>
+                    <input
+                      type="date"
+                      value={fromDateFilter}
+                      onChange={(e) => setFromDateFilter(e.target.value)}
+                      className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To Date</span>
+                    <input
+                      type="date"
+                      value={toDateFilter}
+                      onChange={(e) => setToDateFilter(e.target.value)}
+                      className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="sm:col-span-3">
+              <button className="w-full h-11 rounded-xl bg-white border-2 border-[#0EA5E9] text-[#0EA5E9] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-50 transition-all shadow-sm active:scale-95">
+                <Filter size={16} />
+                Filter
+              </button>
+            </div>
           </div>
         </div>
       </Card>
@@ -347,3 +489,4 @@ const PurchaseBills = () => {
 }
 
 export default PurchaseBills
+ Greenland

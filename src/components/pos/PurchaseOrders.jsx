@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { 
   Filter, 
@@ -8,17 +8,19 @@ import {
   Trash2,
   CheckCircle,
   ChevronDown,
-  Pencil
+  Check
 } from 'lucide-react'
 import Loader from '../common/Loader'
 import Card from '../common/Card'
 import useFetch from '../../hooks/useFetch'
+import StyledDropdown from '../common/StyledDropdown'
 
-const PERIOD_DAYS = {
-  'Last Month': 30,
-  'Last 3 Months': 90,
-  'Last 6 Months': 180
+const PERIOD_MONTHS = {
+  'Last Month': 1,
+  'Last 3 Months': 3,
+  'Last 6 Months': 6
 }
+const FILTER_BY_OPTIONS = ['SKU/UPC', 'Product Code', 'Vendor', 'Date Range', 'Status']
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -39,11 +41,30 @@ const formatAmount = (value) => {
   return Number.isFinite(amount) ? amount.toFixed(2) : '0.00'
 }
 
+const getPeriodRange = (period, now = new Date()) => {
+  const months = PERIOD_MONTHS[period]
+  if (!months) return null
+
+  const rangeEnd = new Date(now)
+  rangeEnd.setHours(23, 59, 59, 999)
+
+  const rangeStart = new Date(now)
+  rangeStart.setMonth(rangeStart.getMonth() - months)
+  rangeStart.setDate(rangeStart.getDate() + 1)
+  rangeStart.setHours(0, 0, 0, 0)
+
+  return { rangeStart, rangeEnd }
+}
+
 const PurchaseOrders = () => {
   const navigate = useNavigate()
   const [filterPeriod, setFilterPeriod] = useState('Last Month')
-  const [filterBy, setFilterBy] = useState('Vendor')
+  const [filterBy, setFilterBy] = useState('SKU/UPC')
   const [filterValue, setFilterValue] = useState('')
+  const [selectedVendorFilter, setSelectedVendorFilter] = useState('')
+  const [selectedStatusFilter, setSelectedStatusFilter] = useState('')
+  const [fromDateFilter, setFromDateFilter] = useState('')
+  const [toDateFilter, setToDateFilter] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedRow, setSelectedRow] = useState(null)
 
@@ -105,48 +126,86 @@ const PurchaseOrders = () => {
       const status = getFirstDefined(order.status, order.po_status, 'Pending')
       const overallStatus = getFirstDefined(order.overall_status, order.status, order.po_status, 'Pending')
       const total = getFirstDefined(order.total_amount, order.estimated_total, order.total, order.net_total)
+      const lineItems = Array.isArray(order.items_detail)
+        ? order.items_detail
+        : Array.isArray(order.items)
+        ? order.items
+        : Array.isArray(order.po_items)
+        ? order.po_items
+        : []
+      const skuUpcText = lineItems
+        .map((item) => getFirstDefined(item?.sku, item?.upc, item?.barcode, ''))
+        .join(' ')
+      const productCodeText = lineItems
+        .map((item) => getFirstDefined(item?.product_code, item?.vendor_code, item?.code, ''))
+        .join(' ')
 
       return {
         key: getFirstDefined(order.id, order.uuid, poNumber, index),
         id: order.id,
         po: poNumber || `PO-${index + 1}`,
         dateRaw: orderDateRaw,
+        dateValue: toDateValue(orderDateRaw),
         date: formatDateTime(orderDateRaw),
         vendor: vendorName || 'N/A',
         vendorOrder: getFirstDefined(order.vendor_order_ref, order.vendor_order_number, order.vendor_order_no, '-') || '-',
         status,
         total: formatAmount(total),
-        overallStatus
+        overallStatus,
+        skuUpcText: String(skuUpcText || '').toLowerCase(),
+        productCodeText: String(productCodeText || '').toLowerCase()
       }
     })
   }, [purchaseOrders])
 
+  const vendorFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedOrders.map((record) => String(record.vendor || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedOrders])
+
+  const statusFilterOptions = React.useMemo(() => {
+    const values = Array.from(new Set(mappedOrders.map((record) => String(record.status || '').trim()).filter(Boolean)))
+    return values.sort((a, b) => a.localeCompare(b))
+  }, [mappedOrders])
+
   const displayedOrders = React.useMemo(() => {
+    const normalizedFilterValue = String(filterValue || '').trim().toLowerCase()
+    const normalizedSearch = String(searchQuery || '').trim().toLowerCase()
+
     return mappedOrders.filter((order) => {
-      const date = toDateValue(order.dateRaw)
       if (filterPeriod !== 'All') {
-        const days = PERIOD_DAYS[filterPeriod]
-        if (days && date) {
-          const diffDays = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24)
-          if (diffDays > days) return false
+        const periodRange = getPeriodRange(filterPeriod)
+        if (!order.dateValue || !periodRange) return false
+        if (order.dateValue < periodRange.rangeStart || order.dateValue > periodRange.rangeEnd) return false
+      }
+
+      let matchesFilterBy = true
+
+      if (filterBy === 'SKU/UPC') {
+        matchesFilterBy = !normalizedFilterValue || order.skuUpcText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Product Code') {
+        matchesFilterBy = !normalizedFilterValue || order.productCodeText.includes(normalizedFilterValue)
+      } else if (filterBy === 'Vendor') {
+        matchesFilterBy = !selectedVendorFilter || order.vendor === selectedVendorFilter
+      } else if (filterBy === 'Status') {
+        matchesFilterBy = !selectedStatusFilter || order.status === selectedStatusFilter
+      } else if (filterBy === 'Date Range') {
+        const rowDate = order.dateValue
+        if (!rowDate) {
+          matchesFilterBy = false
+        } else {
+          const fromDate = fromDateFilter ? new Date(fromDateFilter) : null
+          const toDate = toDateFilter ? new Date(toDateFilter) : null
+          if (fromDate && Number.isFinite(fromDate.getTime())) fromDate.setHours(0, 0, 0, 0)
+          if (toDate && Number.isFinite(toDate.getTime())) toDate.setHours(23, 59, 59, 999)
+          matchesFilterBy =
+            (!fromDate || rowDate >= fromDate) &&
+            (!toDate || rowDate <= toDate)
         }
       }
 
-      const normalizedFilterValue = filterValue.trim().toLowerCase()
-      if (normalizedFilterValue) {
-        const filterTarget = (
-          filterBy === 'PO #'
-            ? order.po
-            : filterBy === 'Status'
-            ? order.status
-            : order.vendor
-        )
-          .toString()
-          .toLowerCase()
-        if (!filterTarget.includes(normalizedFilterValue)) return false
-      }
+      if (!matchesFilterBy) return false
 
-      const normalizedSearch = searchQuery.trim().toLowerCase()
       if (!normalizedSearch) return true
 
       const searchableText = [
@@ -163,7 +222,25 @@ const PurchaseOrders = () => {
 
       return searchableText.includes(normalizedSearch)
     })
-  }, [mappedOrders, filterPeriod, filterBy, filterValue, searchQuery])
+  }, [
+    mappedOrders,
+    filterPeriod,
+    filterBy,
+    filterValue,
+    selectedVendorFilter,
+    selectedStatusFilter,
+    fromDateFilter,
+    toDateFilter,
+    searchQuery
+  ])
+
+  useEffect(() => {
+    setFilterValue('')
+    setSelectedVendorFilter('')
+    setSelectedStatusFilter('')
+    setFromDateFilter('')
+    setToDateFilter('')
+  }, [filterBy])
 
   return (
     <div className="space-y-6">
@@ -195,28 +272,90 @@ const PurchaseOrders = () => {
            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 flex-1 xl:max-w-3xl items-end">
               <div className="sm:col-span-4 flex flex-col gap-1.5">
                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter By</label>
-                 <div className="relative group">
-                    <select
-                      value={filterBy}
-                      onChange={(e) => setFilterBy(e.target.value)}
-                      className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
-                    >
-                      <option>Vendor</option>
-                      <option>PO #</option>
-                      <option>Status</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                 </div>
+                 <StyledDropdown
+                   value={filterBy}
+                   onChange={(e) => setFilterBy(e.target.value)}
+                   triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                   placeholder={filterBy}
+                 >
+                   {FILTER_BY_OPTIONS.map((option) => (
+                     <option key={option} value={option}>
+                       {option}
+                     </option>
+                   ))}
+                 </StyledDropdown>
               </div>
               <div className="sm:col-span-5 flex flex-col gap-1.5">
-                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Filter Value</label>
-                 <input 
-                    type="text" 
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                   className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
-                   placeholder=""
-                 />
+                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">
+                   {filterBy === 'Vendor'
+                     ? 'Select Vendor'
+                     : filterBy === 'Date Range'
+                     ? 'Date Range'
+                     : filterBy === 'Status'
+                     ? 'Select Status'
+                     : 'Filter Value'}
+                 </label>
+                 {(filterBy === 'SKU/UPC' || filterBy === 'Product Code') && (
+                   <input
+                     type="text"
+                     value={filterValue}
+                     onChange={(e) => setFilterValue(e.target.value)}
+                     className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                     placeholder={`Enter ${filterBy.toLowerCase()}`}
+                   />
+                 )}
+                 {filterBy === 'Vendor' && (
+                   <StyledDropdown
+                     value={selectedVendorFilter}
+                     onChange={(e) => setSelectedVendorFilter(e.target.value)}
+                     triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                     placeholder="All Vendors"
+                   >
+                     <option value="">All Vendors</option>
+                     {vendorFilterOptions.map((vendorOption) => (
+                       <option key={vendorOption} value={vendorOption}>
+                         {vendorOption}
+                       </option>
+                     ))}
+                   </StyledDropdown>
+                 )}
+                 {filterBy === 'Status' && (
+                   <StyledDropdown
+                     value={selectedStatusFilter}
+                     onChange={(e) => setSelectedStatusFilter(e.target.value)}
+                     triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold !h-11"
+                     placeholder="All Status"
+                   >
+                     <option value="">All Status</option>
+                     {statusFilterOptions.map((statusOption) => (
+                       <option key={statusOption} value={statusOption}>
+                         {statusOption}
+                       </option>
+                     ))}
+                   </StyledDropdown>
+                 )}
+                 {filterBy === 'Date Range' && (
+                   <div className="grid grid-cols-2 gap-2">
+                     <div className="flex flex-col gap-1">
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">From Date</span>
+                       <input
+                         type="date"
+                         value={fromDateFilter}
+                         onChange={(e) => setFromDateFilter(e.target.value)}
+                         className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                       />
+                     </div>
+                     <div className="flex flex-col gap-1">
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">To Date</span>
+                       <input
+                         type="date"
+                         value={toDateFilter}
+                         onChange={(e) => setToDateFilter(e.target.value)}
+                         className="w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 text-[13px] font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
+                       />
+                     </div>
+                   </div>
+                 )}
               </div>
               <div className="sm:col-span-3">
                  <button className="w-full h-11 rounded-xl bg-white border-2 border-[#0EA5E9] text-[#0EA5E9] text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-sky-50 transition-all shadow-sm active:scale-95">
@@ -375,3 +514,4 @@ const PurchaseOrders = () => {
 }
 
 export default PurchaseOrders
+ Greenland

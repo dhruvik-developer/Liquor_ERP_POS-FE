@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import ModalShell from './ModalShell'
+import StyledDropdown from '../../common/StyledDropdown'
 
 const RolePermissionModal = ({
   isOpen,
@@ -63,25 +64,27 @@ const RolePermissionModal = ({
           <div className="space-y-4">
              <div className="flex flex-col gap-2">
                 <label className="text-[9px] font-black uppercase text-neutral-400 ml-1">Operator</label>
-                <select
+                <StyledDropdown
                   value={userId}
                   onChange={event => setUserId(event.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-neutral-200 bg-white text-sm font-bold text-neutral-800 outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  triggerClassName="border-neutral-200 bg-white !text-neutral-800 !font-bold rounded-xl !h-11"
+                  placeholder="Select User..."
                 >
                   <option value="">Select User...</option>
                   {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-                </select>
+                </StyledDropdown>
              </div>
              <div className="flex flex-col gap-2">
                 <label className="text-[9px] font-black uppercase text-neutral-400 ml-1">Protocol Level</label>
-                <select
+                <StyledDropdown
                   value={roleId}
                   onChange={event => setRoleId(event.target.value)}
-                  className="w-full h-11 px-4 rounded-xl border border-neutral-200 bg-white text-sm font-black text-neutral-700 outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                  triggerClassName="border-neutral-200 bg-white !text-neutral-700 !font-black rounded-xl !h-11"
+                  placeholder="Select Role..."
                 >
                   <option value="">Select Role...</option>
                   {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
-                </select>
+                </StyledDropdown>
              </div>
           </div>
           <button
@@ -99,14 +102,15 @@ const RolePermissionModal = ({
           <div className="space-y-4">
             <div className="flex flex-col gap-2">
               <label className="text-[9px] font-black uppercase text-neutral-400 ml-1">Entity User</label>
-              <select
+              <StyledDropdown
                 value={userId}
                 onChange={event => setUserId(event.target.value)}
-                className="w-full h-11 px-4 rounded-xl border border-neutral-200 bg-white text-sm font-bold text-neutral-800 outline-none transition-all focus:border-primary focus:ring-4 focus:ring-primary/10"
+                triggerClassName="border-neutral-200 bg-white !text-neutral-800 !font-bold rounded-xl !h-11"
+                placeholder="Select User..."
               >
                 <option value="">Select User...</option>
                 {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
-              </select>
+              </StyledDropdown>
             </div>
             <div className="space-y-2">
                <label className="text-[9px] font-black uppercase text-neutral-400 ml-1">Individual Permissions</label>
@@ -139,3 +143,4 @@ const RolePermissionModal = ({
 }
 
 export default RolePermissionModal
+ Greenland

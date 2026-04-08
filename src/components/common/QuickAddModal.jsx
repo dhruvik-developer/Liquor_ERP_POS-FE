@@ -9,6 +9,7 @@ import { refetchPacks } from '../../hooks/usePacks'
 import { refetchBrands } from '../../hooks/useBrands'
 import { refetchSubCategories } from '../../hooks/useSubCategories'
 import { refetchSizes } from '../../hooks/useSizes'
+import StyledDropdown from './StyledDropdown'
 
 const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
   const [formData, setFormData] = useState({})
@@ -306,11 +307,12 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <select 
+                <StyledDropdown 
                   value={formData.uom || ''}
                   onChange={(e) => handleChange('uom', e.target.value)}
                   disabled={uomsLoading}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold rounded-xl !h-11"
+                  placeholder={uomsLoading ? 'Loading UOM...' : 'Select UOM'}
                 >
                   <option value="">
                     {uomsLoading ? 'Loading UOM...' : 'Select UOM'}
@@ -320,7 +322,7 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                       {uom.name || uom}
                     </option>
                   ))}
-                </select>
+                </StyledDropdown>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col gap-1.5">
@@ -363,11 +365,12 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                     onChange={(e) => handleChange('unit_price_factor', e.target.value)}
                     className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                   />
-                  <select 
+                  <StyledDropdown 
                     value={formData.unit_price_uom || ''}
                     onChange={(e) => handleChange('unit_price_uom', e.target.value)}
                     disabled={uomsLoading}
-                    className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                    triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold rounded-xl !h-11"
+                    placeholder={uomsLoading ? 'Loading UOM...' : 'Select UOM'}
                   >
                     <option value="">
                       {uomsLoading ? 'Loading UOM...' : 'Select UOM'}
@@ -377,7 +380,7 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                         {uom.name || uom}
                       </option>
                     ))}
-                  </select>
+                  </StyledDropdown>
                 </div>
               </div>
             </>
@@ -427,24 +430,25 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <select 
+                <StyledDropdown 
                   value={formData.department || ''}
                   onChange={(e) => handleChange('department', e.target.value)}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold rounded-xl !h-11"
+                  placeholder="Select Department"
                 >
                   <option value="">Select Department</option>
                   {departmentOptions.map((department) => {
-                    const name = typeof department === 'string' ? department : department?.name
-                    if (!name) return null
-                    const key = typeof department === 'string' ? department : (department.id || name)
-                    const value = typeof department === 'string' ? department : String(department.id || name)
+                    const nameValue = typeof department === 'string' ? department : department?.name
+                    if (!nameValue) return null
+                    const keyValue = typeof department === 'string' ? department : (department.id || nameValue)
+                    const optionValue = typeof department === 'string' ? department : String(department.id || nameValue)
                     return (
-                      <option key={key} value={value}>
-                        {name}
+                      <option key={keyValue} value={optionValue}>
+                        {nameValue}
                       </option>
                     )
                   })}
-                </select>
+                </StyledDropdown>
               </div>
             </>
           )}
@@ -470,11 +474,12 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <select 
+                <StyledDropdown 
                   value={formData.category || ''}
                   onChange={(e) => handleChange('category', e.target.value)}
                   disabled={categoriesLoading}
-                  className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-400 focus:text-slate-700 outline-none focus:border-sky-500 appearance-none cursor-pointer"
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold rounded-xl !h-11"
+                  placeholder={categoriesLoading ? 'Loading Categories...' : 'Select Category'}
                 >
                   <option value="">
                     {categoriesLoading ? 'Loading Categories...' : 'Select Category'}
@@ -484,7 +489,7 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
                       {category.name}
                     </option>
                   ))}
-                </select>
+                </StyledDropdown>
               </div>
             </>
           )}
@@ -547,4 +552,4 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
 }
 
 export default QuickAddModal
-
+ Greenland

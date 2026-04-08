@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import ModalShell from './ModalShell'
+import StyledDropdown from '../../common/StyledDropdown'
 
 const UserCreateModal = ({ isOpen, onClose, roles, stores, onSubmit, isSubmitting }) => {
   const [form, setForm] = useState({
@@ -70,14 +71,15 @@ const UserCreateModal = ({ isOpen, onClose, roles, stores, onSubmit, isSubmittin
           </div>
           <div className="flex flex-col gap-1.5 group">
              <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">System Role Authority</label>
-             <select
+             <StyledDropdown
               value={form.roleId}
               onChange={event => setForm(current => ({ ...current, roleId: event.target.value }))}
-              className="rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-2.5 text-sm font-black text-neutral-700 outline-none transition-all focus:border-primary focus:bg-white focus:ring-4 focus:ring-primary/10"
+              triggerClassName="border-neutral-200 bg-neutral-50 !text-neutral-700 !font-black rounded-xl !h-[42px]"
+              placeholder="Select Protocol Level"
             >
               <option value="">Select Protocol Level</option>
               {roles.map(role => <option key={role.id} value={role.id}>{role.name}</option>)}
-            </select>
+            </StyledDropdown>
           </div>
         </div>
         
@@ -124,3 +126,4 @@ const UserCreateModal = ({ isOpen, onClose, roles, stores, onSubmit, isSubmittin
 }
 
 export default UserCreateModal
+ Greenland

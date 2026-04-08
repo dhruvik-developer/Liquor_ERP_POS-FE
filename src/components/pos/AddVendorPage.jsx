@@ -5,6 +5,7 @@ import Card from '../common/Card'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import Loader from '../common/Loader'
+import StyledDropdown from '../common/StyledDropdown'
 
 const initialFormData = {
   vendor_name: '',
@@ -453,11 +454,17 @@ const AddVendorPage = ({ onCancel, onSave }) => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className={labelClassName}>Pay Term</label>
-              <select className={inputClassName} name="pay_term" value={formData.pay_term} onChange={handleChange}>
+              <StyledDropdown
+                name="pay_term"
+                value={formData.pay_term}
+                onChange={handleChange}
+                triggerClassName="border-[#E5E7EB] bg-[#F8FAFC] !h-10 !text-[13px] !text-[#0F172A]"
+                placeholder="Select Pay Term"
+              >
                 <option value="Net 30">Net 30</option>
                 <option value="Net 15">Net 15</option>
                 <option value="Due on Receipt">Due on Receipt</option>
-              </select>
+              </StyledDropdown>
             </div>
             <div className="space-y-1.5">
               <label className={labelClassName}>GST Number</label>
@@ -500,3 +507,4 @@ const AddVendorPage = ({ onCancel, onSave }) => {
 }
 
 export default AddVendorPage
+ Greenland

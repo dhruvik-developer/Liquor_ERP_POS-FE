@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import StyledDropdown from '../common/StyledDropdown'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
@@ -27,6 +28,11 @@ const toInputDate = (value) => {
   const day = String(date.getDate()).padStart(2, '0')
   return `${year}-${month}-${day}`
 }
+const roundToTwo = (value) => {
+  const num = Number(value) || 0
+  return Math.round((num + Number.EPSILON) * 100) / 100
+}
+const toFixedTwoString = (value) => roundToTwo(value).toFixed(2)
 const reindexItems = (list) => list.map((item, index) => ({ ...item, sr: index + 1 }))
 
 const CreatePurchaseReturn = () => {
@@ -400,6 +406,10 @@ const CreatePurchaseReturn = () => {
       return
     }
 
+    const roundedOtherCharges = roundToTwo(otherCharges)
+    const roundedSubTotal = roundToTwo(subTotal)
+    const roundedTotalPayable = roundToTwo(roundedSubTotal + roundedOtherCharges)
+
     const payload = {
       vendor_id: selectedVendorId || 1,
       bill_id: billInternalId || selectedBillId || null,
@@ -409,16 +419,16 @@ const CreatePurchaseReturn = () => {
       due_date: dueDate || null,
       paid_status: paidStatus,
       note,
-      other_charges: otherCharges,
+      other_charges: toFixedTwoString(roundedOtherCharges),
       total_returns: totalReturns,
-      sub_total: subTotal,
-      total_payable: subTotal + otherCharges,
+      sub_total: toFixedTwoString(roundedSubTotal),
+      total_payable: toFixedTwoString(roundedTotalPayable),
       items: payloadItems.map((item) => ({
         product_id: item.productId ?? item.id,
         quantity_received: item.qtyReceived,
         quantity_returned: Number(item.qtyReturn) || 0,
-        unit_price: item.unitCost,
-        landing_cost: item.landingCost
+        unit_price: toFixedTwoString(item.unitCost),
+        landing_cost: toFixedTwoString(item.landingCost)
       }))
     }
 
@@ -497,32 +507,29 @@ const CreatePurchaseReturn = () => {
 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-bold text-slate-400 ml-0.5">Select Bill</label>
-                  <div className="relative">
-                    <select
-                      value={selectedBillId}
-                      onChange={handleBillChange}
-                      disabled={!selectedVendorId}
-                      className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer disabled:bg-slate-50 disabled:text-slate-400"
-                    >
-                      <option value="">Select Bill</option>
-                      {filteredBills.map((bill, index) => {
-                        const optionValue = getBillValue(bill, index)
-                        const optionLabel = getFirstDefined(
-                          bill.invoice_number,
-                          bill.bill_number,
-                          bill.bill_no,
-                          bill.id,
-                          `Bill ${index + 1}`
-                        )
-                        return (
-                          <option key={optionValue} value={optionValue}>
-                            {optionLabel}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                  </div>
+                  <StyledDropdown
+                    value={selectedBillId}
+                    onChange={handleBillChange}
+                    disabled={!selectedVendorId}
+                    triggerClassName="!h-[42px] border-slate-200 !text-slate-700 !font-bold"
+                    placeholder="Select Bill"
+                  >
+                    {filteredBills.map((bill, index) => {
+                      const optionValue = getBillValue(bill, index)
+                      const optionLabel = getFirstDefined(
+                        bill.invoice_number,
+                        bill.bill_number,
+                        bill.bill_no,
+                        bill.id,
+                        `Bill ${index + 1}`
+                      )
+                      return (
+                        <option key={optionValue} value={optionValue}>
+                          {optionLabel}
+                        </option>
+                      )
+                    })}
+                  </StyledDropdown>
                 </div>
 
                 <div className="flex flex-col gap-1.5">
@@ -586,17 +593,14 @@ const CreatePurchaseReturn = () => {
                 />
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[12px] font-bold text-slate-400 ml-0.5">Paid Status</label>
-                  <div className="relative">
-                    <select
-                      value={paidStatus}
-                      onChange={(e) => setPaidStatus(e.target.value)}
-                      className="w-full h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all cursor-pointer"
-                    >
-                      <option value="Paid">Paid</option>
-                      <option value="Unpaid">Unpaid</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                  </div>
+                  <StyledDropdown
+                    value={paidStatus}
+                    onChange={(e) => setPaidStatus(e.target.value)}
+                    triggerClassName="!h-[42px] border-slate-200 !text-slate-700 !font-bold"
+                  >
+                    <option value="Paid">Paid</option>
+                    <option value="Unpaid">Unpaid</option>
+                  </StyledDropdown>
                 </div>
                 <div className="lg:col-span-2 flex flex-col gap-1.5">
                    <label className="text-[12px] font-bold text-slate-400 ml-0.5">Note</label>
@@ -673,18 +677,18 @@ const CreatePurchaseReturn = () => {
                         <td className="px-3 py-4 text-[13px] font-bold text-slate-600">{item.sku}</td>
                         <td className="px-3 py-4 text-[13px] font-black text-slate-800 uppercase tracking-tight">{item.description}</td>
                         <td className="px-3 py-4 text-[13px] font-bold text-slate-500">{item.sizePack}</td>
-                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.unitCost.toFixed(3)}</td>
-                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-center">{item.qtyReceived.toFixed(3)}</td>
+                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.unitCost.toFixed(2)}</td>
+                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-center">{item.qtyReceived.toFixed(2)}</td>
                         <td className="px-3 py-4 text-center">
                            <input 
                              type="text" 
                              className="w-[80px] h-[34px] rounded border border-yellow-200 bg-yellow-50 text-center text-[13px] font-black text-slate-800 outline-none focus:border-yellow-400 transition-all"
-                             value={Number(item.qtyReturn || 0).toFixed(3)}
+                             value={Number(item.qtyReturn || 0).toFixed(2)}
                              onChange={(e) => handleReturnChange(item.lineKey, e.target.value)}
                            />
                         </td>
-                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.landingCost.toFixed(3)}</td>
-                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{rowAmount.toFixed(3)}</td>
+                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.landingCost.toFixed(2)}</td>
+                        <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{rowAmount.toFixed(2)}</td>
                      </tr>
                    )})}
                 </tbody>
@@ -743,7 +747,7 @@ const CreatePurchaseReturn = () => {
                  <div className="flex items-center gap-3">
                     <span className="text-slate-400 text-lg font-black italic">$</span>
                     <div className="w-[160px] h-[42px] px-4 rounded-lg bg-[#f8fafc] flex items-center justify-end text-[16px] font-black text-slate-800 bg-slate-50 border border-slate-100 italic">
-                       {subTotal.toFixed(3)}
+                       {subTotal.toFixed(2)}
                     </div>
                  </div>
               </div>
@@ -754,7 +758,7 @@ const CreatePurchaseReturn = () => {
                     <input 
                       type="text" 
                       className="w-[160px] h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-right text-[16px] font-black text-slate-800 outline-none focus:border-sky-500 transition-all shadow-inner italic"
-                      value={otherCharges.toFixed(3)}
+                      value={otherCharges.toFixed(2)}
                       onChange={(e) => setOtherCharges(Number(e.target.value) || 0)}
                     />
                  </div>
@@ -765,7 +769,7 @@ const CreatePurchaseReturn = () => {
                  <div className="flex items-center gap-4">
                     <span className="text-sky-400 text-2xl font-black italic">$</span>
                     <span className="text-3xl font-black text-[#0EA5E9] tracking-tight">
-                       {(subTotal + otherCharges).toFixed(3)}
+                       {(subTotal + otherCharges).toFixed(2)}
                     </span>
                  </div>
               </div>

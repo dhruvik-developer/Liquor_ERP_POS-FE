@@ -3,6 +3,7 @@ import { Plus, Minus, Search, Package, AlertCircle, Save, History } from 'lucide
 import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
+import StyledDropdown from '../common/StyledDropdown'
 
 const StockAdjustment = () => {
   const [adjustType, setAdjustType] = useState('add')
@@ -50,7 +51,7 @@ const StockAdjustment = () => {
                              adjustType === 'add' ? 'bg-emerald-600 text-white shadow-md' : 'text-[#64748B] hover:text-[#1E293B]'
                            }`}
                          >
-                            <Plus size={16} /> Add
+                            <div className="flex items-center gap-2"><Plus size={16} /> Add</div>
                          </button>
                          <button 
                            onClick={() => setAdjustType('reduce')}
@@ -58,7 +59,7 @@ const StockAdjustment = () => {
                              adjustType === 'reduce' ? 'bg-rose-500 text-white shadow-md' : 'text-[#64748B] hover:text-[#1E293B]'
                            }`}
                          >
-                            <Minus size={16} /> Reduce
+                            <div className="flex items-center gap-2"><Minus size={16} /> Reduce</div>
                          </button>
                       </div>
                    </div>
@@ -67,13 +68,16 @@ const StockAdjustment = () => {
 
                 <div className="space-y-1.5">
                    <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">Adjustment Reason</label>
-                   <select className="w-full h-12 px-4 rounded-lg bg-white border border-[#E2E8F0] text-[14px] font-bold outline-none focus:border-[#0EA5E9]">
+                   <StyledDropdown 
+                     triggerClassName="!h-12 border-[#E2E8F0] !font-bold !text-[14px]"
+                     placeholder="Select Reason"
+                   >
                       <option>Inventory Audit (Correction)</option>
                       <option>Damaged / Broken Bottle</option>
                       <option>Expired Product</option>
                       <option>Store Consumption</option>
                       <option>Vendor Return</option>
-                   </select>
+                   </StyledDropdown>
                 </div>
 
                 <div className="space-y-1.5 focus-within:text-[#0EA5E9] transition-colors">
@@ -116,7 +120,7 @@ const StockAdjustment = () => {
                   <div key={idx} className="py-4 flex items-start gap-4">
                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${log.type === 'Add' ? 'bg-emerald-50 text-emerald-500' : 'bg-rose-50 text-rose-500'}`}>
                         <History size={16} />
-                     </div>
+                      </div>
                      <div className="flex-1">
                         <div className="flex justify-between items-center">
                            <p className="text-[13px] font-bold text-[#1E293B]">{log.user}</p>

@@ -209,9 +209,7 @@ const InventoryManagement = () => {
     })
   }, [filters, mappedProducts])
 
-  const totalValue = useMemo(() => {
-    return filteredData.reduce((sum, item) => sum + item.total, 0)
-  }, [filteredData])
+  const totalProducts = filteredData.length
 
   return (
     <div className="space-y-6">
@@ -273,8 +271,8 @@ const InventoryManagement = () => {
         </label>
 
         <div className="flex items-center gap-2">
-          <span className="text-[14px] font-bold text-[#1E293B]">Total:</span>
-          <span className="text-[14px] font-black text-[#1E293B]">{totalValue}</span>
+          <span className="text-[14px] font-bold text-[#1E293B]">Total Products:</span>
+          <span className="text-[14px] font-black text-[#1E293B]">{totalProducts}</span>
         </div>
       </div>
     </div>

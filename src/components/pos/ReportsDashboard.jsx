@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import StyledDropdown from '../common/StyledDropdown'
 
 const ReportsDashboard = () => {
   const [startDate, setStartDate] = useState('2025-11-11')
@@ -144,12 +145,12 @@ const ReportsDashboard = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="flex flex-col gap-1.5">
                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Period</label>
-                    <div className="relative">
-                      <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all">
-                        <option>All</option>
-                      </select>
-                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
-                    </div>
+                    <StyledDropdown 
+                      triggerClassName="border-slate-200 !text-slate-700 !font-bold"
+                      placeholder="Select Period"
+                    >
+                      <option>All</option>
+                    </StyledDropdown>
                   </div>
                   <div className="flex flex-col gap-1.5">
                     <DatePickerField 
@@ -193,12 +194,12 @@ const ReportsDashboard = () => {
                   ].map((field) => (
                     <div key={field} className="flex flex-col gap-1">
                       <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">{field}</label>
-                      <div className="relative">
-                        <select className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-white text-[13px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 transition-all">
-                          <option>{field === 'Log Status' || field === 'Batch Type' ? '--All--' : 'All'}</option>
-                        </select>
-                        <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                      </div>
+                      <StyledDropdown 
+                        triggerClassName="border-slate-200 !text-slate-700 !font-bold !h-11 !text-[13px]"
+                        placeholder={field === 'Log Status' || field === 'Batch Type' ? '--All--' : 'All'}
+                      >
+                        <option>{field === 'Log Status' || field === 'Batch Type' ? '--All--' : 'All'}</option>
+                      </StyledDropdown>
                     </div>
                   ))}
                 </div>
@@ -230,11 +231,13 @@ const ReportsDashboard = () => {
                           <span className={`text-[14px] font-bold ${sortOption === option.label ? 'text-slate-900' : 'text-slate-400'}`}>{option.label}</span>
                        </div>
                        <div className="relative w-32">
-                          <select className="w-full h-9 px-3 rounded-lg border border-slate-200 bg-white text-[12px] font-bold text-slate-600 outline-none appearance-none focus:border-sky-500">
+                          <StyledDropdown 
+                            triggerClassName="border-slate-200 !text-slate-600 !font-bold !h-9 !text-[12px]"
+                            placeholder="Descending"
+                          >
                              <option>Descending</option>
                              <option>Ascending</option>
-                          </select>
-                          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={14} />
+                          </StyledDropdown>
                        </div>
                     </div>
                   ))}

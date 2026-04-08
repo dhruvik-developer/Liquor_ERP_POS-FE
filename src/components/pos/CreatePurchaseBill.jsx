@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
+import StyledDropdown from '../common/StyledDropdown'
 import { useNavigate } from 'react-router-dom'
 import { 
   Save, 
@@ -865,11 +866,12 @@ const CreatePurchaseBill = () => {
              <div className="space-y-1.5 flex flex-col justify-end">
               <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">Fully Received PO</label>
               <div className="relative group">
-                <select
+                <StyledDropdown
                   value={selectedOrderId}
                   onChange={(e) => setSelectedOrderId(e.target.value)}
                   disabled={!selectedVendorId || ordersLoading}
-                  className="w-full h-11 px-4 rounded-xl border border-slate-200 bg-slate-50 text-[14px] font-bold text-slate-700 outline-none appearance-none focus:border-sky-500 focus:bg-white transition-all shadow-inner disabled:opacity-60 disabled:cursor-not-allowed"
+                  triggerClassName="border-slate-200 bg-slate-50 !text-slate-700 !font-bold rounded-xl !h-11 shadow-inner"
+                  placeholder={!selectedVendorId ? 'Select vendor first' : ordersLoading ? 'Loading orders...' : 'Select fully received order'}
                 >
                   <option value="">
                     {!selectedVendorId ? 'Select vendor first' : ordersLoading ? 'Loading orders...' : 'Select fully received order'}
@@ -879,8 +881,7 @@ const CreatePurchaseBill = () => {
                       {order.poNumber || `PO #${order.key}`}
                     </option>
                   ))}
-                </select>
-                <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+                </StyledDropdown>
               </div>
             </div>
             <div className="space-y-1.5 flex flex-col justify-end">
@@ -1246,12 +1247,12 @@ const CreatePurchaseBill = () => {
                          </td>
                          <td className="px-6 py-5 text-sm font-bold text-slate-700">{asNumber(item.bpc).toFixed(2)}</td>
                          <td className="px-6 py-5 text-sm font-bold text-sky-500">{formatQuantity(item.qty)}</td>
-                         <td className="px-6 py-5 text-sm font-bold text-slate-700">${asNumber(item.cost).toFixed(3)}</td>
-                         <td className="px-6 py-5 text-sm font-bold text-slate-700">{asNumber(item.disc).toFixed(3)}</td>
-                         <td className="px-6 py-5 text-sm font-black text-slate-800">${asNumber(item.amount).toFixed(3)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">${asNumber(item.cost).toFixed(2)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700">{asNumber(item.disc).toFixed(2)}</td>
+                         <td className="px-6 py-5 text-sm font-black text-slate-800">${asNumber(item.amount).toFixed(2)}</td>
                          <td className="px-6 py-5 text-sm font-bold text-slate-400 text-right">${item.rip.toFixed(2)}</td>
                          <td className="px-6 py-5 text-sm font-bold text-slate-700 text-right">{getFreeQuantity(item).toFixed(0)}</td>
-                         <td className="px-6 py-5 text-sm font-bold text-slate-700 text-right">${asNumber(getFirstDefined(item.unitCost, item.cost, 0)).toFixed(3)}</td>
+                         <td className="px-6 py-5 text-sm font-bold text-slate-700 text-right">${asNumber(getFirstDefined(item.unitCost, item.cost, 0)).toFixed(2)}</td>
                          <td className="px-6 py-5 text-sm font-bold text-slate-700 text-right">{asNumber(getFirstDefined(item.unitQty, getUnitQuantityForPayload(item), 0)).toFixed(2)}</td>
                       </tr>
                     ))

@@ -5,7 +5,7 @@ const InventoryTable = ({ products, onEdit }) => {
   const formatNumber = (value) => {
     const num = Number(value)
     if (!Number.isFinite(num)) return '0'
-    return Number.isInteger(num) ? `${num}` : num.toFixed(3)
+    return Number.isInteger(num) ? `${num}` : num.toFixed(2)
   }
 
   return (
