@@ -1,6 +1,6 @@
 import React from 'react'
 
-const Input = ({ label, icon: Icon, error, className = '', ...props }) => {
+const Input = ({ label, icon: Icon, iconPosition = 'left', error, className = '', ...props }) => {
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
@@ -9,15 +9,21 @@ const Input = ({ label, icon: Icon, error, className = '', ...props }) => {
         </label>
       )}
       <div className="relative group">
-        {Icon && (
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#64748B] group-focus-within:text-[#0EA5E9] transition-colors">
+        {Icon && iconPosition === 'left' && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8] group-focus-within:text-[#0EA5E9] transition-colors">
+            <Icon size={18} />
+          </div>
+        )}
+        {Icon && iconPosition === 'right' && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] group-focus-within:text-[#0EA5E9] transition-colors text-xl font-light">
             <Icon size={18} />
           </div>
         )}
         <input
           className={`
-            w-full h-10 rounded-lg border border-[#E2E8F0] bg-white 
-            ${Icon ? 'pl-10' : 'px-4'} pr-4 
+            w-full h-11 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]
+            ${Icon && iconPosition === 'left' ? 'pl-10' : 'pl-4'} 
+            ${Icon && iconPosition === 'right' ? 'pr-10' : 'pr-4'} 
             text-[14px] font-medium text-[#1E293B] 
             outline-none transition-all
             focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E91A]

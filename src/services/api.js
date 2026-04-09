@@ -1,6 +1,7 @@
 import axios from "axios";
 
 import { normalizeUrl } from "../utils/url";
+import { extractErrorMessage, showErrorToast } from "../utils/toast";
 
 // Ensure this matches your Django backend address, with fallback
 // We remove any trailing slashes from the base URL so that we can safely append '/path/'
@@ -50,6 +51,10 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
+    if (error?.code !== "ERR_CANCELED" && !error?.config?.skipGlobalErrorToast) {
+      showErrorToast(extractErrorMessage(error));
+    }
+
     if (error.response && error.response.status === 401) {
       // Token exists but is invalid/expired
       if (localStorage.getItem("access_token")) {

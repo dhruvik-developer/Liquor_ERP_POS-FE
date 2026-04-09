@@ -10,6 +10,7 @@ import useBrands from '../../hooks/useBrands'
 import useSubCategories from '../../hooks/useSubCategories'
 import useSizes from '../../hooks/useSizes'
 import { resolveMediaUrl } from '../../utils/url'
+import { showErrorToast } from '../../utils/toast'
 import StyledDropdown from '../common/StyledDropdown'
 
 const InputField = ({ label, value, onChange, placeholder, type = "text", prefix, suffix, className = "", disabled = false }) => (
@@ -284,7 +285,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       const lookupData = await response.json()
       const fetchedImageUrl = lookupData?.product?.imageUrl
       if (!fetchedImageUrl) {
-        alert('Selected UPC ke liye image nahi mili.')
+        showErrorToast('Selected UPC ke liye image nahi mili.')
         return
       }
 
@@ -293,7 +294,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
       setIsUpcImageSelectorOpen(false)
     } catch (err) {
       console.error('UPC image lookup failed:', err)
-      alert('UPC se image fetch nahi ho paayi. Please manual image upload karein.')
+      showErrorToast('UPC se image fetch nahi ho paayi. Please manual image upload karein.')
     } finally {
       setIsFetchingUpcImage(false)
     }
@@ -301,7 +302,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 
   const handleFetchFromUpcOption = async () => {
     if (!hasUpcs) {
-      alert('Please add at least one UPC first.')
+      showErrorToast('Please add at least one UPC first.')
       setIsImageSourceModalOpen(false)
       return
     }
@@ -327,7 +328,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
     const file = e.target.files[0]
     if (file) {
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file.')
+        showErrorToast('Please select an image file.')
         return
       }
 
@@ -433,7 +434,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 
   const handleSave = async () => {
     if (!formData.image) {
-      alert('Product image is mandatory.')
+      showErrorToast('Product image is mandatory.')
       return
     }
 
@@ -564,7 +565,7 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
   const handleUpcOk = () => {
     const cleanValue = `${upcInput || ''}`.trim()
     if (!cleanValue) {
-      alert('Please enter a UPC.')
+      showErrorToast('Please enter a UPC.')
       return
     }
     appendUpcToList(cleanValue)

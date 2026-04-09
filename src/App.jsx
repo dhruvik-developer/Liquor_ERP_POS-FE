@@ -21,6 +21,8 @@ import AddUserPage from './components/pos/AddUserPage'
 import AddCustomerPage from './components/pos/AddCustomerPage'
 import AddVendorPage from './components/pos/AddVendorPage'
 import CashDrawerPage from './components/pos/CashDrawerPage'
+import StoresManagement from './components/pos/StoresManagement'
+import AddStorePage from './components/pos/AddStorePage'
 import SettingsPage from './components/pos/SettingsPage'
 import PosTerminalView from './components/pos/PosTerminalView'
 import SalesHistory from './components/pos/SalesHistory'
@@ -31,10 +33,12 @@ import ItemMasterManagement from './components/pos/ItemMasterManagement'
 import RoleManagementPage from './components/pos/RoleManagementPage'
 import PermissionManagementPage from './components/pos/PermissionManagementPage'
 import ProtectedRoute from './components/routing/ProtectedRoute'
+import ToastHost from './components/common/ToastHost'
 
 function App() {
   return (
     <CalculatorProvider>
+      <ToastHost />
       <Routes>
         <Route path="/" element={<SplashScreen />} />
         <Route path="/login" element={<LoginPage />} />
@@ -79,6 +83,9 @@ function App() {
         <Route path="people/customers/edit/:id" element={<AddCustomerPage />} />
         <Route path="people/vendors/add" element={<AddVendorPage />} />
         <Route path="people/vendors/edit/:id" element={<AddVendorPage />} />
+        <Route path="stores" element={<StoresManagement />} />
+        <Route path="stores/add" element={<AddStorePage />} />
+        <Route path="stores/edit/:id" element={<AddStorePage />} />
         <Route path="item-master" element={<ItemMasterManagement />} />
         <Route path="cash-drawer" element={<CashDrawerPage />} />
         <Route path="reports" element={<ReportsDashboard />} />

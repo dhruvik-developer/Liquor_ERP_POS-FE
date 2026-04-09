@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Bell, LogOut, Settings, User, Users } from 'lucide-react'
+import { Bell, LogOut, Settings, User, Users, Store } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { getStoredAuth } from '../../utils/auth'
@@ -73,6 +73,11 @@ const PosTopbar = () => {
     navigate('/pos/permissions')
   }
 
+  const handleStoreClick = () => {
+    setIsMenuOpen(false)
+    navigate('/pos/stores')
+  }
+
   return (
     <header className="h-12 border-b border-[#E2E8F0] bg-white px-6 flex items-center justify-between sticky top-0 z-50">
       {/* Left Side: Layout placeholder */}
@@ -112,6 +117,15 @@ const PosTopbar = () => {
               >
                 <Users size={16} className="text-[#1E293B]" />
                 Role
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStoreClick}
+                className="w-full px-4 py-3 flex items-center gap-3 text-left text-[14px] font-bold text-[#1E293B] hover:bg-[#F8FAFC] transition-colors border-t border-[#F1F5F9]"
+              >
+                <Store size={16} className="text-[#1E293B]" />
+                Store Management
               </button>
 
               <button

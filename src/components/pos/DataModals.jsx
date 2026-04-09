@@ -3,6 +3,7 @@ import { X, Save, Plus, Image as ImageIcon, Pencil, ImagePlus } from 'lucide-rea
 import Button from '../common/Button'
 import Input from '../common/Input'
 import useApi from '../../hooks/useApi'
+import { showErrorToast, showSuccessToast } from '../../utils/toast'
 
 const BaseModal = ({ title, onClose, children, footer }) => {
   return (
@@ -51,7 +52,10 @@ export const CardDataModal = ({ onClose, item, refetch }) => {
   const { post, put, loading } = useApi()
 
   const handleSave = async (closeAfter = true) => {
-    if (!formData.name || !formData.fee) return alert('Name and Fee are required')
+    if (!formData.name || !formData.fee) {
+      showErrorToast('Name and Fee are required')
+      return
+    }
     
     try {
       if (item?.id) {
@@ -65,7 +69,7 @@ export const CardDataModal = ({ onClose, item, refetch }) => {
         onClose()
       } else {
         setFormData({ name: '', fee: '', status: true })
-        alert('Card setup saved successfully!')
+        showSuccessToast('Card setup saved successfully!')
       }
     } catch (err) {
       console.error('Save failed:', err)
@@ -144,7 +148,10 @@ export const PromotionDataModal = ({ onClose, item, refetch }) => {
   }
 
   const handleSave = async (closeAfter = true) => {
-    if (!formData.title) return alert('Title is required')
+    if (!formData.title) {
+      showErrorToast('Title is required')
+      return
+    }
     
     try {
       if (item?.id) {
@@ -158,7 +165,7 @@ export const PromotionDataModal = ({ onClose, item, refetch }) => {
         onClose()
       } else {
         setFormData({ title: '', tagline: '', description: '', image: null, status: true })
-        alert('Promotion saved successfully!')
+        showSuccessToast('Promotion saved successfully!')
       }
     } catch (err) {
       console.error('Save failed:', err)

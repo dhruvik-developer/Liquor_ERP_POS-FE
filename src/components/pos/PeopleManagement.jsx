@@ -5,11 +5,9 @@ import {
   Key,
   Pencil,
   Trash2,
-  ChevronDown,
-  UserCircle,
-  Users as UserGroup,
-  Store,
-  Database,
+  User,
+  Users,
+  Building2,
 } from "lucide-react";
 import Loader from "../common/Loader";
 import Button from "../common/Button";
@@ -61,15 +59,16 @@ const getUserRoleLabel = (user) => {
 const PeopleManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "users";
+  const navigate = useNavigate();
 
   const setActiveTab = (tab) => {
     setSearchParams({ tab });
   };
 
   const tabs = [
-    { id: "users", label: "Users", icon: UserCircle },
-    { id: "customers", label: "Customers", icon: UserGroup },
-    { id: "vendors", label: "Vendors", icon: Store },
+    { id: "users", label: "Users", icon: User },
+    { id: "customers", label: "Customers", icon: Users },
+    { id: "vendors", label: "Vendors", icon: Building2 },
   ];
 
   return (

@@ -9,7 +9,7 @@ import api from '../services/api'
 
 const roleConfig = {
   staff: {
-    title: 'POS Terminal Login',
+    title: 'Login',
   },
   admin: {
     title: 'Admin Console Login',
@@ -36,8 +36,7 @@ const LoginScreen = ({ type = 'staff' }) => {
 
   const validate = values => {
     const errors = {}
-    if (!values.email.trim()) errors.email = 'Email is required'
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email.trim())) errors.email = 'Invalid email format'
+    if (!values.email.trim()) errors.email = 'Username or email is required'
     if (!values.password.trim()) errors.password = 'Password is required'
     return errors
   }
@@ -90,49 +89,50 @@ const LoginScreen = ({ type = 'staff' }) => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] shadow-2xl p-10 relative overflow-hidden"
+        className="w-full max-w-[420px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0EA5E9]"></div>
         
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-[#0EA5E90D] border border-[#0EA5E91A] text-[#0EA5E9]">
-            {type === 'admin' ? <Shield size={32} /> : <Wine size={32} />}
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full bg-[#E0F2FE] text-[#0EA5E9]">
+            {type === 'admin' ? <Shield size={36} /> : <Wine size={36} />}
           </div>
-          <h1 className="text-[28px] font-black tracking-tight text-[#1E293B]">{config.title}</h1>
-          <p className="mt-2 text-[14px] font-bold text-[#64748B] uppercase tracking-wider">Enterprise Access Protocol</p>
+          <h1 className="text-[32px] font-semibold tracking-tight text-[#111827]">{config.title}</h1>
+          <p className="mt-2 text-[15px] text-[#64748B]">Please sign in to access the system.</p>
         </div>
 
-        <form className="space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           <Input 
-            label="Operator Email"
+            label="Username or Email"
             name="email"
-            type="email"
+            type="text"
             value={formValues.email}
             onChange={handleChange}
-            placeholder="admin@example.com"
-            icon={Mail}
+            placeholder="Enter your username or email"
+            icon={User}
+            iconPosition="right"
             error={fieldErrors.email}
             required
           />
 
-          <div className="space-y-1">
+          <div className="space-y-1 mt-6">
             <Input 
-              label="Security Password"
+              label="Password"
               name="password"
               type="password"
               value={formValues.password}
               onChange={handleChange}
-              placeholder="••••••••"
+              placeholder="Enter your password"
               icon={Lock}
+              iconPosition="right"
               error={fieldErrors.password}
               required
             />
             <div className="flex justify-end pt-1">
               <Link
                 to="/forgot-password"
-                className="text-[12px] font-bold uppercase tracking-wider text-[#0EA5E9] hover:underline underline-offset-4"
+                className="text-[13.5px] text-[#0EA5E9] hover:underline underline-offset-4"
               >
-                Reset Access?
+                Forgot Password?
               </Link>
             </div>
           </div>
@@ -146,15 +146,15 @@ const LoginScreen = ({ type = 'staff' }) => {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-14 text-[14px] gap-3"
+            className="w-full h-[46px] text-[15px] font-medium gap-3 mt-4 rounded-lg"
           >
             {isLoading ? <Loader size={20} className="text-white" /> : null}
-            <span>{isLoading ? 'Decrypting...' : 'Initiate Login'}</span>
+            <span>{isLoading ? 'Authenticating...' : 'Login'}</span>
           </Button>
         </form>
 
-        <p className="mt-12 text-center text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
-          © 2026 Liquor POS ERP. SECURE SYSTEM.
+        <p className="mt-8 text-center text-[14px] text-[#64748B]">
+          &copy; {new Date().getFullYear()} Liquor POS. All Rights Reserved.
         </p>
       </Motion.div>
     </div>

@@ -27,16 +27,15 @@ const ForgotPassword = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="w-full max-w-md bg-white rounded-lg border border-[#E2E8F0] shadow-2xl p-10 relative overflow-hidden"
+        className="w-full max-w-[420px] bg-white rounded-xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-10 relative overflow-hidden"
       >
-        <div className="absolute top-0 left-0 w-full h-1.5 bg-[#0EA5E9]"></div>
         
-        <div className="mb-10 text-center">
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-[#0EA5E90D] border border-[#0EA5E91A] text-[#0EA5E9]">
-            <KeyRound size={32} />
+        <div className="mb-8 text-center">
+          <div className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full bg-[#E0F2FE] text-[#0EA5E9]">
+            <KeyRound size={36} />
           </div>
-          <h1 className="text-[28px] font-black tracking-tight text-[#1E293B]">Reset Access</h1>
-          <p className="mt-2 text-[14px] font-bold text-[#64748B] uppercase tracking-wider">Authentication Protocol</p>
+          <h1 className="text-[32px] font-semibold tracking-tight text-[#111827]">Reset Access</h1>
+          <p className="mt-2 text-[15px] text-[#64748B]">Please enter your email to receive recovery instructions.</p>
         </div>
 
         {isSent ? (
@@ -50,23 +49,21 @@ const ForgotPassword = () => {
           </div>
         ) : (
           <form className="space-y-6" onSubmit={handleSubmit}>
-            <p className="text-[14px] font-medium text-[#64748B] text-center leading-relaxed">
-              Enter your registered operator email to receive access recovery instructions.
-            </p>
             <Input 
               label="Operator Email"
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="admin@example.com"
+              placeholder="Enter your registered email"
               icon={Mail}
+              iconPosition="right"
               required
             />
 
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-14 text-[14px] gap-3"
+              className="w-full h-[46px] text-[15px] font-medium gap-3 mt-4 rounded-lg"
             >
               {isLoading ? <Loader size={20} className="text-white" /> : null}
               <span>{isLoading ? 'Processing...' : 'Send Recovery Packet'}</span>
@@ -74,16 +71,16 @@ const ForgotPassword = () => {
 
             <Link
               to="/login"
-              className="flex items-center justify-center gap-2 text-[12px] font-bold uppercase tracking-wider text-[#94A3B8] hover:text-[#0EA5E9] transition-colors"
+              className="flex items-center justify-center gap-2 text-[14px] text-[#64748B] hover:text-[#0EA5E9] transition-colors mt-6"
             >
-              <ArrowLeft size={14} />
+              <ArrowLeft size={16} />
               Return to Login
             </Link>
           </form>
         )}
 
-        <p className="mt-12 text-center text-[11px] font-bold uppercase tracking-widest text-[#94A3B8]">
-          © 2026 Liquor POS ERP. SECURE SYSTEM.
+        <p className="mt-8 text-center text-[14px] text-[#64748B]">
+          &copy; {new Date().getFullYear()} Liquor POS. All Rights Reserved.
         </p>
       </Motion.div>
     </div>

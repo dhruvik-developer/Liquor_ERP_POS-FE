@@ -50,6 +50,36 @@
   100% { background-position: -200% 0; }
 }
 
+@keyframes toast-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toast-progress {
+  0% {
+    width: 100%;
+  }
+  100% {
+    width: 0%;
+  }
+}
+
+.toast-enter {
+  animation: toast-slide-in 180ms ease-out;
+}
+
+.toast-progress {
+  animation-name: toast-progress;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+}
+
 /* Modern DatePicker Styles */
 .react-datepicker {
   @apply !border-none !rounded-xl overflow-hidden !bg-white;
