@@ -28,6 +28,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
   
   const { post, put, loading: saving, error: saveError } = useApi()
   const { data: existingData, loading: fetching, error: fetchError } = useFetch(isEdit ? `/users/${id}/` : null)
+  const { data: rolesData, loading: rolesLoading } = useFetch('/roles/')
 
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -54,8 +55,32 @@ const AddUserPage = ({ onCancel, onSave }) => {
   })
   const [formError, setFormError] = useState('')
 
+  const roles = Array.isArray(rolesData) ? rolesData : rolesData?.results || []
+
+  const roleOptions = roles
+    .map((role) => {
+      const roleId = role?.id ?? role?.role_id ?? role?.value
+      const roleLabel = role?.name || role?.role_name || role?.title || role?.label
+
+      if (roleId === undefined || roleId === null || !roleLabel) {
+        return null
+      }
+
+      return {
+        id: String(roleId),
+        label: String(roleLabel),
+      }
+    })
+    .filter(Boolean)
+
   useEffect(() => {
     if (existingData) {
+      const resolvedRoleId =
+        existingData.role_id ??
+        existingData.role?.id ??
+        existingData.role?.role_id ??
+        ''
+
       setFormData({
         user_id: existingData.user_id || '',
         gender: existingData.gender || '',
@@ -74,7 +99,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
         password: '',
         confirm_password: '',
         is_active: existingData.is_active !== undefined ? existingData.is_active : true,
-        role_id: existingData.role_id || '',
+        role_id: resolvedRoleId !== '' ? String(resolvedRoleId) : '',
         store_ids: existingData.store_ids ? existingData.store_ids.join(', ') : ''
       })
     }
@@ -151,21 +176,21 @@ const AddUserPage = ({ onCancel, onSave }) => {
   )
 
   return (
-    <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 overflow-auto pb-12 -m-4 sm:-m-6 p-6">
+    <div className="flex flex-col min-h-full space-y-6 animate-in fade-in duration-500 pb-12">
       
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-[28px] font-black text-[#1E293B] tracking-tight">
+          <h1 className="text-[26px] sm:text-[28px] font-black text-[#1E293B] tracking-tight">
             {isEdit ? 'Update User Profile' : 'Register New User'}
           </h1>
           <p className="text-[#64748B] font-bold text-[14px] mt-1 uppercase tracking-wider">System Access Management</p>
         </div>
-        <div className="flex gap-3">
-          <Button variant="outline" onClick={handleCancel} disabled={saving}>
+        <div className="grid grid-cols-2 gap-3 w-full sm:w-auto sm:flex">
+          <Button variant="outline" onClick={handleCancel} disabled={saving} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSaveBtn} disabled={saving} className="gap-2 px-8">
+          <Button onClick={handleSaveBtn} disabled={saving} className="gap-2 px-4 sm:px-8 w-full sm:w-auto">
             <Save size={18} />
             {saving ? 'Saving...' : isEdit ? 'Update User' : 'Save User'}
           </Button>
@@ -179,7 +204,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
       )}
 
       {/* Main Form Content */}
-      <Card className="relative overflow-hidden">
+      <Card className="relative !overflow-visible">
         <div className="flex flex-col lg:flex-row gap-12 pt-4">
           
           {/* Left Side: Photo & Status */}
@@ -216,7 +241,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
                  <Input label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} placeholder="e.g. John" required />
                  <Input label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} placeholder="e.g. Doe" required />
                  
-                 <div className="space-y-1.5 flex flex-col">
+                 <div className="space-y-1.5 flex flex-col relative z-30">
                    <label className="text-[14px] font-bold text-[#1E293B] ml-0.5">Gender</label>
                    <StyledDropdown 
                      name="gender" 
@@ -317,19 +342,22 @@ const AddUserPage = ({ onCancel, onSave }) => {
                    </button>
                  </div>
 
-                 <div className="space-y-1.5 flex flex-col">
+                 <div className="space-y-1.5 flex flex-col relative z-20">
                    <label className="text-[14px] font-bold text-[#1E293B] ml-0.5">Assigned Role</label>
                    <StyledDropdown 
                      name="role_id" 
                      value={formData.role_id} 
                      onChange={handleChange} 
-                     placeholder="Select Role"
+                     disabled={rolesLoading}
+                     placeholder={rolesLoading ? 'Loading roles...' : 'Select Role'}
                      triggerClassName="border-[#E2E8F0] bg-white !text-[14px] !font-medium !text-[#1E293B]"
                    >
                      <option value="">Select Role</option>
-                     <option value="1">Super Administrator (1)</option>
-                     <option value="2">Store Manager (2)</option>
-                     <option value="3">Cashier (3)</option>
+                     {roleOptions.map((role) => (
+                       <option key={role.id} value={role.id}>
+                         {role.label}
+                       </option>
+                     ))}
                    </StyledDropdown>
                  </div>
 

@@ -42,6 +42,22 @@ const formatDateTime = (dateString) => {
   });
 };
 
+const getUserRoleLabel = (user) => {
+  const roleValue = user?.role;
+  if (typeof roleValue === "string") return roleValue;
+  if (typeof roleValue === "number") return String(roleValue);
+  if (roleValue && typeof roleValue === "object") {
+    return (
+      roleValue.name ||
+      roleValue.label ||
+      roleValue.code ||
+      roleValue.title ||
+      "User"
+    );
+  }
+  return user?.role_name || "User";
+};
+
 const PeopleManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "users";
@@ -244,10 +260,10 @@ const UsersTab = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-[#475569]">
-                      {user.role || "User"}
+                      {getUserRoleLabel(user)}
                     </td>
                     <td className="px-6 py-4 text-center font-medium text-[#475569]">
-                      {user.phone || "-"}
+                      {user.mobile_number || user.phone || "-"}
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="flex justify-center">

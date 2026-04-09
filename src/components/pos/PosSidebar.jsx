@@ -74,7 +74,7 @@ const SidebarItem = ({ label, icon: Icon, active, path, isPng, iconClassName = '
 const PosSidebar = () => {
   const location = useLocation()
   const auth = getStoredAuth()
-  const user = auth?.data?.user || auth?.user || {}
+  const user = auth?.data?.user || auth?.user || auth || {}
   const userName = user.name || 'Admin User'
   const userEmail = user.email || 'admin@liquorpos.com'
 

@@ -66,11 +66,12 @@ const LoginScreen = ({ type = 'staff' }) => {
         console.log('[Login]: Access token extracted successfully')
         localStorage.setItem('access_token', accessToken)
         // Store user data if available
-        localStorage.setItem('auth_user', JSON.stringify({ 
-          name: responseData.user?.name || 'Admin User', 
-          role: responseData.user?.role || type, 
-          email: formValues.email 
-        }))
+        const userToStore = responseData.user || {
+          name: 'Admin User',
+          role: type,
+          email: formValues.email
+        }
+        localStorage.setItem('auth_user', JSON.stringify(userToStore))
         navigate('/pos', { replace: true })
       } else {
         console.error('[Login]: Access token missing in response', response.data)

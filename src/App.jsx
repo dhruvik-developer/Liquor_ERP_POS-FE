@@ -28,6 +28,8 @@ import SalesManagement from './components/pos/SalesManagement'
 import ReportsDashboard from './components/pos/ReportsDashboard'
 import UserProfile from './components/pos/UserProfile'
 import ItemMasterManagement from './components/pos/ItemMasterManagement'
+import RoleManagementPage from './components/pos/RoleManagementPage'
+import PermissionManagementPage from './components/pos/PermissionManagementPage'
 import ProtectedRoute from './components/routing/ProtectedRoute'
 
 function App() {
@@ -81,6 +83,8 @@ function App() {
         <Route path="cash-drawer" element={<CashDrawerPage />} />
         <Route path="reports" element={<ReportsDashboard />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="roles" element={<RoleManagementPage />} />
+        <Route path="permissions" element={<PermissionManagementPage />} />
         <Route path="profile" element={<UserProfile />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

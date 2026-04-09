@@ -25,6 +25,8 @@ const StyledDropdown = ({
   placeholder = 'Select option...',
 }) => {
   const [isOpen, setIsOpen] = useState(false)
+  const [menuPlacement, setMenuPlacement] = useState('bottom')
+  const [menuMaxHeight, setMenuMaxHeight] = useState(300)
   const dropdownRef = useRef(null)
 
   const options = useMemo(() => {
@@ -65,6 +67,38 @@ const StyledDropdown = ({
     }
   }, [isOpen])
 
+  useEffect(() => {
+    if (!isOpen) return
+
+    const updateMenuPosition = () => {
+      if (!dropdownRef.current) return
+      const rect = dropdownRef.current.getBoundingClientRect()
+      const viewportPadding = 12
+      const menuGap = 8
+      const minPreferredSpace = 180
+
+      const spaceBelow = window.innerHeight - rect.bottom - viewportPadding
+      const spaceAbove = rect.top - viewportPadding
+
+      const shouldOpenUp = spaceBelow < minPreferredSpace && spaceAbove > spaceBelow
+      const nextPlacement = shouldOpenUp ? 'top' : 'bottom'
+      const availableSpace = shouldOpenUp ? spaceAbove : spaceBelow
+      const nextMaxHeight = Math.max(120, Math.min(300, availableSpace - menuGap))
+
+      setMenuPlacement(nextPlacement)
+      setMenuMaxHeight(nextMaxHeight)
+    }
+
+    updateMenuPosition()
+    window.addEventListener('resize', updateMenuPosition)
+    window.addEventListener('scroll', updateMenuPosition, true)
+
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition)
+      window.removeEventListener('scroll', updateMenuPosition, true)
+    }
+  }, [isOpen])
+
   const handleSelect = (nextValue) => {
     if (disabled) return
     onChange?.({
@@ -99,9 +133,11 @@ const StyledDropdown = ({
 
       {isOpen && (
         <div
-          className={`absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-xl shadow-slate-900/10 ${menuClassName}`}
+          className={`absolute left-0 right-0 z-[70] overflow-hidden rounded-2xl border border-[#E2E8F0] bg-white shadow-xl shadow-slate-900/10 ${
+            menuPlacement === 'top' ? 'bottom-[calc(100%+8px)]' : 'top-[calc(100%+8px)]'
+          } ${menuClassName}`}
         >
-          <div className="py-2 max-h-[300px] overflow-y-auto scrollbar-hide">
+          <div className="py-2 overflow-y-auto scrollbar-hide" style={{ maxHeight: `${menuMaxHeight}px` }}>
             {options.map((option) => {
               const isSelected = String(option.value) === String(value)
               return (

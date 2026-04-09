@@ -24,12 +24,43 @@ const SalesManagement = () => {
   const mappedSales = React.useMemo(() => {
     return salesOrders.map(sale => ({
        id: sale.id || `SO-${sale.id}`,
-       receipt: sale.receipt_number || sale.id || '-',
+       receipt: sale.order_number || sale.receipt_number || sale.id || '-',
        date: sale.created_at ? new Date(sale.created_at).toLocaleString() : sale.order_date ? new Date(sale.order_date).toLocaleString() : 'N/A',
        amount: Number(sale.total_amount || 0),
-       items: sale.items?.length || 1
+       items: Array.isArray(sale.items) ? sale.items.length : 0
     }))
   }, [salesOrders])
+
+  const dummyReturnData = [
+    {
+       id: 1,
+       order_number: 'R-SO-SEED-2604061321-001',
+       created_at: '2026-04-06T14:30:00Z',
+       total_amount: '45.00',
+       items: [{}, {}]
+    },
+    {
+       id: 2,
+       order_number: 'R-SO-SEED-2604061321-002',
+       created_at: '2026-04-05T10:15:00Z',
+       total_amount: '120.50',
+       items: [{}]
+    }
+  ];
+
+  const mappedReturns = React.useMemo(() => {
+    return dummyReturnData.map(sale => ({
+       id: sale.id || `RET-${sale.id}`,
+       receipt: sale.order_number || sale.receipt_number || sale.id || '-',
+       date: sale.created_at ? new Date(sale.created_at).toLocaleString() : 'N/A',
+       amount: Number(sale.total_amount || 0),
+       items: Array.isArray(sale.items) ? sale.items.length : 0
+    }))
+  }, [])
+
+  const currentData = activeTab === 'list' ? mappedSales : mappedReturns;
+  const currentLoading = activeTab === 'list' ? loading : false;
+  const currentError = activeTab === 'list' ? error : null;
 
   return (
     <div className="space-y-6">
@@ -64,8 +95,7 @@ const SalesManagement = () => {
         </button>
       </div>
 
-      {activeTab === 'list' ? (
-        <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6">
           {/* Filter Section (Top Card) */}
           <Card noPadding className="border-slate-200 shadow-sm !rounded-lg overflow-visible">
             <div className="p-8 grid grid-cols-1 lg:grid-cols-12 gap-x-8 gap-y-6">
@@ -135,29 +165,29 @@ const SalesManagement = () => {
                       </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-100">
-                      {loading ? (
+                      {currentLoading ? (
                         <tr>
                           <td colSpan="5" className="px-6 py-10">
                             <div className="flex flex-col items-center justify-center">
                               <Loader size={48} className="animate-spin text-sky-500 mb-2" />
-                              <p className="text-slate-500 font-medium tracking-tight">Loading sales history...</p>
+                              <p className="text-slate-500 font-medium tracking-tight">Loading {activeTab === 'list' ? 'sales history' : 'return history'}...</p>
                             </div>
                           </td>
                         </tr>
-                      ) : error ? (
+                      ) : currentError ? (
                         <tr>
                           <td colSpan="5" className="px-6 py-10 text-center font-bold text-rose-500">
-                             {error}
+                             {currentError}
                           </td>
                         </tr>
-                      ) : mappedSales.length === 0 ? (
+                      ) : currentData.length === 0 ? (
                         <tr>
                           <td colSpan="5" className="px-6 py-10 text-center font-bold text-slate-500">
-                             No sales found.
+                             No {activeTab === 'list' ? 'sales' : 'returns'} found.
                           </td>
                         </tr>
                       ) : (
-                        mappedSales.map((sale, idx) => (
+                        currentData.map((sale, idx) => (
                           <tr key={idx} className="hover:bg-slate-50 transition-colors group">
                              <td className="px-6 py-4 text-[14px] font-bold text-sky-600 cursor-pointer hover:underline">{sale.id}</td>
                              <td className="px-6 py-4 text-[14px] font-bold text-sky-600 cursor-pointer hover:underline">{sale.receipt}</td>
@@ -172,20 +202,6 @@ const SalesManagement = () => {
              </div>
           </div>
         </div>
-      ) : (
-        /* Sales Return Tab (Temporary Placeholder) */
-        <div className="flex-1 min-h-[500px] flex items-center justify-center bg-white rounded-lg border border-dashed border-slate-200">
-           <div className="flex flex-col items-center gap-4 text-center">
-              <div className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center text-slate-300">
-                 <History size={40} />
-              </div>
-              <div>
-                 <h3 className="text-[18px] font-black text-slate-400 tracking-tight">Sales Return feature coming soon...</h3>
-                 <p className="text-[14px] font-medium text-slate-300 mt-1">We're working hard to bring you the return management system.</p>
-              </div>
-           </div>
-        </div>
-      )}
     </div>
   )
 }
