@@ -20,18 +20,14 @@ import AddVendorPage from '../components/pos/AddVendorPage'
 import CashDrawerPage from '../components/pos/CashDrawerPage'
 import CreatePurchaseBill from '../components/pos/CreatePurchaseBill'
 import SettingsPage from '../components/pos/SettingsPage'
-import {
-  posMockStores as INITIAL_STORES,
-  posMockCategories as INITIAL_CATEGORIES,
-  posMockProducts as INITIAL_PRODUCTS,
-  posMockRecentOrders as INITIAL_RECENT_ORDERS
-} from '../mocks/posMockData'
+// Static data removed
 import { usePosStore } from '../store/usePosStore'
+import { getIsAdminUser, getStoredAuth } from '../utils/auth'
 
 const PosPage = () => {
-  const [stores, setStores] = useState(INITIAL_STORES)
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES)
-  const [products, setProducts] = useState(INITIAL_PRODUCTS)
+  const [stores, setStores] = useState([])
+  const [categories, setCategories] = useState([{ id: 'all', name: 'All Items' }])
+  const [products, setProducts] = useState([])
   const [isLoadingProducts, setIsLoadingProducts] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState('')
@@ -65,10 +61,12 @@ const PosPage = () => {
   } = usePosStore()
 
   const totals = getTotals()
+  const authData = getStoredAuth()
+  const showSidebar = getIsAdminUser(authData)
 
   useEffect(() => {
     if (recentOrders.length === 0) {
-      setRecentOrders(INITIAL_RECENT_ORDERS)
+      setRecentOrders([])
     }
   }, [recentOrders.length, setRecentOrders])
 
@@ -141,9 +139,9 @@ const PosPage = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#F8FAFC] flex font-sans">
-      <PosSidebar activeView={activeView} onViewChange={setActiveView} />
+      {showSidebar ? <PosSidebar activeView={activeView} onViewChange={setActiveView} /> : null}
       
-      <div className="flex min-w-0 flex-1 flex-col h-full overflow-hidden ml-[240px]">
+      <div className={`flex min-w-0 flex-1 flex-col h-full overflow-hidden ${showSidebar ? 'ml-[240px]' : ''}`}>
           <PosTopbar />
 
           <main className="flex-1 overflow-y-auto p-6 bg-[#F8FAFC]">

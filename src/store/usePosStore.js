@@ -5,8 +5,19 @@ const TAX_RATE = 0.18
 const normalizeCartItem = product => ({
   id: product.id,
   name: product.name,
-  price: product.price,
+  price: Number(product.price) || 0,
   quantity: 1,
+  image: product.image || null,
+  sku: product.barcode || product.sku || '',
+  stock: Number(product.stock) || 0,
+  categoryName: product.categoryName || 'Liquor',
+  volume: product.volume || product.size || '-',
+  abv: product.abv || '-',
+  caseBottle: product.caseBottle || '-',
+  taxCategory: product.taxCategory || 'Liquor',
+  deposit: Number(product.deposit) || 0,
+  itemDiscount: Number(product.itemDiscount) || 0,
+  ageRestricted: product.ageRestricted !== false,
 })
 
 const computeTotals = (cartItems, discount) => {
@@ -104,4 +115,3 @@ export const usePosStore = create((set, get) => ({
     return computeTotals(state.cartItems, state.discount)
   },
 }))
-

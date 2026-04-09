@@ -21,17 +21,17 @@ import SettingsIcon from '../../assets/icon/settings.png'
 import LogoIcon from '../../assets/icon/liquorPOS.png'
 
 const navItems = [
-  { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon, path: '/pos/dashboard', isPng: true },
-  { id: 'products', label: 'Products', icon: ProductsIcon, path: '/pos/products', isPng: true },
-  { id: 'purchase-bills', label: 'Purchase Bills', icon: PurchaseBillsIcon, path: '/pos/purchase-bills', isPng: true },
-  { id: 'purchase-orders', label: 'Purchase Orders', icon: PurchaseOrdersIcon, path: '/pos/purchase-orders', isPng: true },
-  { id: 'purchase-return', label: 'Purchase Return', icon: PurchaseReturnIcon, path: '/pos/purchase-return', isPng: true },
-  { id: 'sales', label: 'Sales', icon: SalesIcon, path: '/pos/sales', isPng: true },
-  { id: 'people', label: 'Peoples', icon: PeoplesIcon, path: '/pos/people', isPng: true },
-  { id: 'cash-drawer', label: 'Cash Drawer', icon: DrawerIcon, path: '/pos/cash-drawer', isPng: true },
-  { id: 'item-master', label: 'Item Master', icon: ItemMasterIcon, path: '/pos/item-master', isPng: true, iconClassName: 'scale-90', inactiveFilter: "brightness(0) saturate(100%) invert(47%) sepia(12%) saturate(505%) hue-rotate(174deg) brightness(95%) contrast(89%)" },
-  { id: 'reports', label: 'Reports', icon: ReportsIcon, path: '/pos/reports', isPng: true },
-  { id: 'settings', label: 'Settings', icon: SettingsIcon, path: '/pos/settings', isPng: true },
+  { id: 'dashboard', label: 'Dashboard', icon: DashboardIcon, path: '/dashboard', isPng: true },
+  { id: 'products', label: 'Products', icon: ProductsIcon, path: '/products', isPng: true },
+  { id: 'purchase-bills', label: 'Purchase Bills', icon: PurchaseBillsIcon, path: '/purchase-bills', isPng: true },
+  { id: 'purchase-orders', label: 'Purchase Orders', icon: PurchaseOrdersIcon, path: '/purchase-orders', isPng: true },
+  { id: 'purchase-return', label: 'Purchase Return', icon: PurchaseReturnIcon, path: '/purchase-return', isPng: true },
+  { id: 'sales', label: 'Sales', icon: SalesIcon, path: '/sales', isPng: true },
+  { id: 'people', label: 'Peoples', icon: PeoplesIcon, path: '/people', isPng: true },
+  { id: 'cash-drawer', label: 'Cash Drawer', icon: DrawerIcon, path: '/cash-drawer', isPng: true },
+  { id: 'item-master', label: 'Item Master', icon: ItemMasterIcon, path: '/item-master', isPng: true, iconClassName: 'scale-90', inactiveFilter: "brightness(0) saturate(100%) invert(47%) sepia(12%) saturate(505%) hue-rotate(174deg) brightness(95%) contrast(89%)" },
+  { id: 'reports', label: 'Reports', icon: ReportsIcon, path: '/reports', isPng: true },
+  { id: 'settings', label: 'Settings', icon: SettingsIcon, path: '/settings', isPng: true },
 ]
 
 const SidebarItem = ({ label, icon: Icon, active, path, isPng, iconClassName = '', inactiveFilter = 'none' }) => {
@@ -77,6 +77,7 @@ const PosSidebar = () => {
   const user = auth?.data?.user || auth?.user || auth || {}
   const userName = user.name || 'Admin User'
   const userEmail = user.email || 'admin@liquorpos.com'
+  const routeBase = location.pathname.startsWith('/admin') ? '/admin' : '/pos'
 
   const getActiveId = () => {
     const path = location.pathname
@@ -128,7 +129,7 @@ const PosSidebar = () => {
             key={item.id}
             label={item.label}
             icon={item.icon}
-            path={item.path}
+            path={`${routeBase}${item.path}`}
             isPng={item.isPng}
             iconClassName={item.iconClassName}
             inactiveFilter={item.inactiveFilter}
@@ -138,7 +139,7 @@ const PosSidebar = () => {
       </nav>
 
       <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-        <Link to="/pos/profile" className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white border border-transparent hover:border-[#E2E8F0] transition-all group">
+        <Link to={`${routeBase}/profile`} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white border border-transparent hover:border-[#E2E8F0] transition-all group">
           <div className="h-10 w-10 rounded-lg bg-[#0EA5E9] text-white flex items-center justify-center font-bold text-sm shadow-md group-hover:bg-[#38BDF8] transition-colors uppercase">
             {userName.charAt(0).toUpperCase()}
           </div>

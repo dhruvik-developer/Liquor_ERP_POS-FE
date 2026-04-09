@@ -12,6 +12,28 @@ export const getStoredAuth = () => {
   }
 }
 
+export const getUserRoleName = (authData) => {
+  const roleValue = authData?.role ?? authData?.user?.role ?? authData?.data?.user?.role
+
+  if (typeof roleValue === 'string') return roleValue.trim()
+  if (roleValue && typeof roleValue === 'object') {
+    return (
+      roleValue.name ||
+      roleValue.label ||
+      roleValue.code ||
+      roleValue.title ||
+      ''
+    ).trim()
+  }
+
+  return (
+    authData?.role_name ||
+    authData?.user?.role_name ||
+    authData?.data?.user?.role_name ||
+    ''
+  ).trim()
+}
+
 export const getIsSuperAdmin = (data) => {
   if (data?.data?.user?.is_super_admin !== undefined) {
     return Boolean(data.data.user.is_super_admin)
@@ -23,5 +45,15 @@ export const getIsSuperAdmin = (data) => {
   )
 }
 
-export const getDefaultRouteForRole = () => '/pos'
+export const getIsAdminUser = (authData) => {
+  if (getIsSuperAdmin(authData)) return true
+  const roleName = getUserRoleName(authData).toLowerCase()
+  return roleName === 'admin' || roleName === 'system admin' || roleName === 'administrator'
+}
+
+export const getDefaultRouteForRole = (authData) => {
+  if (getIsAdminUser(authData)) return '/admin/dashboard'
+  return '/pos/terminal'
+}
+
 export const getDefaultRoute = () => '/pos'

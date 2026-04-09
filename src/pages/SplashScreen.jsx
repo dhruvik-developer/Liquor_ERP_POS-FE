@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion as Motion, AnimatePresence } from 'framer-motion'
-import { getDefaultRouteForRole, getIsSuperAdmin, getStoredAuth } from '../utils/auth'
+import { getDefaultRouteForRole, getStoredAuth } from '../utils/auth'
 
 // ─── Martini Glass SVG Icon ─────────────────────────────────────────────────
 const MartiniIcon = () => (
@@ -122,7 +122,7 @@ const SplashScreen = () => {
           setTimeout(() => {
             const authData = getStoredAuth()
             if (authData) {
-              navigate('/pos')
+              navigate(getDefaultRouteForRole(authData))
               return
             }
             navigate('/login')

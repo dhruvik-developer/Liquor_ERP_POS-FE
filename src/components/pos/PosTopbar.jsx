@@ -1,8 +1,16 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { Bell, LogOut, Settings, User, Users, Store } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { getStoredAuth } from '../../utils/auth'
+import { getIsAdminUser, getStoredAuth } from '../../utils/auth'
+import PosTabIcon from '../../assets/icon/POS.png'
+import CashDrawerTabIcon from '../../assets/icon/cashdrawer.png'
+import ProcessReturnTabIcon from '../../assets/icon/processreturn.png'
+import LookupTransactionTabIcon from '../../assets/icon/lookuptransaction.png'
+import LogoIcon from '../../assets/icon/liquorPOS.png'
+
+const activeIconFilter = 'brightness(0) saturate(100%) invert(51%) sepia(87%) saturate(2135%) hue-rotate(164deg) brightness(97%) contrast(93%)'
+const inactiveIconFilter = 'brightness(0) saturate(100%) invert(50%) sepia(10%) saturate(520%) hue-rotate(174deg) brightness(96%) contrast(88%)'
 
 const getUserRoleLabel = (user) => {
   const roleValue = user?.role
@@ -16,10 +24,15 @@ const getUserRoleLabel = (user) => {
 
 const PosTopbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [hoveredTopTab, setHoveredTopTab] = useState(null)
   const menuRef = useRef(null)
   const navigate = useNavigate()
+  const location = useLocation()
   const auth = getStoredAuth()
+  const isAdmin = getIsAdminUser(auth)
   const user = auth?.data?.user || auth?.user || auth || {}
+  const isTerminalView = location.pathname.includes('/pos/terminal')
+  const routeBase = location.pathname.startsWith('/admin') ? '/admin' : '/pos'
 
   const userName = user?.name || 'Admin User'
   const userRole = getUserRoleLabel(user)
@@ -65,17 +78,158 @@ const PosTopbar = () => {
 
   const handleRoleClick = () => {
     setIsMenuOpen(false)
-    navigate('/pos/roles')
+    navigate(`${routeBase}/roles`)
   }
 
   const handlePermissionClick = () => {
     setIsMenuOpen(false)
-    navigate('/pos/permissions')
+    navigate(`${routeBase}/permissions`)
   }
 
   const handleStoreClick = () => {
     setIsMenuOpen(false)
-    navigate('/pos/stores')
+    navigate(`${routeBase}/stores`)
+  }
+
+  if (isTerminalView && !isAdmin) {
+    return (
+      <header className="sticky top-0 z-50 bg-white border-b border-[#E5E9F0]">
+        <div className="h-12 px-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 flex items-center gap-3 px-2 shrink-0">
+              <div className="h-9 w-9 rounded-lg bg-white flex items-center justify-center shadow-sm border border-slate-100 p-1">
+                <img src={LogoIcon} alt="Logo" className="w-full h-full object-contain" />
+              </div>
+              <h1 className="text-[20px] font-black text-[#1E293B] tracking-tight">
+                Liquor <span className="text-[#0EA5E9]">POS</span>
+              </h1>
+            </div>
+            {/* <button
+              type="button"
+              className="h-9 rounded-lg bg-[#1EA7EE] text-white px-4 text-[13px] font-semibold shadow-sm hover:bg-[#1695D8] transition-colors"
+            >
+              + Start New Sale
+            </button> */}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button className="p-2 text-[#64748B] hover:text-[#1EA7EE] rounded-md hover:bg-[#F4F7FB] transition-colors">
+              <Bell size={15} />
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate(`${routeBase}/settings`)}
+              className="p-2 text-[#64748B] hover:text-[#1EA7EE] rounded-md hover:bg-[#F4F7FB] transition-colors"
+            >
+              <Settings size={15} />
+            </button>
+            <div className="relative" ref={menuRef}>
+              <button
+                type="button"
+                onClick={() => setIsMenuOpen((prev) => !prev)}
+                className="h-8 w-8 rounded-full bg-[#F1D66B] flex items-center justify-center"
+              >
+                <span className="text-[11px] font-bold text-[#6B4E00] uppercase">{userName.charAt(0)}</span>
+              </button>
+
+              {isMenuOpen && (
+                <div className="absolute right-0 top-[calc(100%+10px)] w-[220px] overflow-hidden rounded-xl border border-[#E2E8F0] bg-white shadow-xl shadow-slate-900/10 z-[80]">
+                  <div className="px-4 py-3 bg-[#F8FAFC] border-b border-[#E2E8F0]">
+                    <p className="text-[13px] font-black text-[#1E293B] truncate">{userName}</p>
+                    <p className="text-[11px] font-semibold text-[#64748B] truncate">
+                      Role: {userRole}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="w-full px-4 py-3 flex items-center gap-3 text-left text-[14px] font-bold text-rose-500 hover:bg-rose-50 transition-colors"
+                  >
+                    <LogOut size={16} />
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-12 px-7 border-t border-[#EEF2F7] flex items-center gap-8 text-[15px] font-bold">
+          <NavLink
+            to="/pos/terminal"
+            className={({ isActive }) => `group flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#1EA7EE]' : 'text-[#64748B] hover:text-[#1EA7EE]'}`}
+            onMouseEnter={() => setHoveredTopTab('/pos/terminal')}
+            onMouseLeave={() => setHoveredTopTab(null)}
+          >
+            {({ isActive }) => (
+              <>
+                <img
+                  src={PosTabIcon}
+                  alt="POS"
+                  className="h-[16px] w-[16px] object-contain transition-all"
+                  style={{ filter: isActive || hoveredTopTab === '/pos/terminal' ? activeIconFilter : inactiveIconFilter }}
+                />
+                POS
+              </>
+            )}
+          </NavLink>
+          <NavLink
+            to="/pos/cash-drawer"
+            className={({ isActive }) => `group flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#1EA7EE]' : 'text-[#64748B] hover:text-[#1EA7EE]'}`}
+            onMouseEnter={() => setHoveredTopTab('/pos/cash-drawer')}
+            onMouseLeave={() => setHoveredTopTab(null)}
+          >
+            {({ isActive }) => (
+              <>
+                <img
+                  src={CashDrawerTabIcon}
+                  alt="Cash Drawer"
+                  className="h-[16px] w-[16px] object-contain transition-all"
+                  style={{ filter: isActive || hoveredTopTab === '/pos/cash-drawer' ? activeIconFilter : inactiveIconFilter }}
+                />
+                Cash Drawer
+              </>
+            )}
+          </NavLink>
+          <NavLink
+            to="/pos/purchase-return"
+            className={({ isActive }) => `group flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#1EA7EE]' : 'text-[#64748B] hover:text-[#1EA7EE]'}`}
+            onMouseEnter={() => setHoveredTopTab('/pos/purchase-return')}
+            onMouseLeave={() => setHoveredTopTab(null)}
+          >
+            {({ isActive }) => (
+              <>
+                <img
+                  src={ProcessReturnTabIcon}
+                  alt="Process Return"
+                  className="h-[16px] w-[16px] object-contain transition-all"
+                  style={{ filter: isActive || hoveredTopTab === '/pos/purchase-return' ? activeIconFilter : inactiveIconFilter }}
+                />
+                Process Return
+              </>
+            )}
+          </NavLink>
+          <NavLink
+            to="/pos/sales/history"
+            className={({ isActive }) => `group flex items-center gap-1.5 transition-colors ${isActive ? 'text-[#1EA7EE]' : 'text-[#64748B] hover:text-[#1EA7EE]'}`}
+            onMouseEnter={() => setHoveredTopTab('/pos/sales/history')}
+            onMouseLeave={() => setHoveredTopTab(null)}
+          >
+            {({ isActive }) => (
+              <>
+                <img
+                  src={LookupTransactionTabIcon}
+                  alt="Lookup Transaction"
+                  className="h-[16px] w-[16px] object-contain transition-all"
+                  style={{ filter: isActive || hoveredTopTab === '/pos/sales/history' ? activeIconFilter : inactiveIconFilter }}
+                />
+                Lookup Transaction
+              </>
+            )}
+          </NavLink>
+        </div>
+      </header>
+    )
   }
 
   return (

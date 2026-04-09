@@ -1,0 +1,68 @@
+export const dashboardMockData = {
+  summary: {
+    totalStores: 4,
+    totalRevenue: 124560.35,
+    totalOrders: 932,
+    pendingOrders: 37,
+    todaySales: 6240.1,
+    lowStockItems: 18,
+    trends: {
+      totalRevenue: 8.2,
+      totalOrders: 5.1,
+      pendingOrders: -2.7,
+      todaySales: 6.4,
+      lowStockItems: -1.9,
+    },
+  },
+  stores: [
+    { id: 1, storeName: 'Downtown', totalSales: 312, ordersCount: 238, revenue: 35240.6 },
+    { id: 2, storeName: 'Uptown', totalSales: 271, ordersCount: 205, revenue: 28990.2 },
+    { id: 3, storeName: 'West End', totalSales: 219, ordersCount: 181, revenue: 24780.35 },
+    { id: 4, storeName: 'Airport', totalSales: 130, ordersCount: 108, revenue: 18549.2 },
+  ],
+  dailySales: [
+    { label: 'Mon', sales: 4120 },
+    { label: 'Tue', sales: 5230 },
+    { label: 'Wed', sales: 4875 },
+    { label: 'Thu', sales: 5650 },
+    { label: 'Fri', sales: 6210 },
+    { label: 'Sat', sales: 6890 },
+    { label: 'Sun', sales: 5980 },
+  ],
+  storeSalesComparison: [
+    { storeName: 'Downtown', sales: 35240.6 },
+    { storeName: 'Uptown', sales: 28990.2 },
+    { storeName: 'West End', sales: 24780.35 },
+    { storeName: 'Airport', sales: 18549.2 },
+  ],
+  categorySales: [
+    { name: 'Whisky', value: 34 },
+    { name: 'Vodka', value: 24 },
+    { name: 'Wine', value: 22 },
+    { name: 'Beer', value: 20 },
+  ],
+  recentOrders: [
+    { id: 'SO-1001', customer: 'Alex Martin', store: 'Downtown', total: 132.5, status: 'Completed' },
+    { id: 'SO-1002', customer: 'Chris Park', store: 'Uptown', total: 86.3, status: 'Pending' },
+    { id: 'SO-1003', customer: 'Jade Thomas', store: 'West End', total: 210.9, status: 'Completed' },
+    { id: 'SO-1004', customer: 'Ravi Singh', store: 'Airport', total: 74.1, status: 'Pending' },
+  ],
+  pendingOrders: [
+    { storeName: 'Downtown', count: 14, urgency: 'Medium' },
+    { storeName: 'Uptown', count: 10, urgency: 'Low' },
+    { storeName: 'West End', count: 8, urgency: 'Low' },
+    { storeName: 'Airport', count: 5, urgency: 'Low' },
+  ],
+  lowStock: [
+    { id: 1, name: 'Single Malt 12Y', sku: 'WHS-1201', storeName: 'Downtown', quantity: 6, threshold: 12 },
+    { id: 2, name: 'Premium Vodka 750ml', sku: 'VDK-2209', storeName: 'Uptown', quantity: 4, threshold: 10 },
+    { id: 3, name: 'Cabernet Reserve', sku: 'WNE-0411', storeName: 'West End', quantity: 5, threshold: 10 },
+  ],
+  storeOptions: [
+    { label: 'All Stores', value: 'all' },
+    { label: 'Downtown', value: '1' },
+    { label: 'Uptown', value: '2' },
+    { label: 'West End', value: '3' },
+    { label: 'Airport', value: '4' },
+  ],
+}

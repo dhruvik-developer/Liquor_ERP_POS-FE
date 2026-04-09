@@ -7,14 +7,7 @@ import Button from "../common/Button";
 import Input from "../common/Input";
 import Card from "../common/Card";
 import StyledDropdown from "../common/StyledDropdown";
-import {
-  DEPARTMENTS,
-  SIZES,
-  BRANDS,
-  CATEGORIES,
-  SUB_CATEGORIES,
-  PACKS,
-} from "../../mocks/selectorData";
+// Removed static mock selector data imports
 
 const AttributeRow = ({
   label,
@@ -128,51 +121,51 @@ const AddProduct = () => {
 
               <AttributeRow
                 label="Department"
-                options={DEPARTMENTS}
+                options={[]}
                 value={formData.department}
                 onChange={(e) =>
                   setFormData({ ...formData, department: e.target.value })
                 }
                 onOpenSelector={() =>
-                  openSelector("Select Department", DEPARTMENTS, "department")
+                  openSelector("Select Department", [], "department")
                 }
               />
               <AttributeRow
                 label="Size"
-                options={SIZES}
+                options={[]}
                 value={formData.size}
                 onChange={(e) =>
                   setFormData({ ...formData, size: e.target.value })
                 }
                 onOpenSelector={() =>
-                  openSelector("Select Size", SIZES, "size")
+                  openSelector("Select Size", [], "size")
                 }
               />
               <AttributeRow
                 label="Brand"
-                options={BRANDS}
+                options={[]}
                 value={formData.brand}
                 onChange={(e) =>
                   setFormData({ ...formData, brand: e.target.value })
                 }
                 onOpenSelector={() =>
-                  openSelector("Select Brand", BRANDS, "brand")
+                  openSelector("Select Brand", [], "brand")
                 }
               />
               <AttributeRow
                 label="Category"
-                options={CATEGORIES.map((c) => c.name)}
+                options={[]}
                 value={formData.category}
                 onChange={(e) =>
                   setFormData({ ...formData, category: e.target.value })
                 }
                 onOpenSelector={() =>
-                  openSelector("Select Category", CATEGORIES, "category")
+                  openSelector("Select Category", [], "category")
                 }
               />
               <AttributeRow
                 label="Sub-Category"
-                options={SUB_CATEGORIES}
+                options={[]}
                 value={formData.subCategory}
                 onChange={(e) =>
                   setFormData({ ...formData, subCategory: e.target.value })
@@ -180,20 +173,20 @@ const AddProduct = () => {
                 onOpenSelector={() =>
                   openSelector(
                     "Select Sub-Category",
-                    SUB_CATEGORIES,
+                    [],
                     "subCategory",
                   )
                 }
               />
               <AttributeRow
                 label="Pack"
-                options={PACKS}
+                options={[]}
                 value={formData.pack}
                 onChange={(e) =>
                   setFormData({ ...formData, pack: e.target.value })
                 }
                 onOpenSelector={() =>
-                  openSelector("Select Pack", PACKS, "pack")
+                  openSelector("Select Pack", [], "pack")
                 }
               />
             </div>

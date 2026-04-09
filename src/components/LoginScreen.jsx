@@ -6,6 +6,7 @@ import Loader from './common/Loader'
 import Button from './common/Button'
 import Input from './common/Input'
 import api from '../services/api'
+import { getDefaultRouteForRole } from '../utils/auth'
 
 const roleConfig = {
   staff: {
@@ -64,14 +65,24 @@ const LoginScreen = ({ type = 'staff' }) => {
       if (accessToken) {
         console.log('[Login]: Access token extracted successfully')
         localStorage.setItem('access_token', accessToken)
-        // Store user data if available
-        const userToStore = responseData.user || {
+
+        // Store user data if available and preserve a role fallback from selected login type.
+        const apiUser = responseData?.user
+        const userToStore = apiUser
+          ? {
+              ...apiUser,
+              role: apiUser.role ?? apiUser.role_name ?? type,
+            }
+          : {
           name: 'Admin User',
           role: type,
           email: formValues.email
         }
+
         localStorage.setItem('auth_user', JSON.stringify(userToStore))
-        navigate('/pos', { replace: true })
+
+        const targetRoute = getDefaultRouteForRole(userToStore)
+        navigate(targetRoute, { replace: true })
       } else {
         console.error('[Login]: Access token missing in response', response.data)
         setApiError('Authentication failed: Token not found in response.')

@@ -1,4 +1,4 @@
-import { posMockCategories, posMockProducts, posMockRecentOrders, posMockStores } from '../mocks/posMockData'
+// Mock data removed
 import { getJson } from './http'
 import { normalizeUrl } from '../utils/url'
 
@@ -13,12 +13,12 @@ const withFallback = async (requestFn, fallbackValue) => {
 }
 
 export const posApi = {
-  getStores: async () => posMockStores,
+  getStores: async () => [],
 
   getProducts: async params => withFallback(async () => {
     const response = await getJson('/products/', params)
     return parseList(response)
-  }, posMockProducts),
+  }, []),
 
   getCategories: async () => withFallback(async () => {
     const response = await getJson('/categories/')
@@ -27,12 +27,12 @@ export const posApi = {
       return [{ id: 'all', name: 'All' }, ...categories]
     }
     return categories
-  }, posMockCategories),
+  }, []),
 
   getStoreProducts: async params => withFallback(async () => {
     const response = await getJson('/store-products/', params)
     return parseList(response)
-  }, posMockProducts),
+  }, []),
 
   createOrder: async payload => withFallback(async () => {
     const baseUrl = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '')
@@ -73,5 +73,5 @@ export const posApi = {
     },
   }),
 
-  getRecentOrders: async () => posMockRecentOrders,
+  getRecentOrders: async () => [],
 }
