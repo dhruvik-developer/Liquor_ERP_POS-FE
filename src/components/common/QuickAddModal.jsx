@@ -552,4 +552,3 @@ const QuickAddModal = ({ isOpen, onClose, type, onSave, departments = [] }) => {
 }
 
 export default QuickAddModal
- Greenland

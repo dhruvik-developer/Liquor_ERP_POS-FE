@@ -9,7 +9,8 @@ import {
   Phone,
   Lock,
   ShieldCheck,
-  Save
+  Save,
+  MapPin
 } from 'lucide-react'
 import Button from '../common/Button'
 import Input from '../common/Input'
@@ -18,6 +19,7 @@ import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import Loader from '../common/Loader'
 import StyledDropdown from '../common/StyledDropdown'
+import Toggle from '../common/Toggle'
 
 const AddUserPage = ({ onCancel, onSave }) => {
   const { id } = useParams()
@@ -30,26 +32,50 @@ const AddUserPage = ({ onCancel, onSave }) => {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
+    user_id: '',
+    gender: '',
     first_name: '',
     last_name: '',
     email: '',
+    mobile_number: '',
     phone: '',
+    phone_ext: '',
+    address_1: '',
+    address_2: '',
+    city: '',
+    state: '',
+    zip_code: '',
+    country: '',
     password: '',
     confirm_password: '',
-    role: ''
+    is_active: true,
+    role_id: '',
+    store_ids: ''
   })
   const [formError, setFormError] = useState('')
 
   useEffect(() => {
     if (existingData) {
       setFormData({
+        user_id: existingData.user_id || '',
+        gender: existingData.gender || '',
         first_name: existingData.first_name || '',
         last_name: existingData.last_name || '',
         email: existingData.email || '',
+        mobile_number: existingData.mobile_number || '',
         phone: existingData.phone || '',
+        phone_ext: existingData.phone_ext || '',
+        address_1: existingData.address_1 || '',
+        address_2: existingData.address_2 || '',
+        city: existingData.city || '',
+        state: existingData.state || '',
+        zip_code: existingData.zip_code || '',
+        country: existingData.country || '',
         password: '',
         confirm_password: '',
-        role: existingData.role || ''
+        is_active: existingData.is_active !== undefined ? existingData.is_active : true,
+        role_id: existingData.role_id || '',
+        store_ids: existingData.store_ids ? existingData.store_ids.join(', ') : ''
       })
     }
   }, [existingData])
@@ -76,11 +102,25 @@ const AddUserPage = ({ onCancel, onSave }) => {
 
     try {
       const payload = {
-        username: formData.email,
-        email: formData.email,
+        user_id: formData.user_id,
+        gender: formData.gender,
         first_name: formData.first_name,
         last_name: formData.last_name,
-        role: formData.role
+        email: formData.email,
+        mobile_number: formData.mobile_number,
+        phone: formData.phone,
+        phone_ext: formData.phone_ext,
+        address_1: formData.address_1,
+        address_2: formData.address_2,
+        city: formData.city,
+        state: formData.state,
+        zip_code: formData.zip_code,
+        country: formData.country,
+        is_active: formData.is_active,
+        role_id: parseInt(formData.role_id) || null,
+        store_ids: formData.store_ids 
+          ? formData.store_ids.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n)) 
+          : []
       }
 
       if (formData.password) {
@@ -140,11 +180,10 @@ const AddUserPage = ({ onCancel, onSave }) => {
 
       {/* Main Form Content */}
       <Card className="relative overflow-hidden">
-        
         <div className="flex flex-col lg:flex-row gap-12 pt-4">
           
-          {/* Left Side: Photo */}
-          <div className="w-full lg:w-48 flex flex-col items-center gap-6">
+          {/* Left Side: Photo & Status */}
+          <div className="w-full lg:w-48 flex flex-col items-center gap-6 shrink-0">
             <div className="relative group">
               <div className="h-40 w-40 rounded-full bg-[#F8FAFC] flex items-center justify-center border-4 border-white shadow-md ring-1 ring-[#E2E8F0] overflow-hidden">
                  <User className="text-[#E2E8F0]" size={80} />
@@ -156,97 +195,155 @@ const AddUserPage = ({ onCancel, onSave }) => {
                 <Camera size={18} />
               </button>
             </div>
-            <div className="text-center">
-               <span className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[12px] font-bold uppercase tracking-wider border border-emerald-100">
-                  <div className="h-1.5 w-1.5 rounded-full bg-emerald-500"></div>
-                  Active User
-               </span>
+            
+            <div className="w-full flex items-center justify-between px-4 py-3 bg-[#F8FAFC] rounded-xl border border-[#E2E8F0]">
+               <span className="text-[14px] font-bold text-[#475569]">User is Active</span>
+               <Toggle 
+                 checked={formData.is_active} 
+                 onChange={(val) => setFormData({...formData, is_active: val})} 
+               />
             </div>
           </div>
 
-          {/* Right Side: Form Grid */}
-          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-8">
-            <Input label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} placeholder="e.g. Jonathan" required />
-            <Input label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} placeholder="e.g. Doe" required />
+          {/* Right Side: Form Sections */}
+          <div className="flex-1 flex flex-col gap-10">
             
-            <Input 
-              label="Email Address" 
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              autoComplete="off"
-              placeholder="jdoe@example.com" 
-              icon={Mail} 
-              required 
-            />
-            
-            <Input 
-              label="Phone Number" 
-              name="phone"
-              value={formData.phone}
-              onChange={handleChange}
-              placeholder="98765 43210" 
-              icon={Phone} 
-              required 
-            />
-
-            <div className="relative">
-              <Input 
-                label={isEdit ? "New Password (Leave blank to keep current)" : "Access Password"} 
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                type={showPassword ? 'text' : 'password'} 
-                autoComplete="new-password"
-                placeholder="••••••••" 
-                icon={Lock} 
-                required={!isEdit}
-              />
-              <button 
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
-              >
-                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            {/* Basic Information */}
+            <div className="space-y-5">
+               <h3 className="text-[14px] font-black uppercase tracking-widest text-[#94A3B8] border-b border-[#E2E8F0] pb-2">Basic Information</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
+                 <Input label="User ID" name="user_id" value={formData.user_id} onChange={handleChange} placeholder="e.g. EMP1001" required />
+                 <Input label="First Name" name="first_name" value={formData.first_name} onChange={handleChange} placeholder="e.g. John" required />
+                 <Input label="Last Name" name="last_name" value={formData.last_name} onChange={handleChange} placeholder="e.g. Doe" required />
+                 
+                 <div className="space-y-1.5 flex flex-col">
+                   <label className="text-[14px] font-bold text-[#1E293B] ml-0.5">Gender</label>
+                   <StyledDropdown 
+                     name="gender" 
+                     value={formData.gender} 
+                     onChange={handleChange} 
+                     placeholder="Select Gender"
+                     triggerClassName="border-[#E2E8F0] bg-white !text-[14px] !font-medium !text-[#1E293B]"
+                   >
+                     <option value="">Select Gender</option>
+                     <option value="Male">Male</option>
+                     <option value="Female">Female</option>
+                     <option value="Other">Other</option>
+                   </StyledDropdown>
+                 </div>
+                 <div className="md:col-span-1 lg:col-span-2">
+                   <Input 
+                     label="Email Address" 
+                     type="email" 
+                     name="email" 
+                     value={formData.email} 
+                     onChange={handleChange} 
+                     placeholder="jdoe@example.com"
+                     icon={Mail} 
+                     required 
+                   />
+                 </div>
+               </div>
             </div>
 
-            <div className="relative">
-              <Input 
-                label="Confirm Password" 
-                name="confirm_password"
-                value={formData.confirm_password}
-                onChange={handleChange}
-                type={showConfirmPassword ? 'text' : 'password'} 
-                autoComplete="new-password"
-                placeholder="••••••••" 
-                icon={ShieldCheck} 
-                required={!isEdit || !!formData.password}
-              />
-              <button 
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
-              >
-                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-              </button>
+            {/* Contact & Address */}
+            <div className="space-y-5">
+               <h3 className="text-[14px] font-black uppercase tracking-widest text-[#94A3B8] border-b border-[#E2E8F0] pb-2">Contact & Address</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-x-8 gap-y-6">
+                 <div className="lg:col-span-2">
+                   <Input label="Mobile Number" name="mobile_number" value={formData.mobile_number} onChange={handleChange} placeholder="98765 43210" icon={Phone} required />
+                 </div>
+                 <Input label="Work Phone" name="phone" value={formData.phone} onChange={handleChange} placeholder="2145551234" icon={Phone} />
+                 <Input label="Extension" name="phone_ext" value={formData.phone_ext} onChange={handleChange} placeholder="101" />
+                 
+                 <div className="md:col-span-2 lg:col-span-2">
+                   <Input label="Address Line 1" name="address_1" value={formData.address_1} onChange={handleChange} placeholder="123 Main Street" icon={MapPin} />
+                 </div>
+                 <div className="md:col-span-2 lg:col-span-2">
+                   <Input label="Address Line 2" name="address_2" value={formData.address_2} onChange={handleChange} placeholder="Suite 204" icon={MapPin} />
+                 </div>
+                 
+                 <Input label="City" name="city" value={formData.city} onChange={handleChange} placeholder="Dallas" />
+                 <Input label="State" name="state" value={formData.state} onChange={handleChange} placeholder="TX" />
+                 <Input label="Zip Code" name="zip_code" value={formData.zip_code} onChange={handleChange} placeholder="75201" />
+                 <Input label="Country" name="country" value={formData.country} onChange={handleChange} placeholder="USA" />
+               </div>
             </div>
 
-            <div className="col-span-1 md:col-span-2 space-y-1.5">
-              <label className="text-[14px] font-bold text-[#1E293B] ml-0.5 uppercase tracking-widest text-[#64748B]">System Role & Permissions</label>
-              <StyledDropdown
-                name="role"
-                value={formData.role}
-                onChange={handleChange}
-                placeholder="Select Role"
-                triggerClassName="border-[#E2E8F0] bg-white !text-[14px] !font-medium !text-[#1E293B]"
-              >
-                <option value="">Select Role</option>
-                <option value="Administrator">Administrator</option>
-                <option value="Purchase Manager">Purchase Manager</option>
-                <option value="Sales Associate">Sales Associate</option>
-              </StyledDropdown>
+            {/* Authentication & Access */}
+            <div className="space-y-5">
+               <h3 className="text-[14px] font-black uppercase tracking-widest text-[#94A3B8] border-b border-[#E2E8F0] pb-2">Authentication & Access</h3>
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                 
+                 <div className="relative">
+                   <Input 
+                     label={isEdit ? "New Password (Leave blank to keep current)" : "Access Password"} 
+                     name="password"
+                     value={formData.password}
+                     onChange={handleChange}
+                     type={showPassword ? 'text' : 'password'} 
+                     autoComplete="new-password"
+                     placeholder="••••••••" 
+                     icon={Lock} 
+                     required={!isEdit}
+                   />
+                   <button 
+                     type="button"
+                     onClick={() => setShowPassword(!showPassword)}
+                     className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
+                   >
+                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                   </button>
+                 </div>
+
+                 <div className="relative">
+                   <Input 
+                     label="Confirm Password" 
+                     name="confirm_password"
+                     value={formData.confirm_password}
+                     onChange={handleChange}
+                     type={showConfirmPassword ? 'text' : 'password'} 
+                     autoComplete="new-password"
+                     placeholder="••••••••" 
+                     icon={ShieldCheck} 
+                     required={!isEdit || !!formData.password}
+                   />
+                   <button 
+                     type="button"
+                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                     className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
+                   >
+                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                   </button>
+                 </div>
+
+                 <div className="space-y-1.5 flex flex-col">
+                   <label className="text-[14px] font-bold text-[#1E293B] ml-0.5">Assigned Role</label>
+                   <StyledDropdown 
+                     name="role_id" 
+                     value={formData.role_id} 
+                     onChange={handleChange} 
+                     placeholder="Select Role"
+                     triggerClassName="border-[#E2E8F0] bg-white !text-[14px] !font-medium !text-[#1E293B]"
+                   >
+                     <option value="">Select Role</option>
+                     <option value="1">Super Administrator (1)</option>
+                     <option value="2">Store Manager (2)</option>
+                     <option value="3">Cashier (3)</option>
+                   </StyledDropdown>
+                 </div>
+
+                 <Input 
+                   label="Assigned Store IDs" 
+                   name="store_ids" 
+                   value={formData.store_ids} 
+                   onChange={handleChange} 
+                   placeholder="e.g. 1, 2, 3 (Comma separated)" 
+                 />
+                 
+               </div>
             </div>
+
           </div>
         </div>
       </Card>
@@ -255,4 +352,3 @@ const AddUserPage = ({ onCancel, onSave }) => {
 }
 
 export default AddUserPage
- Greenland

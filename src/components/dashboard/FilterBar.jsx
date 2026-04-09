@@ -1,19 +1,21 @@
-import React from 'react'
-import DatePickerField from '../common/DatePickerField'
-import StyledDropdown from '../common/StyledDropdown'
+import React from "react";
+import DatePickerField from "../common/DatePickerField";
+import StyledDropdown from "../common/StyledDropdown";
 
 const FilterBar = ({ filters, onChange, storeOptions }) => (
   <div className="rounded-[24px] border border-neutral-100 bg-white p-6 shadow-sm">
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
       <label className="flex flex-col gap-2 group">
-        <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">Select Store</span>
+        <span className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">
+          Select Store
+        </span>
         <StyledDropdown
           value={filters.storeId}
-          onChange={event => onChange({ storeId: event.target.value })}
+          onChange={(event) => onChange({ storeId: event.target.value })}
           triggerClassName="border-neutral-200 bg-neutral-50 !text-neutral-700 !font-bold"
           placeholder="Select Store"
         >
-          {storeOptions.map(option => (
+          {storeOptions.map((option) => (
             <option key={option.value} value={option.value}>
               {option.label}
             </option>
@@ -23,13 +25,13 @@ const FilterBar = ({ filters, onChange, storeOptions }) => (
       <DatePickerField
         label="From Period"
         value={filters.from}
-        onChange={val => onChange({ from: val })}
+        onChange={(val) => onChange({ from: val })}
         wrapperClassName="group"
       />
       <DatePickerField
         label="To Period"
         value={filters.to}
-        onChange={val => onChange({ to: val })}
+        onChange={(val) => onChange({ to: val })}
         wrapperClassName="group"
       />
       <div className="flex items-end">
@@ -39,7 +41,6 @@ const FilterBar = ({ filters, onChange, storeOptions }) => (
       </div>
     </div>
   </div>
-)
+);
 
-export default FilterBar
- Greenland
+export default FilterBar;

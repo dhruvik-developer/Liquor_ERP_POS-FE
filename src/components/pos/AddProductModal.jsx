@@ -1109,4 +1109,3 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
 }
 
 export default AddProductModal
- Greenland

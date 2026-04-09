@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react'
-import ModalShell from './ModalShell'
-import StyledDropdown from '../../common/StyledDropdown'
+import { useEffect, useState } from "react";
+import ModalShell from "./ModalShell";
+import StyledDropdown from "../../common/StyledDropdown";
 
 const StoreAssignmentModal = ({
   isOpen,
@@ -11,59 +11,73 @@ const StoreAssignmentModal = ({
   onAssignStores,
   isSubmitting,
 }) => {
-  const [userId, setUserId] = useState('')
-  const [storeIds, setStoreIds] = useState([])
+  const [userId, setUserId] = useState("");
+  const [storeIds, setStoreIds] = useState([]);
 
   useEffect(() => {
     if (selectedUser) {
-      setUserId(selectedUser.id)
-      const ids = selectedUser.raw?.stores?.map(store => (typeof store === 'object' ? store.id : store)) || []
-      setStoreIds(ids)
+      setUserId(selectedUser.id);
+      const ids =
+        selectedUser.raw?.stores?.map((store) =>
+          typeof store === "object" ? store.id : store,
+        ) || [];
+      setStoreIds(ids);
     }
-  }, [selectedUser])
+  }, [selectedUser]);
 
   if (!isOpen) {
-    return null
+    return null;
   }
 
-  const toggleStore = storeId => {
-    setStoreIds(current => (
+  const toggleStore = (storeId) => {
+    setStoreIds((current) =>
       current.includes(storeId)
-        ? current.filter(id => id !== storeId)
-        : [...current, storeId]
-    ))
-  }
+        ? current.filter((id) => id !== storeId)
+        : [...current, storeId],
+    );
+  };
 
-  const submit = async event => {
-    event.preventDefault()
+  const submit = async (event) => {
+    event.preventDefault();
     if (!userId) {
-      return
+      return;
     }
-    await onAssignStores(userId, storeIds)
-    onClose()
-  }
+    await onAssignStores(userId, storeIds);
+    onClose();
+  };
 
   return (
     <ModalShell title="Branch Location Assignment" onClose={onClose}>
       <form onSubmit={submit} className="space-y-8">
         <div className="flex flex-col gap-2 group">
-           <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">Target System User</label>
-           <StyledDropdown
+          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1 group-focus-within:text-primary transition-colors">
+            Target System User
+          </label>
+          <StyledDropdown
             value={userId}
-            onChange={event => setUserId(event.target.value)}
+            onChange={(event) => setUserId(event.target.value)}
             triggerClassName="w-full !h-12 border-neutral-200 bg-neutral-50 !text-neutral-800 !font-black rounded-2xl"
             placeholder="Select Operator..."
           >
             <option value="">Select Operator...</option>
-            {users.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+            {users.map((user) => (
+              <option key={user.id} value={user.id}>
+                {user.name}
+              </option>
+            ))}
           </StyledDropdown>
         </div>
 
         <div className="space-y-4">
-           <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">Licensed Operational Units</label>
-           <div className="grid max-h-56 grid-cols-2 gap-4 overflow-auto rounded-[24px] border border-neutral-100 bg-neutral-50/30 p-6 shadow-inner">
-            {stores.map(store => (
-              <label key={store.id} className="flex items-center gap-3 text-xs font-bold text-neutral-600 group cursor-pointer hover:text-primary transition-colors">
+          <label className="text-[10px] font-black uppercase tracking-widest text-neutral-400 ml-1">
+            Licensed Operational Units
+          </label>
+          <div className="grid max-h-56 grid-cols-2 gap-4 overflow-auto rounded-[24px] border border-neutral-100 bg-neutral-50/30 p-6 shadow-inner">
+            {stores.map((store) => (
+              <label
+                key={store.id}
+                className="flex items-center gap-3 text-xs font-bold text-neutral-600 group cursor-pointer hover:text-primary transition-colors"
+              >
                 <input
                   type="checkbox"
                   checked={storeIds.includes(store.id)}
@@ -81,12 +95,13 @@ const StoreAssignmentModal = ({
           disabled={isSubmitting}
           className="w-full h-12 rounded-2xl bg-primary text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-primary/20 transition-all hover:bg-primary-medium active:scale-95 disabled:opacity-30"
         >
-          {isSubmitting ? 'Updating Assignments...' : 'Commit Assignment Registry'}
+          {isSubmitting
+            ? "Updating Assignments..."
+            : "Commit Assignment Registry"}
         </button>
       </form>
     </ModalShell>
-  )
-}
+  );
+};
 
-export default StoreAssignmentModal
- Greenland
+export default StoreAssignmentModal;
