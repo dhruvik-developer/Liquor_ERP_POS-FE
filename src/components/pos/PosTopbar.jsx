@@ -52,8 +52,6 @@ const PosTopbar = () => {
 
   const userName = user?.name || 'Admin User'
   const userRole = getUserRoleLabel(user)
-  const userPermissions = Array.isArray(user?.permissions) ? user.permissions : []
-
   useEffect(() => {
     const displayCartItems = getCustomerDisplayCartItems(cartItems, ageVerification)
     const snapshot = createCustomerDisplaySnapshot({ cartItems: displayCartItems, discount })
@@ -425,7 +423,7 @@ const PosTopbar = () => {
                 className="w-full px-4 py-3 flex items-center gap-3 text-left text-[14px] font-bold text-[#1E293B] hover:bg-[#F8FAFC] transition-colors border-t border-[#F1F5F9]"
               >
                 <Settings size={16} className="text-[#64748B]" />
-                Permission{userPermissions.length ? ` (${userPermissions.length})` : ''}
+                Permission
               </button>
 
               <button
