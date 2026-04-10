@@ -16,6 +16,7 @@ import Card from "../common/Card";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
 import { getRouteBaseFromPath } from "../../utils/url";
+import { formatDate } from "../../utils/dateUtils";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -25,11 +26,8 @@ const toDateValue = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const formatDate = (value) => {
-  const date = toDateValue(value);
-  if (!date) return "N/A";
-  return date.toLocaleDateString("en-US");
-};
+
+
 
 const formatAmount = (value) => {
   const amount = Number(value);

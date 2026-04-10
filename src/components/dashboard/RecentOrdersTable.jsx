@@ -1,4 +1,6 @@
 import SectionCard from './SectionCard'
+import { formatDateTime } from '../../utils/dateUtils'
+
 
 const formatCurrency = value => new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -6,12 +8,7 @@ const formatCurrency = value => new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
 }).format(value || 0)
 
-const formatDate = value => new Date(value).toLocaleString('en-US', {
-  month: 'short',
-  day: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
+
 
 const statusStyles = {
   Completed: 'bg-emerald-50 text-emerald-700',
@@ -42,7 +39,8 @@ const RecentOrdersTable = ({ rows = [] }) => (
                   {order.status}
                 </span>
               </td>
-              <td className="px-2 py-3">{formatDate(order.date)}</td>
+              <td className="px-2 py-3">{formatDateTime(order.date)}</td>
+
             </tr>
           ))}
         </tbody>

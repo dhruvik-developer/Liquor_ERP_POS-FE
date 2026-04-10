@@ -13,6 +13,8 @@ import Card from '../common/Card'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import Loader from '../common/Loader'
+import { formatDateTimeAmPm } from '../../utils/dateUtils'
+
 
 const SettingsPage = () => {
   const [activeTab, setActiveTab] = useState('customer')
@@ -168,14 +170,12 @@ const CustomerScreenTable = ({ data, loading, error, onEdit, onDelete, onToggleS
   )
 
   const formatDateTime = (dateStr) => {
-    if (!dateStr) return '-'
-    const date = new Date(dateStr)
-    const time = date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-    const day = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' }).replace(/\//g, '-')
+    const dt = formatDateTimeAmPm(dateStr)
+    if (!dt) return '-'
     return (
       <div className="leading-tight">
-        <p className="font-bold text-[#475569]">{time}</p>
-        <p className="text-[11px] text-[#94A3B8] font-medium">{day}</p>
+        <p className="font-bold text-[#475569]">{dt.time}</p>
+        <p className="text-[11px] text-[#94A3B8] font-medium">{dt.date}</p>
       </div>
     )
   }

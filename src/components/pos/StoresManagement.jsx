@@ -6,6 +6,8 @@ import Input from '../common/Input';
 import Loader from '../common/Loader';
 import useFetch from '../../hooks/useFetch';
 import useApi from '../../hooks/useApi';
+import { formatDateTimeAmPm } from '../../utils/dateUtils';
+
 
 const StoresManagement = () => {
   const { data: responseData, loading, error, refetch } = useFetch('/stores/');
@@ -114,26 +116,15 @@ const StoresManagement = () => {
                     </td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center">
-                        <span className="text-[14px] font-bold text-[#1E293B]">
-                          {store.created_at
-                            ? new Date(store.created_at).toLocaleTimeString("en-US", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                hour12: true,
-                              })
-                            : "-"}
-                        </span>
-                        <span className="text-[12px] text-[#94A3B8]">
-                          {store.created_at
-                            ? new Date(store.created_at)
-                                .toLocaleDateString("en-US", {
-                                  month: "2-digit",
-                                  day: "2-digit",
-                                  year: "numeric",
-                                })
-                                .replace(/\//g, "-")
-                            : "-"}
-                        </span>
+                        {(() => {
+                          const dt = formatDateTimeAmPm(store.created_at);
+                          return dt ? (
+                            <>
+                              <span className="text-[14px] font-bold text-[#1E293B]">{dt.time}</span>
+                              <span className="text-[12px] text-[#94A3B8]">{dt.date}</span>
+                            </>
+                          ) : <span className="text-[12px] text-[#94A3B8]">-</span>;
+                        })()}
                       </div>
                     </td>
                     <td className="px-6 py-4">

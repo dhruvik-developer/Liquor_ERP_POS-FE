@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { userManagementApi } from '../services/userManagementApi'
+import useApi from './useApi'
 
 const ACCESS_CODES = ['users_view', 'users_create', 'users_edit', 'users_delete']
 
@@ -58,6 +59,9 @@ export const useUserManagementData = () => {
   const [isLoadingUsers, setIsLoadingUsers] = useState(true)
   const [isLoadingMeta, setIsLoadingMeta] = useState(true)
   const [error, setError] = useState('')
+
+  // Dedicated mutation state so POST errors/loading don't bleed into the list loading state
+  const { postLoading: isCreatingUser, postError: createUserError, post: apiPost } = useApi()
 
   const rolesMap = useMemo(
     () => Object.fromEntries(roles.map(role => [role.id, role])),
@@ -192,6 +196,56 @@ export const useUserManagementData = () => {
 
   const refresh = () => loadUsers()
 
+  // ─────────────────────────────────────────────────────────────────────────────
+  // createUserAndRefresh
+  //   POST the new user, then automatically re-fetch the users list so every
+  //   consumer (UserTable, stats cards, etc.) updates without a page reload.
+  //   Throws on failure so the modal can display the inline error.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const createUserAndRefresh = useCallback(async (payload) => {
+    await apiPost('/users/', payload)
+    // Re-fetch the full list from the server so pagination totals and all
+    // derived state (userStats) are accurate.
+    await loadUsers()
+  }, [apiPost, loadUsers])
+
+  // ─────────────────────────────────────────────────────────────────────────────
+  // optimisticAddUser
+  //   Inserts the new user into the list immediately (feels instant), fires the
+  //   POST in the background, then re-fetches to get the canonical server data.
+  //   If the POST fails the optimistic row is removed and the error is thrown.
+  // ─────────────────────────────────────────────────────────────────────────────
+  const optimisticAddUser = useCallback(async (formPayload, tempUser) => {
+    // 1. Instant UI update — add temp row to the top of the list
+    const tempId = `temp-${Date.now()}`
+    const tempRow = {
+      id: tempId,
+      name: tempUser?.name || formPayload?.name || 'New User',
+      email: tempUser?.email || formPayload?.email || '',
+      roleName: 'Assigning...',
+      storeNames: [],
+      isActive: formPayload?.is_active ?? true,
+      createdAt: new Date().toISOString(),
+      updatedAt: null,
+      raw: formPayload,
+      _isOptimistic: true,
+    }
+    setUsers(prev => [tempRow, ...prev])
+    setPagination(prev => ({ ...prev, total: prev.total + 1 }))
+
+    try {
+      // 2. Real POST
+      await apiPost('/users/', formPayload)
+      // 3. Authoritative GET — replaces the optimistic row with real server data
+      await loadUsers()
+    } catch (err) {
+      // 4. Rollback — remove the optimistic row and restore count
+      setUsers(prev => prev.filter(u => u.id !== tempId))
+      setPagination(prev => ({ ...prev, total: Math.max(0, prev.total - 1) }))
+      throw err
+    }
+  }, [apiPost, loadUsers])
+
   return {
     permissions,
     isCheckingAccess,
@@ -209,6 +263,11 @@ export const useUserManagementData = () => {
     error,
     userStats,
     refresh,
+    // Mutation helpers
+    createUserAndRefresh,
+    optimisticAddUser,
+    isCreatingUser,
+    createUserError,
   }
 }
 

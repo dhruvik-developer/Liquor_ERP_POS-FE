@@ -15,6 +15,7 @@ import Card from "../common/Card";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
 import { getRouteBaseFromPath } from "../../utils/url";
+import { formatDateTime } from "../../utils/dateUtils";
 
 const PERIOD_MONTHS = {
   "Last Month": 1,
@@ -38,11 +39,7 @@ const toDateValue = (value) => {
   return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const formatDateTime = (value) => {
-  const date = toDateValue(value);
-  if (!date) return "N/A";
-  return date.toLocaleString("en-US");
-};
+
 
 const formatAmount = (value) => {
   const amount = Number(value);

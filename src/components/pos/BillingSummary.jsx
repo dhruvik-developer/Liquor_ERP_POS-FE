@@ -1,3 +1,5 @@
+import { getAutoClearZeroInputProps } from '../../utils/zeroValueInput'
+
 const rowClass = 'flex items-center justify-between text-[14px] text-[#64748B] font-medium'
 
 const BillingSummary = ({ subtotal, tax, discount, grandTotal, onDiscountChange }) => (
@@ -19,6 +21,7 @@ const BillingSummary = ({ subtotal, tax, discount, grandTotal, onDiscountChange 
         step="0.01"
         value={discount}
         onChange={event => onDiscountChange(event.target.value)}
+        {...getAutoClearZeroInputProps(discount)}
         className="w-20 h-8 rounded-md border border-[#E2E8F0] px-2 py-1 text-right text-[13px] font-bold text-[#1E293B] outline-none focus:border-[#0EA5E9] transition-all"
       />
     </div>

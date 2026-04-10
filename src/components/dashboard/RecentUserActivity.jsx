@@ -1,9 +1,6 @@
 import SectionCard from './SectionCard'
+import { formatDateTime } from '../../utils/dateUtils'
 
-const formatDate = value => {
-  if (!value) return '-'
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
-}
 
 const RecentUserActivity = ({ createdUsers, updatedUsers }) => (
   <SectionCard title="Recent User Activity" subtitle="Recently created users and permission updates">
@@ -14,7 +11,8 @@ const RecentUserActivity = ({ createdUsers, updatedUsers }) => (
           {createdUsers.map(user => (
             <div key={`created-${user.id}`} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
               <p className="font-semibold text-slate-900">{user.name}</p>
-              <p className="text-xs text-slate-500">{formatDate(user.createdAt)}</p>
+              <p className="text-xs text-slate-500">{formatDateTime(user.createdAt)}</p>
+
             </div>
           ))}
         </div>
@@ -25,7 +23,8 @@ const RecentUserActivity = ({ createdUsers, updatedUsers }) => (
           {updatedUsers.map(user => (
             <div key={`updated-${user.id}`} className="rounded-lg bg-slate-50 px-3 py-2 text-sm">
               <p className="font-semibold text-slate-900">{user.name}</p>
-              <p className="text-xs text-slate-500">{formatDate(user.updatedAt)}</p>
+              <p className="text-xs text-slate-500">{formatDateTime(user.updatedAt)}</p>
+
             </div>
           ))}
         </div>

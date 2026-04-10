@@ -8,6 +8,7 @@ import useFetch from "../../hooks/useFetch";
 import useApi from "../../hooks/useApi";
 import StyledDropdown from "../common/StyledDropdown";
 import { getRouteBaseFromPath } from "../../utils/url";
+import { getAutoClearZeroInputProps } from "../../utils/zeroValueInput";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -976,6 +977,7 @@ const CreatePurchaseOrder = () => {
                     value={addQty}
                     onChange={(e) => handleQtyChange(e.target.value)}
                     disabled={!buyAsBottle}
+                    {...getAutoClearZeroInputProps(addQty)}
                     className={`w-full h-9 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
                       buyAsBottle
                         ? "border border-sky-200 bg-white focus:border-sky-500"
@@ -993,6 +995,7 @@ const CreatePurchaseOrder = () => {
                     value={addUnitCost}
                     onChange={(e) => setAddUnitCost(e.target.value)}
                     disabled={!buyAsBottle}
+                    {...getAutoClearZeroInputProps(addUnitCost)}
                     className={`w-full h-9 px-3 rounded-lg text-[14px] font-bold text-slate-800 outline-none ${
                       buyAsBottle
                         ? "border border-sky-200 bg-white focus:border-sky-500"
@@ -1026,6 +1029,7 @@ const CreatePurchaseOrder = () => {
                       value={addCaseQty}
                       onChange={(e) => handleCaseQtyChange(e.target.value)}
                       disabled={buyAsBottle}
+                      {...getAutoClearZeroInputProps(addCaseQty)}
                       className={`w-full h-9 px-3 rounded-md text-right text-[14px] font-bold text-slate-800 outline-none ${
                         !buyAsBottle
                           ? "border border-slate-200 bg-white focus:border-sky-500"

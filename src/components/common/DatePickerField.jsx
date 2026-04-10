@@ -8,7 +8,7 @@ const DatePickerField = ({
   label, 
   value, 
   onChange, 
-  placeholder = 'Select date (MM/DD/YYYY)',
+  placeholder = 'Select date (DD/MM/YYYY)',
   required = false,
   error,
   className = '',
@@ -76,7 +76,7 @@ const DatePickerField = ({
             selected={selectedDate}
             onChange={handleChange}
             placeholderText={placeholder}
-            dateFormat="MM/dd/yyyy"
+            dateFormat="dd/MM/yyyy"
             minDate={minDate}
             maxDate={maxDate}
             disabled={disabled}

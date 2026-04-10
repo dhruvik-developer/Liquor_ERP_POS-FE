@@ -18,6 +18,7 @@ import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import { getRouteBaseFromPath } from '../../utils/url'
+import { getAutoClearZeroInputProps } from '../../utils/zeroValueInput'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -934,6 +935,7 @@ const CreatePurchaseBill = () => {
                          value={itemQty}
                          onChange={(e) => setItemQty(e.target.value)}
                          disabled={isLooseUnitsOnly}
+                         {...getAutoClearZeroInputProps(itemQty)}
                          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner disabled:opacity-50 disabled:cursor-not-allowed"
                        />
                     </div>
@@ -943,6 +945,7 @@ const CreatePurchaseBill = () => {
                          type="text"
                          value={itemBpc}
                          onChange={(e) => setItemBpc(e.target.value)}
+                         {...getAutoClearZeroInputProps(itemBpc)}
                          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                        />
                     </div>
@@ -952,6 +955,7 @@ const CreatePurchaseBill = () => {
                          type="text"
                          value={itemFreeQty}
                          onChange={(e) => setItemFreeQty(e.target.value)}
+                         {...getAutoClearZeroInputProps(itemFreeQty)}
                          className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 text-center text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                        />
                     </div>
@@ -997,6 +1001,7 @@ const CreatePurchaseBill = () => {
                          onChange={(e) => setLooseUnitsValue(e.target.value)}
                          disabled={!isLooseUnitsOnly}
                          placeholder="Loose qty"
+                         {...getAutoClearZeroInputProps(looseUnitsValue)}
                          className="w-24 h-8 rounded-lg border border-slate-200 bg-slate-50 px-2 text-xs font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                        />
                     </div>
@@ -1027,6 +1032,7 @@ const CreatePurchaseBill = () => {
                                    setItemCaseCost(e.target.value)
                                  }
                                }}
+                               {...getAutoClearZeroInputProps(displayedCaseCostValue)}
                                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                              />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
@@ -1039,6 +1045,7 @@ const CreatePurchaseBill = () => {
                                type="text"
                                value={itemUnitCost}
                                onChange={(e) => setItemUnitCost(e.target.value)}
+                               {...getAutoClearZeroInputProps(itemUnitCost)}
                                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                              />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>
@@ -1065,6 +1072,7 @@ const CreatePurchaseBill = () => {
                                type="text"
                                value={itemDiscount}
                                onChange={(e) => setItemDiscount(e.target.value)}
+                               {...getAutoClearZeroInputProps(itemDiscount)}
                                className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50 pl-8 pr-4 text-sm font-bold text-slate-700 outline-none focus:border-sky-500 focus:bg-white transition-all shadow-inner"
                              />
                              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">$</span>

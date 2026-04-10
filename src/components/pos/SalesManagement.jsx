@@ -12,6 +12,8 @@ import {
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
 import useFetch from '../../hooks/useFetch'
+import { formatDateTime } from '../../utils/dateUtils'
+
 
 const SalesManagement = () => {
   const [startDate, setStartDate] = useState('2025-11-26')
@@ -25,7 +27,8 @@ const SalesManagement = () => {
     return salesOrders.map(sale => ({
        id: sale.id || `SO-${sale.id}`,
        receipt: sale.order_number || sale.receipt_number || sale.id || '-',
-       date: sale.created_at ? new Date(sale.created_at).toLocaleString() : sale.order_date ? new Date(sale.order_date).toLocaleString() : 'N/A',
+       date: sale.created_at ? formatDateTime(sale.created_at) : sale.order_date ? formatDateTime(sale.order_date) : 'N/A',
+
        amount: Number(sale.total_amount || 0),
        items: Array.isArray(sale.items) ? sale.items.length : 0
     }))
@@ -52,7 +55,8 @@ const SalesManagement = () => {
     return dummyReturnData.map(sale => ({
        id: sale.id || `RET-${sale.id}`,
        receipt: sale.order_number || sale.receipt_number || sale.id || '-',
-       date: sale.created_at ? new Date(sale.created_at).toLocaleString() : 'N/A',
+       date: sale.created_at ? formatDateTime(sale.created_at) : 'N/A',
+
        amount: Number(sale.total_amount || 0),
        items: Array.isArray(sale.items) ? sale.items.length : 0
     }))

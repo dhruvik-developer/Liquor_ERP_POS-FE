@@ -1,4 +1,6 @@
 import { useSearchParams, useNavigate } from "react-router-dom";
+import { formatDate, formatDateTime, formatDateTimeAmPm } from "../../utils/dateUtils";
+
 import {
   Search,
   Plus,
@@ -18,28 +20,7 @@ import Toggle from "../common/Toggle";
 import StyledDropdown from "../common/StyledDropdown";
 import { getPortalBasePath, getStoredAuth } from "../../utils/auth";
 
-const formatDate = (dateString) => {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  return date.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-};
 
-const formatDateTime = (dateString) => {
-  if (!dateString) return "-";
-  const date = new Date(dateString);
-  return date.toLocaleString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  });
-};
 
 const getUserRoleLabel = (user) => {
   const roleValue = user?.role;
@@ -281,29 +262,15 @@ const UsersTab = ({ portalBasePath }) => {
                     </td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center">
-                        <span className="text-[14px] font-bold text-[#1E293B]">
-                          {user.created_at
-                            ? new Date(user.created_at).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                },
-                              )
-                            : "-"}
-                        </span>
-                        <span className="text-[12px] text-[#94A3B8]">
-                          {user.created_at
-                            ? new Date(user.created_at)
-                                .toLocaleDateString("en-US", {
-                                  month: "2-digit",
-                                  day: "2-digit",
-                                  year: "numeric",
-                                })
-                                .replace(/\//g, "-")
-                            : "-"}
-                        </span>
+                        {(() => {
+                          const dt = formatDateTimeAmPm(user.created_at);
+                          return dt ? (
+                            <>
+                              <span className="text-[14px] font-bold text-[#1E293B]">{dt.time}</span>
+                              <span className="text-[12px] text-[#94A3B8]">{dt.date}</span>
+                            </>
+                          ) : <span className="text-[12px] text-[#94A3B8]">-</span>;
+                        })()}
                       </div>
                     </td>
                     <td className="px-6 py-4">
@@ -461,29 +428,15 @@ const CustomersTab = ({ portalBasePath }) => {
                     </td>
                     <td className="px-6 py-4 text-center whitespace-nowrap">
                       <div className="flex flex-col items-center">
-                        <span className="text-[14px] font-bold text-[#1E293B]">
-                          {customer.created_at
-                            ? new Date(customer.created_at).toLocaleTimeString(
-                                "en-US",
-                                {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  hour12: true,
-                                },
-                              )
-                            : "-"}
-                        </span>
-                        <span className="text-[12px] text-[#94A3B8]">
-                          {customer.created_at
-                            ? new Date(customer.created_at)
-                                .toLocaleDateString("en-US", {
-                                  month: "2-digit",
-                                  day: "2-digit",
-                                  year: "numeric",
-                                })
-                                .replace(/\//g, "-")
-                            : "-"}
-                        </span>
+                        {(() => {
+                          const dt = formatDateTimeAmPm(customer.created_at);
+                          return dt ? (
+                            <>
+                              <span className="text-[14px] font-bold text-[#1E293B]">{dt.time}</span>
+                              <span className="text-[12px] text-[#94A3B8]">{dt.date}</span>
+                            </>
+                          ) : <span className="text-[12px] text-[#94A3B8]">-</span>;
+                        })()}
                       </div>
                     </td>
                     <td className="px-6 py-4">

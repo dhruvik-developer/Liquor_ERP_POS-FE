@@ -17,6 +17,7 @@ import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import { getRouteBaseFromPath } from '../../utils/url'
+import { getAutoClearZeroInputProps } from '../../utils/zeroValueInput'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 const toSearchValue = (value) => String(value ?? '').trim().toLowerCase()
@@ -688,6 +689,7 @@ const CreatePurchaseReturn = () => {
                              className="w-[80px] h-[34px] rounded border border-yellow-200 bg-yellow-50 text-center text-[13px] font-black text-slate-800 outline-none focus:border-yellow-400 transition-all"
                              value={Number(item.qtyReturn || 0).toFixed(2)}
                              onChange={(e) => handleReturnChange(item.lineKey, e.target.value)}
+                             {...getAutoClearZeroInputProps(Number(item.qtyReturn || 0).toFixed(2))}
                            />
                         </td>
                         <td className="px-3 py-4 text-[14px] font-black text-slate-800 text-right">{item.landingCost.toFixed(2)}</td>
@@ -763,6 +765,7 @@ const CreatePurchaseReturn = () => {
                       className="w-[160px] h-[42px] px-4 rounded-lg border border-slate-200 bg-white text-right text-[16px] font-black text-slate-800 outline-none focus:border-sky-500 transition-all shadow-inner italic"
                       value={otherCharges.toFixed(2)}
                       onChange={(e) => setOtherCharges(Number(e.target.value) || 0)}
+                      {...getAutoClearZeroInputProps(otherCharges.toFixed(2))}
                     />
                  </div>
               </div>

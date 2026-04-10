@@ -35,40 +35,48 @@ const navItems = [
 ]
 
 const SidebarItem = ({ label, icon: Icon, active, path, isPng, iconClassName = '', inactiveFilter = 'none' }) => {
-  // Filter to achieve #0EA5E9 color for black/dark PNGs
-  const activeFilter = "brightness(0) saturate(100%) invert(51%) sepia(87%) saturate(2135%) hue-rotate(164deg) brightness(97%) contrast(93%)";
-  const uniformIconSizeClass = 'w-[24px] h-[24px]'
-  
+  // Filter to tint active PNG icons toward the sidebar accent blue.
+  const activeFilter = 'brightness(0) saturate(100%) invert(51%) sepia(87%) saturate(2135%) hue-rotate(164deg) brightness(97%) contrast(93%)'
+  const defaultInactiveFilter = "brightness(0) saturate(100%) invert(16%) sepia(14%) saturate(1108%) hue-rotate(176deg) brightness(92%) contrast(89%)"
+  const uniformIconSizeClass = 'w-[20px] h-[20px]'
+
   return (
     <Link
       to={path}
       className={`
-        flex items-center rounded-lg transition-all duration-200 mx-4 h-[44px] group
-        ${active 
-          ? 'bg-[#E0F2FE] text-[#0EA5E9]' 
-          : 'text-[#64748B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
+        flex items-center gap-3.5 transition-all duration-200 mx-4 px-3.5 py-3 rounded-2xl group
+        ${active
+          ? 'bg-[#0EA5E9] text-white shadow-[0_12px_24px_rgba(14,165,233,0.28)]'
+          : 'text-[#1E293B] hover:bg-[#F8FAFC] hover:text-[#1E293B]'
         }
       `}
     >
-       <div className="flex items-center h-full px-4 gap-3">
-          <div className="w-[24px] h-[24px] flex items-center justify-center shrink-0">
-            {isPng ? (
-              <img 
-                src={Icon} 
-                alt={label} 
-                style={{ filter: active ? activeFilter : inactiveFilter }}
-                className={`${uniformIconSizeClass} object-contain transition-all ${iconClassName} ${active ? '' : 'opacity-70 group-hover:opacity-100'}`} 
-              />
-            ) : (
-              <Icon size={24} className={active ? 'text-[#0EA5E9]' : 'text-[#64748B] group-hover:text-[#1E293B]'} />
-            )}
-          </div>
-          <span className={`text-[15px] font-bold leading-[21px] whitespace-nowrap ${active ? 'text-[#0EA5E9]' : ''}`}>
-            {label}
-          </span>
-       </div>
+      <div
+        className={`
+          w-[38px] h-[38px] rounded-xl flex items-center justify-center shrink-0 transition-all duration-200
+          ${active
+            ? 'bg-white shadow-[0_8px_18px_rgba(14,165,233,0.22)]'
+            : 'bg-[#F1F5F9] group-hover:bg-[#E2E8F0]'
+          }
+        `}
+      >
+        {isPng ? (
+          <img
+            src={Icon}
+            alt={label}
+            style={{ filter: active ? activeFilter : inactiveFilter === 'none' ? defaultInactiveFilter : inactiveFilter }}
+            className={`${uniformIconSizeClass} object-contain transition-all ${iconClassName} ${active ? '' : 'opacity-70 group-hover:opacity-100'}`}
+          />
+        ) : (
+          <Icon size={20} className={active ? 'text-[#0EA5E9]' : 'text-[#1E293B] group-hover:text-[#1E293B]'} />
+        )}
+      </div>
+
+      <span className={`text-[16px] font-semibold leading-[22px] whitespace-nowrap ${active ? 'text-white' : 'text-[#1E293B] group-hover:text-[#1E293B]'}`}>
+        {label}
+      </span>
     </Link>
-  );
+  )
 }
 
 const PosSidebar = () => {
@@ -123,7 +131,7 @@ const PosSidebar = () => {
         </h1>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto pt-4 shadow-inner">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto pt-2">
         {navItems.map((item) => (
           <SidebarItem
             key={item.id}
@@ -138,9 +146,9 @@ const PosSidebar = () => {
         ))}
       </nav>
 
-      <div className="p-4 border-t border-[#E2E8F0] bg-[#F8FAFC]">
-        <Link to={`${routeBase}/profile`} className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white border border-transparent hover:border-[#E2E8F0] transition-all group">
-          <div className="h-10 w-10 rounded-lg bg-[#0EA5E9] text-white flex items-center justify-center font-bold text-sm shadow-md group-hover:bg-[#38BDF8] transition-colors uppercase">
+      <div className="px-2.5 py-2 border-t border-[#E2E8F0] bg-[#F8FAFC]">
+        <Link to={`${routeBase}/profile`} className="flex items-center gap-3 px-2 py-1.5 rounded-lg hover:bg-white border border-transparent hover:border-[#E2E8F0] transition-all group">
+          <div className="h-9 w-9 rounded-lg bg-[#0EA5E9] text-white flex items-center justify-center font-bold text-sm shadow-md group-hover:bg-[#38BDF8] transition-colors uppercase shrink-0">
             {userName.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -150,7 +158,7 @@ const PosSidebar = () => {
         </Link>
         <button 
           onClick={handleLogout}
-          className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 text-[11px] font-black uppercase tracking-widest text-[#64748B] hover:text-rose-500 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-100 transition-all font-sans"
+          className="w-full mt-1 flex items-center justify-center gap-2 py-1.5 text-[11px] font-black uppercase tracking-widest text-[#64748B] hover:text-rose-500 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-100 transition-all font-sans"
         >
           <LogOut size={14} />
           Logout

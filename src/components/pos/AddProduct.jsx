@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, X } from "lucide-react";
 import SelectorModal from "../common/SelectorModal";
-import DataEntryModal from "../common/DataEntryModal";
+
 import Button from "../common/Button";
 import Input from "../common/Input";
 import Card from "../common/Card";

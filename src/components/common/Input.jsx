@@ -1,6 +1,33 @@
 import React from 'react'
+import { getAutoClearZeroInputProps } from '../../utils/zeroValueInput'
 
-const Input = ({ label, icon: Icon, iconPosition = 'left', error, className = '', ...props }) => {
+const Input = ({
+  label,
+  icon: Icon,
+  iconPosition = 'left',
+  error,
+  className = '',
+  clearZeroDefault,
+  type,
+  inputMode,
+  value,
+  defaultValue,
+  onFocus,
+  onMouseUp,
+  ...props
+}) => {
+  const shouldAutoClearZero =
+    clearZeroDefault ??
+    (
+      type === 'number' ||
+      inputMode === 'numeric' ||
+      inputMode === 'decimal'
+    )
+
+  const autoClearZeroInputProps = shouldAutoClearZero
+    ? getAutoClearZeroInputProps(value ?? defaultValue, { onFocus, onMouseUp })
+    : { onFocus, onMouseUp }
+
   return (
     <div className="flex flex-col gap-1.5 w-full">
       {label && (
@@ -20,6 +47,10 @@ const Input = ({ label, icon: Icon, iconPosition = 'left', error, className = ''
           </div>
         )}
         <input
+          type={type}
+          inputMode={inputMode}
+          value={value}
+          defaultValue={defaultValue}
           className={`
             w-full h-11 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC]
             ${Icon && iconPosition === 'left' ? 'pl-10' : 'pl-4'} 
@@ -31,6 +62,7 @@ const Input = ({ label, icon: Icon, iconPosition = 'left', error, className = ''
             ${error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-50' : ''}
             ${className}
           `}
+          {...autoClearZeroInputProps}
           {...props}
         />
       </div>

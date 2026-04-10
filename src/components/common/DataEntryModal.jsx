@@ -1,8 +1,19 @@
+/**
+ * @deprecated DataEntryModal is a UI-only stub with hardcoded static option lists.
+ * It does NOT make any real API calls — onSave(formData) is called with local state only.
+ *
+ * Use QuickAddModal instead, which correctly handles:
+ *   POST → cache invalidation (refetchBrands / refetchCategories / …) → onSave(serverResponse)
+ *
+ * This component is NOT being deleted to avoid breaking any future integrations,
+ * but it should not be used for any feature that requires real backend data.
+ */
 import React, { useState } from "react";
 import { X, Save, ChevronDown, Check } from "lucide-react";
 import StyledDropdown from "./StyledDropdown";
 
 const DataEntryModal = ({ type, onClose, onSave }) => {
+
   const configs = {
     department: {
       title: "Department Setup",

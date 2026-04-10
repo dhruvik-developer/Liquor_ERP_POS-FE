@@ -4,6 +4,8 @@ import Button from '../common/Button'
 import Input from '../common/Input'
 import Card from '../common/Card'
 import { getStoredAuth } from '../../utils/auth'
+import { formatDate } from '../../utils/dateUtils'
+
 
 const UserProfile = () => {
   const auth = getStoredAuth()
@@ -15,8 +17,9 @@ const UserProfile = () => {
   const userRoleName = user.role?.name || user.role_name || user.role || (user.is_super_admin ? 'System Administrator' : 'Administrator')
   const operatorId = user.id ? `OP-${user.id.toString().padStart(4, '0')}` : 'OP-4829'
   const lastAccessDate = user.updated_at 
-    ? new Date(user.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).replace(/ /g, '-')
-    : '18-Mar-2026'
+    ? formatDate(user.updated_at)
+    : '18/03/2026'
+
 
   return (
     <div className="flex flex-col h-full space-y-6 animate-in fade-in duration-500 overflow-y-auto pb-10 pr-2">

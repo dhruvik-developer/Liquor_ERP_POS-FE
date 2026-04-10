@@ -9,6 +9,7 @@ import useApi from "../../hooks/useApi";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
 import { getRouteBaseFromPath } from "../../utils/url";
+import { getAutoClearZeroInputProps } from "../../utils/zeroValueInput";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -742,6 +743,7 @@ const ReceivePurchaseOrder = () => {
                           onChange={(e) =>
                             handleReceivedChange(item.id, e.target.value)
                           }
+                          {...getAutoClearZeroInputProps(item.received)}
                         />
                       </td>
                       <td className="px-3 py-3.5 text-[13px] font-semibold text-slate-400 text-right">
@@ -807,6 +809,7 @@ const ReceivePurchaseOrder = () => {
               className="w-[200px] h-[36px] px-3 rounded-lg border border-slate-200 bg-white text-right text-[14px] font-bold text-slate-700 outline-none focus:border-sky-500 transition-all shadow-inner"
               value={otherCharges}
               onChange={(e) => setOtherCharges(asNumber(e.target.value))}
+              {...getAutoClearZeroInputProps(otherCharges)}
             />
           </div>
 
