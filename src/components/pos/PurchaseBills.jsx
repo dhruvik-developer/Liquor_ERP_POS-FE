@@ -52,25 +52,14 @@ const getPeriodRange = (period, now = new Date()) => {
   const months = PERIOD_MONTHS[period];
   if (!months) return null;
 
-  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const rangeStart = new Date(
-    currentMonthStart.getFullYear(),
-    currentMonthStart.getMonth() - months,
-    1,
-    0,
-    0,
-    0,
-    0,
-  );
-  const rangeEnd = new Date(
-    currentMonthStart.getFullYear(),
-    currentMonthStart.getMonth(),
-    0,
-    23,
-    59,
-    59,
-    999,
-  );
+  const rangeEnd = new Date(now);
+  rangeEnd.setHours(23, 59, 59, 999);
+
+  const rangeStart = new Date(now);
+  rangeStart.setMonth(rangeStart.getMonth() - months);
+  rangeStart.setDate(rangeStart.getDate() + 1);
+  rangeStart.setHours(0, 0, 0, 0);
+
   return { rangeStart, rangeEnd };
 };
 
