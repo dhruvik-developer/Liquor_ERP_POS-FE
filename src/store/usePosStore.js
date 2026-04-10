@@ -1,6 +1,15 @@
 import { create } from 'zustand'
+import { showToast } from '../utils/toast'
 
 const TAX_RATE = 0.18
+
+const showOutOfStockWarning = (productName = 'This product') => {
+  showToast({
+    title: 'Out of Stock',
+    message: `${productName} is out of stock.`,
+    type: 'warning',
+  })
+}
 
 const normalizeCartItem = product => ({
   id: product.id,
@@ -18,6 +27,13 @@ const normalizeCartItem = product => ({
   deposit: Number(product.deposit) || 0,
   itemDiscount: Number(product.itemDiscount) || 0,
   ageRestricted: product.ageRestricted !== false,
+})
+
+const createInitialAgeVerification = () => ({
+  isVerified: false,
+  verifiedAt: null,
+  verifiedDateOfBirth: null,
+  method: null,
 })
 
 const computeTotals = (cartItems, discount) => {
@@ -38,6 +54,7 @@ export const usePosStore = create((set, get) => ({
   heldOrders: [],
   orderStatus: 'Pending',
   recentOrders: [],
+  ageVerification: createInitialAgeVerification(),
 
   setStore: storeId => set({ activeStoreId: storeId }),
   setCategory: categoryId => set({ selectedCategory: categoryId }),
@@ -46,11 +63,35 @@ export const usePosStore = create((set, get) => ({
   setDiscount: discount => set({ discount: Number(discount) || 0 }),
   setRecentOrders: orders => set({ recentOrders: orders }),
   setOrderStatus: status => set({ orderStatus: status }),
+  setAgeVerification: payload => set(state => ({
+    ageVerification: {
+      ...state.ageVerification,
+      ...payload,
+    },
+  })),
+  resetAgeVerification: () => set({ ageVerification: createInitialAgeVerification() }),
 
   addToCart: product => {
+    const availableStock = Number(product?.stock) || 0
+
+    if (availableStock <= 0) {
+      showOutOfStockWarning(product?.name)
+      return
+    }
+
+    const existing = get().cartItems.find(item => item.id === product.id)
+    if (existing && existing.quantity >= availableStock) {
+      showToast({
+        title: 'Stock Limit Reached',
+        message: `Only ${availableStock} unit${availableStock > 1 ? 's are' : ' is'} available for ${product.name}.`,
+        type: 'warning',
+      })
+      return
+    }
+
     set(state => {
-      const existing = state.cartItems.find(item => item.id === product.id)
-      if (existing) {
+      const currentItem = state.cartItems.find(item => item.id === product.id)
+      if (currentItem) {
         return {
           cartItems: state.cartItems.map(item => (
             item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
@@ -71,6 +112,20 @@ export const usePosStore = create((set, get) => ({
   },
 
   increaseCartItem: productId => {
+    const cartItem = get().cartItems.find(item => item.id === productId)
+    if (!cartItem) {
+      return
+    }
+
+    if (cartItem.quantity >= cartItem.stock) {
+      showToast({
+        title: 'Stock Limit Reached',
+        message: `Only ${cartItem.stock} unit${cartItem.stock > 1 ? 's are' : ' is'} available for ${cartItem.name}.`,
+        type: 'warning',
+      })
+      return
+    }
+
     set(state => ({
       cartItems: state.cartItems.map(item => (
         item.id === productId ? { ...item, quantity: item.quantity + 1 } : item
@@ -84,8 +139,20 @@ export const usePosStore = create((set, get) => ({
     }))
   },
 
-  clearCart: () => set({ cartItems: [], discount: 0, paymentMethod: 'Cash', orderStatus: 'Pending' }),
-  newOrder: () => set({ cartItems: [], discount: 0, paymentMethod: 'Cash', orderStatus: 'Pending' }),
+  clearCart: () => set({
+    cartItems: [],
+    discount: 0,
+    paymentMethod: 'Cash',
+    orderStatus: 'Pending',
+    ageVerification: createInitialAgeVerification(),
+  }),
+  newOrder: () => set({
+    cartItems: [],
+    discount: 0,
+    paymentMethod: 'Cash',
+    orderStatus: 'Pending',
+    ageVerification: createInitialAgeVerification(),
+  }),
 
   holdOrder: () => {
     const state = get()
@@ -107,6 +174,7 @@ export const usePosStore = create((set, get) => ({
       cartItems: [],
       discount: 0,
       orderStatus: 'Pending',
+      ageVerification: createInitialAgeVerification(),
     })
   },
 

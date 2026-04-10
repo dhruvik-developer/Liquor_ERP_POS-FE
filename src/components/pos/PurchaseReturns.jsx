@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Filter,
   Search,
@@ -15,6 +15,7 @@ import Loader from "../common/Loader";
 import Card from "../common/Card";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
+import { getRouteBaseFromPath } from "../../utils/url";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -64,7 +65,9 @@ const getPeriodRange = (period, now = new Date()) => {
 };
 
 const PurchaseReturns = () => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const routeBase = getRouteBaseFromPath(location.pathname);
   const [filterPeriod, setFilterPeriod] = useState("Last Month");
   const [filterBy, setFilterBy] = useState("SKU/UPC");
   const [filterValue, setFilterValue] = useState("");
@@ -499,7 +502,7 @@ const PurchaseReturns = () => {
             </button>
             <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
             <button
-              onClick={() => navigate("/pos/purchase-return/create")}
+              onClick={() => navigate(`${routeBase}/purchase-return/create`)}
               className="h-10 px-6 rounded-xl bg-[#10B981] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95"
             >
               <Plus size={16} />

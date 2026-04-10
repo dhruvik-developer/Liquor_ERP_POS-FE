@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import StyledDropdown from '../common/StyledDropdown'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { 
   Save, 
   Plus, 
@@ -17,6 +17,7 @@ import DatePickerField from '../common/DatePickerField'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
+import { getRouteBaseFromPath } from '../../utils/url'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 
@@ -194,7 +195,9 @@ const normalizeOrderLineItem = (line, lineIndex, orderId, productsById = new Map
 
 const CreatePurchaseBill = () => {
   const { openCalculator } = useCalculator()
+  const location = useLocation()
   const navigate = useNavigate()
+  const routeBase = getRouteBaseFromPath(location.pathname)
   const today = toInputDate(new Date())
   const [billDate, setBillDate] = useState('')
   const [dueDate, setDueDate] = useState('')
@@ -621,7 +624,7 @@ const CreatePurchaseBill = () => {
 
       await post('/purchasing/bills/', payload)
 
-      navigate('/pos/purchase-bills')
+      navigate(`${routeBase}/purchase-bills`)
     } catch(err) {
       console.error(err)
     }
@@ -776,7 +779,7 @@ const CreatePurchaseBill = () => {
         <div className="flex items-center gap-3">
           <button 
             type="button"
-            onClick={() => navigate('/pos/purchase-bills')} 
+            onClick={() => navigate(`${routeBase}/purchase-bills`)} 
             className="px-6 h-10 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-black uppercase tracking-widest hover:bg-slate-50 transition-all active:scale-95 shadow-sm"
           >
             Close

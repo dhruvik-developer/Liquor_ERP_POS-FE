@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { motion as Motion } from 'framer-motion'
-import { Wine, User, Shield, Lock, Mail } from 'lucide-react'
+import { User, Shield, Lock, Mail } from 'lucide-react'
 import Loader from './common/Loader'
 import Button from './common/Button'
 import Input from './common/Input'
+import loginIcon from '../assets/icon/login.png'
 import api from '../services/api'
 import { getDefaultRouteForRole } from '../utils/auth'
 
@@ -105,7 +106,7 @@ const LoginScreen = ({ type = 'staff' }) => {
         
         <div className="mb-8 text-center">
           <div className="mx-auto mb-6 flex h-[84px] w-[84px] items-center justify-center rounded-full bg-[#E0F2FE] text-[#0EA5E9]">
-            {type === 'admin' ? <Shield size={36} /> : <Wine size={36} />}
+            {type === 'admin' ? <Shield size={36} /> : <img src={loginIcon} alt="Login" className="h-[46px] w-[46px] object-contain" />}
           </div>
           <h1 className="text-[32px] font-semibold tracking-tight text-[#111827]">{config.title}</h1>
           <p className="mt-2 text-[15px] text-[#64748B]">Please sign in to access the system.</p>

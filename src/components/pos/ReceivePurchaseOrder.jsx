@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { ChevronDown, Calculator, Save, CheckCircle2 } from "lucide-react";
 import Loader from "../common/Loader";
 import Card from "../common/Card";
@@ -8,6 +8,7 @@ import { useCalculator } from "../../context/CalculatorContext";
 import useApi from "../../hooks/useApi";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
+import { getRouteBaseFromPath } from "../../utils/url";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -40,7 +41,9 @@ const createDefaultDueDate = () => {
 
 const ReceivePurchaseOrder = () => {
   const { openCalculator } = useCalculator();
+  const location = useLocation();
   const navigate = useNavigate();
+  const routeBase = getRouteBaseFromPath(location.pathname);
   const today = toInputDate(new Date());
 
   const [selectedVendorKey, setSelectedVendorKey] = useState("");
@@ -471,7 +474,7 @@ const ReceivePurchaseOrder = () => {
         received_items: payloadItems,
       });
 
-      navigate("/pos/purchase-orders");
+      navigate(`${routeBase}/purchase-orders`);
     } catch (err) {
       console.error(err);
     }
@@ -824,7 +827,7 @@ const ReceivePurchaseOrder = () => {
 
       <div className="flex justify-end items-center gap-4 mt-8 border-t border-slate-200 pt-6">
         <button
-          onClick={() => navigate("/pos/purchase-orders")}
+          onClick={() => navigate(`${routeBase}/purchase-orders`)}
           className="px-6 h-[42px] rounded-lg bg-slate-200 text-slate-700 text-[13px] font-bold uppercase tracking-wider hover:bg-slate-300 transition-all active:scale-95"
         >
           Close

@@ -65,3 +65,13 @@ export function resolveMediaUrl(imageUrl) {
   const normalizedPath = value.startsWith('/') ? value : `/${value}`
   return `${siteBase}${normalizedPath}`
 }
+
+/**
+ * Returns the active app section root for a pathname.
+ *
+ * @param {string} pathname
+ * @returns {string}
+ */
+export function getRouteBaseFromPath(pathname) {
+  return String(pathname || '').startsWith('/admin') ? '/admin' : '/pos'
+}

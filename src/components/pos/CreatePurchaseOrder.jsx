@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { ChevronDown, Calculator, Plus, Trash2, X, Search } from "lucide-react";
 import Card from "../common/Card";
 import DatePickerField from "../common/DatePickerField";
@@ -7,6 +7,7 @@ import { useCalculator } from "../../context/CalculatorContext";
 import useFetch from "../../hooks/useFetch";
 import useApi from "../../hooks/useApi";
 import StyledDropdown from "../common/StyledDropdown";
+import { getRouteBaseFromPath } from "../../utils/url";
 
 const getFirstDefined = (...values) =>
   values.find((value) => value !== undefined && value !== null && value !== "");
@@ -72,7 +73,9 @@ const SHIP_TO_OPTIONS = ["In-Store", "Warehouse"];
 
 const CreatePurchaseOrder = () => {
   const { openCalculator } = useCalculator();
+  const location = useLocation();
   const navigate = useNavigate();
+  const routeBase = getRouteBaseFromPath(location.pathname);
   const { id } = useParams();
 
   const [poDate, setPoDate] = useState(toInputDate(new Date()));
@@ -664,7 +667,7 @@ const CreatePurchaseOrder = () => {
       } else {
         await post("/purchasing/orders/", payload);
       }
-      navigate("/pos/purchase-orders");
+      navigate(`${routeBase}/purchase-orders`);
     } catch (err) {
       console.error(err);
     }
@@ -1307,7 +1310,7 @@ const CreatePurchaseOrder = () => {
 
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigate("/pos/purchase-orders")}
+              onClick={() => navigate(`${routeBase}/purchase-orders`)}
               className="px-8 h-10 rounded-lg bg-slate-200 text-slate-700 text-[13px] font-bold uppercase tracking-wider hover:bg-slate-300 transition-all active:scale-95"
             >
               Close

@@ -5,6 +5,7 @@ const Button = ({
   variant = 'primary', 
   size = 'md', 
   className = '', 
+  type = 'button',
   ...props 
 }) => {
   const baseStyles = 'inline-flex items-center justify-center rounded-lg font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed text-[14px]'
@@ -25,6 +26,7 @@ const Button = ({
 
   return (
     <button 
+      type={type}
       className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >

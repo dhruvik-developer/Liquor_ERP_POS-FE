@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { 
   ChevronDown, 
   Search, 
@@ -16,6 +16,7 @@ import StyledDropdown from '../common/StyledDropdown'
 import { useCalculator } from '../../context/CalculatorContext'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
+import { getRouteBaseFromPath } from '../../utils/url'
 
 const getFirstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
 const toSearchValue = (value) => String(value ?? '').trim().toLowerCase()
@@ -37,7 +38,9 @@ const reindexItems = (list) => list.map((item, index) => ({ ...item, sr: index +
 
 const CreatePurchaseReturn = () => {
   const { openCalculator } = useCalculator()
+  const location = useLocation()
   const navigate = useNavigate()
+  const routeBase = getRouteBaseFromPath(location.pathname)
   const today = toInputDate(new Date())
   const [returnDate, setReturnDate] = useState(today)
   const [billDate, setBillDate] = useState('')
@@ -434,7 +437,7 @@ const CreatePurchaseReturn = () => {
 
     try {
       await post('/purchasing/returns/', payload)
-      navigate('/pos/purchase-return')
+      navigate(`${routeBase}/purchase-return`)
     } catch (error) {
       console.error(error)
     }
@@ -787,7 +790,7 @@ const CreatePurchaseReturn = () => {
               {loading ? 'Saving...' : 'Save'}
            </button>
            <button 
-             onClick={() => navigate('/pos/purchase-return')}
+             onClick={() => navigate(`${routeBase}/purchase-return`)}
              className="h-[48px] px-12 rounded-lg bg-[#334155] text-white text-[14px] font-black uppercase tracking-widest flex items-center gap-2 hover:bg-[#1e293b] transition-all active:scale-95 shadow-lg shadow-slate-500/10"
            >
               <X size={20} />

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   Filter,
   Search,
@@ -14,6 +14,7 @@ import Loader from "../common/Loader";
 import Card from "../common/Card";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
+import { getRouteBaseFromPath } from "../../utils/url";
 
 const PERIOD_MONTHS = {
   "Last Month": 1,
@@ -64,7 +65,9 @@ const getPeriodRange = (period, now = new Date()) => {
 };
 
 const PurchaseOrders = () => {
+  const location = useLocation();
   const navigate = useNavigate();
+  const routeBase = getRouteBaseFromPath(location.pathname);
   const [filterPeriod, setFilterPeriod] = useState("Last Month");
   const [filterBy, setFilterBy] = useState("SKU/UPC");
   const [filterValue, setFilterValue] = useState("");
@@ -500,7 +503,7 @@ const PurchaseOrders = () => {
             </button>
             <div className="hidden sm:block h-8 w-px bg-slate-200 mx-1" />
             <button
-              onClick={() => navigate("/pos/purchase-orders/create")}
+              onClick={() => navigate(`${routeBase}/purchase-orders/create`)}
               className="h-10 px-6 rounded-xl bg-[#10B981] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95"
             >
               <Plus size={16} />
@@ -511,7 +514,7 @@ const PurchaseOrders = () => {
               Delete
             </button>
             <button
-              onClick={() => navigate("/pos/purchase-orders/receive")}
+              onClick={() => navigate(`${routeBase}/purchase-orders/receive`)}
               className="h-10 px-6 rounded-xl bg-[#0EA5E9] text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-sky-500/20 hover:bg-[#0284C7] transition-all active:scale-95"
             >
               <CheckCircle size={16} />
@@ -590,7 +593,7 @@ const PurchaseOrders = () => {
                       className="px-8 py-5 text-sm font-black text-sky-500 hover:underline cursor-pointer tracking-tight"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/pos/purchase-orders/edit/${order.id}`);
+                        navigate(`${routeBase}/purchase-orders/edit/${order.id}`);
                       }}
                     >
                       {order.po}

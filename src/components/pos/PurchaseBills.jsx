@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import {
   Filter,
   Search,
@@ -13,6 +13,7 @@ import Loader from "../common/Loader";
 import Card from "../common/Card";
 import useFetch from "../../hooks/useFetch";
 import StyledDropdown from "../common/StyledDropdown";
+import { getRouteBaseFromPath } from "../../utils/url";
 
 const PERIOD_MONTHS = {
   "Last Month": 1,
@@ -74,6 +75,8 @@ const getPeriodRange = (period, now = new Date()) => {
 };
 
 const PurchaseBills = () => {
+  const location = useLocation();
+  const routeBase = getRouteBaseFromPath(location.pathname);
   const [filterPeriod, setFilterPeriod] = useState("Last Month");
   const [filterBy, setFilterBy] = useState("SKU/UPC");
   const [filterValue, setFilterValue] = useState("");
@@ -532,7 +535,7 @@ const PurchaseBills = () => {
               <RefreshCcw size={16} />
               Refresh
             </button>
-            <Link to="/pos/purchase-bills/create">
+            <Link to={`${routeBase}/purchase-bills/create`}>
               <button className="h-11 px-6 rounded-xl bg-emerald-500 text-white text-xs font-black uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 transition-all active:scale-95">
                 <Plus size={18} />
                 Add

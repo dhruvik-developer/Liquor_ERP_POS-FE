@@ -1,4 +1,4 @@
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   Search,
   Plus,
@@ -16,6 +16,7 @@ import useFetch from "../../hooks/useFetch";
 import useApi from "../../hooks/useApi";
 import Toggle from "../common/Toggle";
 import StyledDropdown from "../common/StyledDropdown";
+import { getPortalBasePath, getStoredAuth } from "../../utils/auth";
 
 const formatDate = (dateString) => {
   if (!dateString) return "-";
@@ -59,7 +60,7 @@ const getUserRoleLabel = (user) => {
 const PeopleManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "users";
-  const navigate = useNavigate();
+  const portalBasePath = getPortalBasePath(getStoredAuth());
 
   const setActiveTab = (tab) => {
     setSearchParams({ tab });
@@ -94,18 +95,18 @@ const PeopleManagement = () => {
       {/* Tab Content */}
       <div className="flex-1 min-h-0">
         {activeTab === "users" ? (
-          <UsersTab />
+          <UsersTab portalBasePath={portalBasePath} />
         ) : activeTab === "customers" ? (
-          <CustomersTab />
+          <CustomersTab portalBasePath={portalBasePath} />
         ) : (
-          <VendorsTab />
+          <VendorsTab portalBasePath={portalBasePath} />
         )}
       </div>
     </div>
   );
 };
 
-const UsersTab = () => {
+const UsersTab = ({ portalBasePath }) => {
   const { data: responseData, loading, error, refetch } = useFetch("/users/");
   const { del, put } = useApi();
   const navigate = useNavigate();
@@ -159,12 +160,13 @@ const UsersTab = () => {
           />
           <Button className="h-10 px-8">Filter</Button>
           <div className="flex-1" />
-          <Link to="/pos/people/users/add">
-            <Button className="h-10 gap-2 px-6">
-              <Plus size={18} />
-              Add User
-            </Button>
-          </Link>
+          <Button
+            className="h-10 gap-2 px-6"
+            onClick={() => navigate(`${portalBasePath}/people/users/add`)}
+          >
+            <Plus size={18} />
+            Add User
+          </Button>
         </div>
       </div>
 
@@ -247,7 +249,7 @@ const UsersTab = () => {
                           <p
                             className="font-bold text-[#0EA5E9] cursor-pointer hover:underline"
                             onClick={() =>
-                              navigate(`/pos/people/users/edit/${user.id}`)
+                              navigate(`${portalBasePath}/people/users/edit/${user.id}`)
                             }
                           >
                             {user.first_name} {user.last_name}
@@ -314,7 +316,7 @@ const UsersTab = () => {
                           size={14}
                           className="text-[#0EA5E9] hover:scale-125 transition cursor-pointer"
                           onClick={() =>
-                            navigate(`/pos/people/users/edit/${user.id}`)
+                            navigate(`${portalBasePath}/people/users/edit/${user.id}`)
                           }
                         />
                         <Trash2
@@ -334,7 +336,7 @@ const UsersTab = () => {
   );
 };
 
-const CustomersTab = () => {
+const CustomersTab = ({ portalBasePath }) => {
   const {
     data: responseData,
     loading,
@@ -367,12 +369,13 @@ const CustomersTab = () => {
             icon={Search}
             className="w-72"
           />
-          <Link to="/pos/people/customers/add">
-            <Button className="gap-2">
-              <Plus size={18} />
-              Create Customer
-            </Button>
-          </Link>
+          <Button
+            className="gap-2"
+            onClick={() => navigate(`${portalBasePath}/people/customers/add`)}
+          >
+            <Plus size={18} />
+            Create Customer
+          </Button>
         </div>
       </div>
 
@@ -441,7 +444,7 @@ const CustomersTab = () => {
                       <p
                         className="font-bold text-[#0EA5E9] hover:underline cursor-pointer"
                         onClick={() =>
-                          navigate(`/pos/people/customers/edit/${customer.id}`)
+                          navigate(`${portalBasePath}/people/customers/edit/${customer.id}`)
                         }
                       >
                         {customer.name || customer.full_name}
@@ -490,7 +493,7 @@ const CustomersTab = () => {
                           className="text-[#0EA5E9] hover:scale-125 transition cursor-pointer"
                           onClick={() =>
                             navigate(
-                              `/pos/people/customers/edit/${customer.id}`,
+                              `${portalBasePath}/people/customers/edit/${customer.id}`,
                             )
                           }
                         />
@@ -511,7 +514,7 @@ const CustomersTab = () => {
   );
 };
 
-const VendorsTab = () => {
+const VendorsTab = ({ portalBasePath }) => {
   const {
     data: responseData,
     loading,
@@ -544,12 +547,13 @@ const VendorsTab = () => {
             icon={Search}
             className="w-72"
           />
-          <Link to="/pos/people/vendors/add">
-            <Button className="gap-2">
-              <Plus size={18} />
-              Add Vendor
-            </Button>
-          </Link>
+          <Button
+            className="gap-2"
+            onClick={() => navigate(`${portalBasePath}/people/vendors/add`)}
+          >
+            <Plus size={18} />
+            Add Vendor
+          </Button>
         </div>
       </div>
 
@@ -621,7 +625,7 @@ const VendorsTab = () => {
                       <p
                         className="font-bold text-[#0EA5E9] underline cursor-pointer hover:text-[#38BDF8]"
                         onClick={() =>
-                          navigate(`/pos/people/vendors/edit/${vendor.id}`)
+                          navigate(`${portalBasePath}/people/vendors/edit/${vendor.id}`)
                         }
                       >
                         {vendor.name || vendor.vendor_name}
@@ -645,7 +649,7 @@ const VendorsTab = () => {
                           size={14}
                           className="text-[#0EA5E9] hover:scale-125 transition cursor-pointer"
                           onClick={() =>
-                            navigate(`/pos/people/vendors/edit/${vendor.id}`)
+                            navigate(`${portalBasePath}/people/vendors/edit/${vendor.id}`)
                           }
                         />
                         <Trash2

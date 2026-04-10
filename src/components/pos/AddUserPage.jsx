@@ -20,11 +20,13 @@ import useFetch from '../../hooks/useFetch'
 import Loader from '../common/Loader'
 import StyledDropdown from '../common/StyledDropdown'
 import Toggle from '../common/Toggle'
+import { getPortalBasePath, getStoredAuth } from '../../utils/auth'
 
 const AddUserPage = ({ onCancel, onSave }) => {
   const { id } = useParams()
   const isEdit = !!id
   const navigate = useNavigate()
+  const portalBasePath = getPortalBasePath(getStoredAuth())
   
   const { post, put, loading: saving, error: saveError } = useApi()
   const { data: existingData, loading: fetching, error: fetchError } = useFetch(isEdit ? `/users/${id}/` : null)
@@ -107,7 +109,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
 
   const handleCancel = () => {
     if (onCancel) onCancel()
-    else navigate('/pos/people?tab=users')
+    else navigate(`${portalBasePath}/people?tab=users`)
   }
 
   const handleSaveBtn = async () => {
@@ -159,7 +161,7 @@ const AddUserPage = ({ onCancel, onSave }) => {
       }
       
       if (onSave) onSave()
-      else navigate('/pos/people?tab=users')
+      else navigate(`${portalBasePath}/people?tab=users`)
     } catch (err) {
       console.error(err)
     }

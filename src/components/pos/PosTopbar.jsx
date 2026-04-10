@@ -1,8 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { Bell, LogOut, Settings, User, Users, Store } from 'lucide-react'
+import { Bell, LogOut, Monitor, Settings, User, Users, Store } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { getIsAdminUser, getStoredAuth } from '../../utils/auth'
+import { usePosStore } from '../../store/usePosStore'
+import { showToast } from '../../utils/toast'
+import {
+  CUSTOMER_DISPLAY_EVENTS,
+  CUSTOMER_DISPLAY_WINDOW_NAME,
+  createCustomerDisplayChannel,
+  createCustomerDisplaySnapshot,
+  persistCustomerDisplaySnapshot,
+} from '../../utils/customerDisplay'
 import PosTabIcon from '../../assets/icon/POS.png'
 import CashDrawerTabIcon from '../../assets/icon/cashdrawer.png'
 import ProcessReturnTabIcon from '../../assets/icon/processreturn.png'
@@ -26,17 +35,66 @@ const PosTopbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [hoveredTopTab, setHoveredTopTab] = useState(null)
   const menuRef = useRef(null)
+  const customerDisplayWindowRef = useRef(null)
+  const customerDisplayChannelRef = useRef(null)
+  const latestSnapshotRef = useRef(createCustomerDisplaySnapshot())
   const navigate = useNavigate()
   const location = useLocation()
   const auth = getStoredAuth()
   const isAdmin = getIsAdminUser(auth)
   const user = auth?.data?.user || auth?.user || auth || {}
-  const isTerminalView = location.pathname.includes('/pos/terminal')
+  const isTerminalView = location.pathname.includes('/terminal') && !location.pathname.includes('/customer-display')
   const routeBase = location.pathname.startsWith('/admin') ? '/admin' : '/pos'
+  const cartItems = usePosStore((state) => state.cartItems)
+  const discount = usePosStore((state) => state.discount)
 
   const userName = user?.name || 'Admin User'
   const userRole = getUserRoleLabel(user)
   const userPermissions = Array.isArray(user?.permissions) ? user.permissions : []
+
+  useEffect(() => {
+    const snapshot = createCustomerDisplaySnapshot({ cartItems, discount })
+    latestSnapshotRef.current = snapshot
+    persistCustomerDisplaySnapshot(snapshot)
+    customerDisplayChannelRef.current?.postMessage({
+      type: CUSTOMER_DISPLAY_EVENTS.SYNC_STATE,
+      payload: snapshot,
+    })
+  }, [cartItems, discount])
+
+  useEffect(() => {
+    const channel = createCustomerDisplayChannel()
+    customerDisplayChannelRef.current = channel
+
+    const handleChannelMessage = (event) => {
+      if (event?.data?.type !== CUSTOMER_DISPLAY_EVENTS.REQUEST_STATE) return
+
+      channel?.postMessage({
+        type: CUSTOMER_DISPLAY_EVENTS.SYNC_STATE,
+        payload: latestSnapshotRef.current,
+      })
+    }
+
+    channel?.addEventListener('message', handleChannelMessage)
+
+    return () => {
+      channel?.removeEventListener('message', handleChannelMessage)
+      channel?.close()
+      customerDisplayChannelRef.current = null
+    }
+  }, [])
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (customerDisplayWindowRef.current?.closed) {
+        customerDisplayWindowRef.current = null
+      }
+    }, 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   useEffect(() => {
     if (!isMenuOpen) return
@@ -91,6 +149,80 @@ const PosTopbar = () => {
     navigate(`${routeBase}/stores`)
   }
 
+  const syncCustomerDisplayState = () => {
+    persistCustomerDisplaySnapshot(latestSnapshotRef.current)
+    customerDisplayChannelRef.current?.postMessage({
+      type: CUSTOMER_DISPLAY_EVENTS.SYNC_STATE,
+      payload: latestSnapshotRef.current,
+    })
+  }
+
+  const handleOpenCustomerDisplay = () => {
+    const popupUrl = `${window.location.origin}${routeBase}/customer-display`
+    const existingWindow = customerDisplayWindowRef.current
+
+    if (existingWindow?.closed) {
+      customerDisplayWindowRef.current = null
+    }
+
+    if (customerDisplayWindowRef.current && !customerDisplayWindowRef.current.closed) {
+      customerDisplayWindowRef.current.focus()
+      syncCustomerDisplayState()
+      return
+    }
+
+    const popupFeatures = [
+      'popup=yes',
+      'resizable=yes',
+      'scrollbars=yes',
+      `width=${window.screen.availWidth || 1280}`,
+      `height=${window.screen.availHeight || 800}`,
+      'left=0',
+      'top=0',
+    ].join(',')
+
+    let nextWindow = null
+
+    try {
+      syncCustomerDisplayState()
+      nextWindow = window.open(popupUrl, CUSTOMER_DISPLAY_WINDOW_NAME, popupFeatures)
+    } catch (error) {
+      console.error('Unable to open customer display window.', error)
+      showToast({
+        title: 'Unable to Open Display',
+        message: 'Something went wrong while opening the customer display screen.',
+        type: 'error',
+      })
+      return
+    }
+
+    if (!nextWindow) {
+      showToast({
+        title: 'Popup Blocked',
+        message: 'Please allow popups for this site to open the customer display screen.',
+        type: 'warning',
+      })
+      return
+    }
+
+    customerDisplayWindowRef.current = nextWindow
+    nextWindow.focus()
+    syncCustomerDisplayState()
+  }
+
+  const customerDisplayButton = isTerminalView ? (
+    <button
+      type="button"
+      onClick={handleOpenCustomerDisplay}
+      className="h-9 rounded-lg border border-sky-200 bg-sky-50 px-4 text-[13px] font-bold text-sky-700 transition-colors hover:border-sky-300 hover:bg-sky-100"
+    >
+      <span className="inline-flex items-center gap-2">
+        <Monitor size={15} />
+        Open Customer Display
+      </span>
+    </button>
+  ) : null
+
   if (isTerminalView && !isAdmin) {
     return (
       <header className="sticky top-0 z-50 bg-white border-b border-[#E5E9F0]">
@@ -113,6 +245,7 @@ const PosTopbar = () => {
           </div>
 
           <div className="flex items-center gap-2">
+            {customerDisplayButton}
             <button className="p-2 text-[#64748B] hover:text-[#1EA7EE] rounded-md hover:bg-[#F4F7FB] transition-colors">
               <Bell size={15} />
             </button>
@@ -239,6 +372,7 @@ const PosTopbar = () => {
 
       {/* Right Side: Actions */}
       <div className="flex items-center gap-3">
+        {customerDisplayButton}
         {/* Notification Icon */}
         <button className="relative p-2 text-[#94A3B8] hover:text-[#0EA5E9] hover:bg-[#0EA5E90D] rounded-lg transition-all duration-200">
           <Bell size={18} />

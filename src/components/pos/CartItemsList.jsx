@@ -1,7 +1,7 @@
 const CartItemsList = ({ items, onIncrease, onDecrease, onRemove }) => (
   <div className="space-y-2">
     {items.length === 0 ? (
-      <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-3 py-8 text-center text-[14px] font-medium text-[#94A3B8]">
+      <p className="rounded-lg border border-dashed border-[#E2E8F0] bg-[#F8FAFC] px-3 py-8 text-center text-[22px] font-black text-[#1E293B] tracking-tight">
         Cart is empty.
       </p>
     ) : null}

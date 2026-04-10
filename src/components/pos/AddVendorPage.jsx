@@ -6,6 +6,7 @@ import useApi from "../../hooks/useApi";
 import useFetch from "../../hooks/useFetch";
 import Loader from "../common/Loader";
 import StyledDropdown from "../common/StyledDropdown";
+import { getPortalBasePath, getStoredAuth } from "../../utils/auth";
 
 const initialFormData = {
   vendor_name: "",
@@ -46,6 +47,7 @@ const AddVendorPage = ({ onCancel, onSave }) => {
   const { id } = useParams();
   const isEdit = !!id;
   const navigate = useNavigate();
+  const portalBasePath = getPortalBasePath(getStoredAuth());
 
   const { post, put, loading: saving, error: saveError } = useApi();
   const {
@@ -116,7 +118,7 @@ const AddVendorPage = ({ onCancel, onSave }) => {
 
   const handleCancel = () => {
     if (onCancel) onCancel();
-    else navigate("/pos/people?tab=vendors");
+    else navigate(`${portalBasePath}/people?tab=vendors`);
   };
 
   const buildPayload = () => {
@@ -172,7 +174,7 @@ const AddVendorPage = ({ onCancel, onSave }) => {
       }
 
       if (onSave) onSave();
-      else navigate("/pos/people?tab=vendors");
+      else navigate(`${portalBasePath}/people?tab=vendors`);
     } catch (err) {
       console.error(err);
     }

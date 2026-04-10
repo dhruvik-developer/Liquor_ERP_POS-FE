@@ -12,6 +12,7 @@ import {
 import useFetch from "../../hooks/useFetch";
 import Loader from "../common/Loader";
 import { resolveMediaUrl } from "../../utils/url";
+import { getPortalBasePath, getStoredAuth } from "../../utils/auth";
 
 const KPICard = ({ title, value, change, isPositive }) => (
   <div className="bg-[#FFFFFF] rounded-lg border border-[#E2E8F0] p-6 shadow-sm relative overflow-hidden group">
@@ -57,6 +58,7 @@ const QuickActionCard = ({ icon: Icon, label, path }) => (
 
 const DashboardOverview = () => {
   const { data: statsData, loading, error } = useFetch("/reports/dashboard/");
+  const portalBasePath = getPortalBasePath(getStoredAuth());
 
   if (loading || !statsData) {
     return (
@@ -150,22 +152,22 @@ const DashboardOverview = () => {
             <QuickActionCard
               icon={Plus}
               label="Add Product"
-              path="/pos/products?openAddProduct=1"
+              path={`${portalBasePath}/products?openAddProduct=1`}
             />
             <QuickActionCard
               icon={ClipboardList}
               label="Manage Stock"
-              path="/pos/products"
+              path={`${portalBasePath}/products`}
             />
             <QuickActionCard
               icon={UserPlus}
               label="Add User"
-              path="/pos/people/users/add"
+              path={`${portalBasePath}/people/users/add`}
             />
             <QuickActionCard
               icon={BarChart3}
               label="View Reports"
-              path="/pos/reports"
+              path={`${portalBasePath}/reports`}
             />
           </div>
 

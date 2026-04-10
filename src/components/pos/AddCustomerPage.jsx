@@ -8,11 +8,13 @@ import DatePickerField from '../common/DatePickerField'
 import useApi from '../../hooks/useApi'
 import useFetch from '../../hooks/useFetch'
 import Loader from '../common/Loader'
+import { getPortalBasePath, getStoredAuth } from '../../utils/auth'
 
 const AddCustomerPage = ({ onCancel, onSave }) => {
   const { id } = useParams()
   const isEdit = !!id
   const navigate = useNavigate()
+  const portalBasePath = getPortalBasePath(getStoredAuth())
   
   const [dob, setDob] = useState(null)
   const [formData, setFormData] = useState({
@@ -45,7 +47,7 @@ const AddCustomerPage = ({ onCancel, onSave }) => {
 
   const handleCancel = () => {
     if (onCancel) onCancel()
-    else navigate('/pos/people?tab=customers')
+    else navigate(`${portalBasePath}/people?tab=customers`)
   }
 
   const handleSaveBtn = async () => {
@@ -68,7 +70,7 @@ const AddCustomerPage = ({ onCancel, onSave }) => {
       }
       
       if (onSave) onSave()
-      else navigate('/pos/people?tab=customers')
+      else navigate(`${portalBasePath}/people?tab=customers`)
     } catch (err) {
       console.error(err)
     }

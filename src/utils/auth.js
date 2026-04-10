@@ -56,4 +56,8 @@ export const getDefaultRouteForRole = (authData) => {
   return '/pos/terminal'
 }
 
+export const getPortalBasePath = (authData) => (
+  getIsAdminUser(authData) ? '/admin' : '/pos'
+)
+
 export const getDefaultRoute = () => '/pos'

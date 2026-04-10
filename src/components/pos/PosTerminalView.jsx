@@ -1,11 +1,13 @@
-import React, { useMemo, useState } from 'react'
-import { Search, SlidersHorizontal, UserPlus, Minus, Plus, CircleCheck } from 'lucide-react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { Search, SlidersHorizontal, UserPlus, Minus, Plus, CircleCheck, ShieldAlert } from 'lucide-react'
 import CategoryTabs from './CategoryTabs'
 import ProductGrid from './ProductGrid'
 import { usePosStore } from '../../store/usePosStore'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import { resolveMediaUrl } from '../../utils/url'
+import AgeVerificationModal from './AgeVerificationModal'
+import CustomerSelectModal from './CustomerSelectModal'
 
 const TAX_RATE = 0.18
 
@@ -16,12 +18,24 @@ const roundToTwo = (value) => {
 
 const formatCurrency = (value) => `$${(Number(value) || 0).toFixed(2)}`
 
+const getCustomerName = (customer) => (
+  customer?.name ||
+  customer?.full_name ||
+  customer?.customer_name ||
+  ''
+)
+
 const PosTerminalView = () => {
   const [isCompleting, setIsCompleting] = useState(false)
   const [error, setError] = useState('')
+  const [isAgeVerificationOpen, setIsAgeVerificationOpen] = useState(false)
+  const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
+  const previousCartCountRef = useRef(0)
 
   const { data: categoriesData } = useFetch('/inventory/categories/')
   const { data: productsData, loading: isLoadingProducts } = useFetch('/inventory/products/')
+  const { data: customersData, loading: isLoadingCustomers, refetch: refetchCustomers } = useFetch('/people/customers/')
   const { post } = useApi()
 
   const categories = categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0
@@ -65,18 +79,25 @@ const PosTerminalView = () => {
       }))
   }, [productsData])
 
+  const customers = useMemo(() => {
+    if (Array.isArray(customersData)) return customersData
+    return customersData?.results || []
+  }, [customersData])
+
   const {
     selectedCategory,
     productSearch,
     paymentMethod,
     discount,
     cartItems,
+    ageVerification,
     setCategory,
     setProductSearch,
     addToCart,
     increaseCartItem,
     decreaseCartItem,
     clearCart,
+    setAgeVerification,
     getTotals,
   } = usePosStore()
 
@@ -92,6 +113,35 @@ const PosTerminalView = () => {
       return categoryOk && searchOk
     })
   }, [products, selectedCategory, productSearch])
+
+  useEffect(() => {
+    const previousCartCount = previousCartCountRef.current
+
+    if (previousCartCount === 0 && cartItems.length > 0 && !ageVerification.isVerified) {
+      setIsAgeVerificationOpen(true)
+    }
+
+    if (cartItems.length === 0 && isAgeVerificationOpen) {
+      setIsAgeVerificationOpen(false)
+    }
+
+    previousCartCountRef.current = cartItems.length
+  }, [ageVerification.isVerified, cartItems, isAgeVerificationOpen])
+
+  const handleAgeVerificationCancel = () => {
+    setIsAgeVerificationOpen(false)
+    clearCart()
+  }
+
+  const handleAgeVerificationSuccess = ({ dateOfBirth, method }) => {
+    setAgeVerification({
+      isVerified: true,
+      verifiedAt: new Date().toISOString(),
+      verifiedDateOfBirth: dateOfBirth,
+      method,
+    })
+    setIsAgeVerificationOpen(false)
+  }
 
   const handleCompleteOrder = async () => {
     if (cartItems.length === 0) return
@@ -121,6 +171,17 @@ const PosTerminalView = () => {
     }
   }
 
+  const handleCustomerSelect = (customer) => {
+    setSelectedCustomer(customer)
+    setIsCustomerModalOpen(false)
+  }
+
+  const handleCustomerAdded = async (customer) => {
+    await refetchCustomers()
+    setSelectedCustomer(customer)
+    setIsCustomerModalOpen(false)
+  }
+
   return (
     <div className="h-full min-h-0 grid grid-cols-[340px_1fr] bg-[#F3F5F8]">
       <aside className="border-r border-[#E3E8EF] bg-[#F8FAFC] min-h-0">
@@ -131,7 +192,7 @@ const PosTerminalView = () => {
 
           <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-3">
             {cartItems.length === 0 ? (
-              <div className="h-full min-h-[420px] rounded-xl border border-dashed border-[#D8E0EB] bg-white flex items-center justify-center text-[#94A3B8] text-[32px]">
+              <div className="h-full min-h-[420px] rounded-xl border border-dashed border-[#D8E0EB] bg-white flex items-center justify-center text-[22px] font-black text-[#1E293B] tracking-tight">
                 Cart is empty
               </div>
             ) : (
@@ -208,9 +269,15 @@ const PosTerminalView = () => {
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Deposit:</span>
                         <span className="text-[13px] font-bold transition-colors text-slate-900">{formatCurrency(item.deposit)}</span>
                       </div>
-                      <p className="flex items-center justify-end gap-1 text-[13px] font-bold transition-colors text-emerald-600">
-                        <CircleCheck size={13} />
-                        <span>{item.ageRestricted ? 'Age Verified' : 'No Verification'}</span>
+                      <p
+                        className={`flex items-center justify-end gap-1 text-[13px] font-bold transition-colors ${
+                          ageVerification.isVerified ? 'text-emerald-600' : 'text-amber-600'
+                        }`}
+                      >
+                        {ageVerification.isVerified ? <CircleCheck size={13} /> : <ShieldAlert size={13} />}
+                        <span>
+                          {ageVerification.isVerified ? 'Age Verified' : 'Verification Required'}
+                        </span>
                       </p>
                     </div>
                   </div>
@@ -267,9 +334,13 @@ const PosTerminalView = () => {
           <button type="button" className="h-10 w-10 rounded-lg border border-[#DFE5EF] bg-white text-[#64748B] flex items-center justify-center">
             <SlidersHorizontal size={16} />
           </button>
-          <button type="button" className="h-10 rounded-lg border border-[#DFE5EF] bg-white px-3 text-[13px] font-semibold text-[#475569] flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setIsCustomerModalOpen(true)}
+            className="h-10 max-w-[220px] rounded-lg border border-[#DFE5EF] bg-white px-3 text-[13px] font-semibold text-[#475569] flex items-center gap-2"
+          >
             <UserPlus size={14} />
-            Select Customer
+            <span className="truncate">{getCustomerName(selectedCustomer) || 'Select Customer'}</span>
           </button>
         </div>
 
@@ -294,6 +365,21 @@ const PosTerminalView = () => {
           )}
         </div>
       </section>
+
+      <AgeVerificationModal
+        isOpen={isAgeVerificationOpen}
+        onCancel={handleAgeVerificationCancel}
+        onVerify={handleAgeVerificationSuccess}
+      />
+
+      <CustomerSelectModal
+        isOpen={isCustomerModalOpen}
+        customers={customers}
+        loading={isLoadingCustomers}
+        onClose={() => setIsCustomerModalOpen(false)}
+        onSelect={handleCustomerSelect}
+        onCustomerAdded={handleCustomerAdded}
+      />
     </div>
   )
 }
