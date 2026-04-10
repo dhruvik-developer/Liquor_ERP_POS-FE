@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
-import { Mail, Phone, User, UserPlus, X } from 'lucide-react'
+import { Calendar, Mail, Phone, User, UserPlus, X } from 'lucide-react'
 import useApi from '../../hooks/useApi'
+import DatePickerField from '../common/DatePickerField'
 
 const getCreatedCustomer = (response) => response?.data ?? response
 
@@ -13,6 +14,7 @@ const AddCustomerQuickModal = ({
     name: '',
     phone: '',
     email: '',
+    dob: '',
   })
   const { post, loading, error } = useApi()
 
@@ -32,6 +34,7 @@ const AddCustomerQuickModal = ({
       name: '',
       phone: '',
       email: '',
+      dob: '',
     })
     onClose?.()
   }
@@ -46,6 +49,7 @@ const AddCustomerQuickModal = ({
         name: formData.name.trim(),
         phone: formData.phone.trim(),
         email: formData.email.trim() || null,
+        dob: formData.dob || null,
       })
 
       const createdCustomer = getCreatedCustomer(response)
@@ -54,6 +58,7 @@ const AddCustomerQuickModal = ({
         name: '',
         phone: '',
         email: '',
+        dob: '',
       })
 
       onSuccess?.(createdCustomer)
@@ -126,6 +131,23 @@ const AddCustomerQuickModal = ({
               />
             </div>
           </div>
+
+          <DatePickerField
+            label="DOB"
+            value={formData.dob}
+            onChange={(value) =>
+              setFormData((current) => ({
+                ...current,
+                dob: value || '',
+              }))
+            }
+            placeholder="Select date of birth"
+            maxDate={new Date()}
+            showIcon
+            icon={Calendar}
+            labelClassName="font-bold text-[#0F172A] ml-0"
+            className="!h-12 !rounded-2xl !border-[#DCE4EF] !bg-[#F8FAFC] !text-[14px] !font-normal !text-[#0F172A] placeholder:!text-[#94A3B8]"
+          />
 
           {error ? (
             <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 text-[13px] font-medium text-rose-600">

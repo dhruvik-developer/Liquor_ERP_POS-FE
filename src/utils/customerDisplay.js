@@ -33,6 +33,17 @@ export const computeCustomerDisplayTotals = (cartItems = [], discount = 0) => {
   }
 }
 
+export const getCustomerDisplayCartItems = (cartItems = [], ageVerification = null) => {
+  const items = Array.isArray(cartItems) ? cartItems : []
+  const hasPendingRestrictedItems = items.some((item) => item?.ageRestricted !== false) && !ageVerification?.isVerified
+
+  if (!hasPendingRestrictedItems) {
+    return items
+  }
+
+  return items.filter((item) => item?.ageRestricted === false)
+}
+
 export const createCustomerDisplaySnapshot = ({ cartItems = [], discount = 0 } = {}) => ({
   cartItems: cartItems.map((item) => ({
     id: item.id,

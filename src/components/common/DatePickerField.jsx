@@ -13,9 +13,13 @@ const DatePickerField = ({
   error,
   className = '',
   wrapperClassName = '',
+  labelClassName = '',
   minDate,
   maxDate,
-  disabled = false
+  disabled = false,
+  showIcon = false,
+  icon: Icon = Calendar,
+  iconClassName = '',
 }) => {
   const [selectedDate, setSelectedDate] = useState(null);
 
@@ -52,11 +56,22 @@ const DatePickerField = ({
   return (
     <div className={`space-y-1.5 flex flex-col min-w-0 ${wrapperClassName}`}>
       {label && (
-        <label className="text-[14px] font-medium text-[#1E293B] ml-0.5">
+        <label className={`text-[14px] font-medium text-[#1E293B] ml-0.5 ${labelClassName}`}>
           {label} {required && <span className="text-rose-500">*</span>}
         </label>
       )}
       <div className="relative group w-full">
+         {showIcon && Icon ? (
+            <div
+              className={`
+                pointer-events-none absolute left-4 top-1/2 z-[1] -translate-y-1/2
+                text-[#64748B] transition-colors group-focus-within:text-[#0EA5E9]
+                ${iconClassName}
+              `}
+            >
+              <Icon size={18} />
+            </div>
+         ) : null}
          <ReactDatePicker
             selected={selectedDate}
             onChange={handleChange}
@@ -127,26 +142,13 @@ const DatePickerField = ({
               outline-none transition-all
               focus:border-[#0EA5E9] focus:ring-4 focus:ring-[#0EA5E91A]
               placeholder:text-[#94A3B8]
+              ${showIcon ? '!pl-11' : ''}
               ${disabled ? 'opacity-60 cursor-not-allowed bg-slate-100' : ''}
               ${error ? 'border-rose-500 focus:border-rose-500 focus:ring-rose-50' : ''}
               ${className}
             `}
             wrapperClassName="w-full block"
             popperClassName="custom-datepicker-popper !z-[9999]"
-            popperModifiers={[
-              {
-                name: 'preventOverflow',
-                options: {
-                  rootBoundary: 'viewport',
-                },
-              },
-              {
-                name: 'flip',
-                options: {
-                  fallbackPlacements: ['top-start', 'bottom-end'],
-                },
-              },
-            ]}
          />
       </div>
       {error && <p className="text-[10px] font-bold text-rose-500 uppercase tracking-widest ml-1">{error}</p>}

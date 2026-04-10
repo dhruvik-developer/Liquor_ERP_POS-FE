@@ -10,6 +10,7 @@ import {
   CUSTOMER_DISPLAY_WINDOW_NAME,
   createCustomerDisplayChannel,
   createCustomerDisplaySnapshot,
+  getCustomerDisplayCartItems,
   persistCustomerDisplaySnapshot,
 } from '../../utils/customerDisplay'
 import PosTabIcon from '../../assets/icon/POS.png'
@@ -47,20 +48,22 @@ const PosTopbar = () => {
   const routeBase = location.pathname.startsWith('/admin') ? '/admin' : '/pos'
   const cartItems = usePosStore((state) => state.cartItems)
   const discount = usePosStore((state) => state.discount)
+  const ageVerification = usePosStore((state) => state.ageVerification)
 
   const userName = user?.name || 'Admin User'
   const userRole = getUserRoleLabel(user)
   const userPermissions = Array.isArray(user?.permissions) ? user.permissions : []
 
   useEffect(() => {
-    const snapshot = createCustomerDisplaySnapshot({ cartItems, discount })
+    const displayCartItems = getCustomerDisplayCartItems(cartItems, ageVerification)
+    const snapshot = createCustomerDisplaySnapshot({ cartItems: displayCartItems, discount })
     latestSnapshotRef.current = snapshot
     persistCustomerDisplaySnapshot(snapshot)
     customerDisplayChannelRef.current?.postMessage({
       type: CUSTOMER_DISPLAY_EVENTS.SYNC_STATE,
       payload: snapshot,
     })
-  }, [cartItems, discount])
+  }, [ageVerification, cartItems, discount])
 
   useEffect(() => {
     const channel = createCustomerDisplayChannel()

@@ -5,6 +5,7 @@ import Button from '../common/Button'
 import Loader from '../common/Loader'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
+import { showSuccessToast, showToast } from '../../utils/toast'
 
 const parseList = (payload) => {
   if (Array.isArray(payload)) return payload
@@ -47,15 +48,13 @@ const RoleManagementPage = () => {
     loading: permissionsLoading,
     error: permissionsError,
   } = useFetch('/permissions/')
-  const { post, put, del, loading: saving, error: saveError } = useApi()
+  const { post, put, del, loading: saving } = useApi()
 
   const roles = useMemo(() => parseList(rolesData), [rolesData])
   const permissions = useMemo(() => parseList(permissionsData), [permissionsData])
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [editingRole, setEditingRole] = useState(null)
-  const [formError, setFormError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
 
   const [createForm, setCreateForm] = useState({
     name: '',
@@ -71,8 +70,6 @@ const RoleManagementPage = () => {
   })
 
   const openCreateModal = () => {
-    setFormError('')
-    setSuccessMessage('')
     setCreateForm({
       name: '',
       description: '',
@@ -82,8 +79,6 @@ const RoleManagementPage = () => {
   }
 
   const openEditPermissions = (role) => {
-    setFormError('')
-    setSuccessMessage('')
     const rolePermissionIds = getRolePermissionIds(role)
     setEditForm({
       id: role.id,
@@ -115,10 +110,12 @@ const RoleManagementPage = () => {
   }
 
   const handleCreateRole = async () => {
-    setFormError('')
-    setSuccessMessage('')
     if (!createForm.name.trim()) {
-      setFormError('Role name is required.')
+      showToast({
+        title: 'Role Name Required',
+        message: 'Please enter a role name before creating the role.',
+        type: 'error',
+      })
       return
     }
 
@@ -130,18 +127,24 @@ const RoleManagementPage = () => {
       })
       setShowCreateModal(false)
       refetchRoles()
-      setSuccessMessage('Role created successfully.')
+      showSuccessToast('Role created successfully.')
     } catch (err) {
-      setFormError(extractApiError(err, 'Failed to create role.'))
+      showToast({
+        title: 'Create Role Failed',
+        message: extractApiError(err, 'Failed to create role.'),
+        type: 'error',
+      })
     }
   }
 
   const handleUpdateRole = async () => {
     if (!editForm?.id) return
-    setFormError('')
-    setSuccessMessage('')
     if (!editForm.name.trim()) {
-      setFormError('Role name is required.')
+      showToast({
+        title: 'Role Name Required',
+        message: 'Please enter a role name before updating the role.',
+        type: 'error',
+      })
       return
     }
 
@@ -160,29 +163,35 @@ const RoleManagementPage = () => {
       })
       setEditingRole(null)
       refetchRoles()
-      setSuccessMessage('Role updated successfully.')
+      showSuccessToast('Role updated successfully.')
     } catch (err) {
-      setFormError(extractApiError(err, 'Failed to update role.'))
+      showToast({
+        title: 'Update Role Failed',
+        message: extractApiError(err, 'Failed to update role.'),
+        type: 'error',
+      })
     }
   }
 
   const handleDeleteRole = async (roleId) => {
-    setFormError('')
-    setSuccessMessage('')
     const shouldDelete = window.confirm('Are you sure you want to delete this role?')
     if (!shouldDelete) return
 
     try {
       await del(`/roles/${roleId}/`)
       refetchRoles()
-      setSuccessMessage('Role deleted successfully.')
+      showSuccessToast('Role deleted successfully.')
     } catch (err) {
-      setFormError(extractApiError(err, 'Failed to delete role.'))
+      showToast({
+        title: 'Delete Role Failed',
+        message: extractApiError(err, 'Failed to delete role.'),
+        type: 'error',
+      })
     }
   }
 
   const isPageLoading = rolesLoading || permissionsLoading
-  const combinedError = formError || saveError || rolesError || permissionsError
+  const combinedError = rolesError || permissionsError
 
   return (
     <div className="flex flex-col min-h-full space-y-6 animate-in fade-in duration-500 pb-8">
@@ -202,11 +211,6 @@ const RoleManagementPage = () => {
       {combinedError && (
         <div className="p-4 bg-rose-50 text-rose-600 rounded-lg border border-rose-100 font-bold">
           {combinedError}
-        </div>
-      )}
-      {successMessage && (
-        <div className="p-4 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100 font-bold">
-          {successMessage}
         </div>
       )}
 

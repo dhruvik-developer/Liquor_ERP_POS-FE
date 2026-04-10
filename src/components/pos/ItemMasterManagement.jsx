@@ -40,12 +40,12 @@ const MASTER_TABS = [
   },
   {
     key: "sub-category",
-    label: "Sub Category",
+    label: "Sub-Category",
     endpoint: "/inventory/sub-categories/",
     icon: ListFilter,
   },
-  { key: "size", label: "Size", endpoint: "/lookups/sizes/", icon: Maximize },
   { key: "uom", label: "UMO", endpoint: "/lookups/uoms/", icon: Ruler },
+  { key: "size", label: "Size", endpoint: "/lookups/sizes/", icon: Maximize },
   { key: "pack", label: "Pack", endpoint: "/lookups/packs/", icon: Package },
   { key: "brand", label: "Brand", endpoint: "/lookups/brands/", icon: Award },
 ];

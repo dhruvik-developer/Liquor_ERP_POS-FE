@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Camera, IdCard, ShieldAlert } from 'lucide-react'
 
 const initialFormState = {
@@ -81,6 +81,9 @@ const AgeVerificationModal = ({
   const [formValues, setFormValues] = useState(initialFormState)
   const [selectedMethod, setSelectedMethod] = useState('manual')
   const [error, setError] = useState('')
+  const dayInputRef = useRef(null)
+  const monthInputRef = useRef(null)
+  const yearInputRef = useRef(null)
 
   useEffect(() => {
     if (!isOpen) {
@@ -99,6 +102,19 @@ const AgeVerificationModal = ({
       [field]: nextValue,
     }))
     setError('')
+
+    if (nextValue.length !== maxLength) return
+
+    if (field === 'day') {
+      monthInputRef.current?.focus()
+      monthInputRef.current?.select()
+      return
+    }
+
+    if (field === 'month') {
+      yearInputRef.current?.focus()
+      yearInputRef.current?.select()
+    }
   }
 
   const handleVerify = () => {
@@ -138,6 +154,7 @@ const AgeVerificationModal = ({
 
           <div className="mt-3 grid grid-cols-3 gap-4">
             <input
+              ref={dayInputRef}
               type="text"
               inputMode="numeric"
               value={formValues.day}
@@ -146,6 +163,7 @@ const AgeVerificationModal = ({
               className="h-[64px] rounded-[18px] border border-[#DCE5EF] bg-[#FBFDFF] px-5 text-center text-[20px] font-[700] tracking-[0.06em] text-[#1F2937] outline-none transition-colors placeholder:text-[#9AA7B8] focus:border-[#1EA7EE]"
             />
             <input
+              ref={monthInputRef}
               type="text"
               inputMode="numeric"
               value={formValues.month}
@@ -154,6 +172,7 @@ const AgeVerificationModal = ({
               className="h-[64px] rounded-[18px] border border-[#DCE5EF] bg-[#FBFDFF] px-5 text-center text-[20px] font-[700] tracking-[0.06em] text-[#1F2937] outline-none transition-colors placeholder:text-[#9AA7B8] focus:border-[#1EA7EE]"
             />
             <input
+              ref={yearInputRef}
               type="text"
               inputMode="numeric"
               value={formValues.year}

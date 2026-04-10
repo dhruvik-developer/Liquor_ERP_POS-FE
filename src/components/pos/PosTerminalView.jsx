@@ -6,10 +6,12 @@ import { usePosStore } from '../../store/usePosStore'
 import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import { resolveMediaUrl } from '../../utils/url'
+import { showToast } from '../../utils/toast'
 import AgeVerificationModal from './AgeVerificationModal'
 import CustomerSelectModal from './CustomerSelectModal'
 
 const TAX_RATE = 0.18
+const LEGAL_DRINKING_AGE = 21
 
 const roundToTwo = (value) => {
   const num = Number(value) || 0
@@ -24,6 +26,42 @@ const getCustomerName = (customer) => (
   customer?.customer_name ||
   ''
 )
+
+const getCustomerDateOfBirth = (customer) => (
+  customer?.dob ||
+  customer?.date_of_birth ||
+  customer?.dateOfBirth ||
+  ''
+)
+
+const normalizeDateOfBirth = (value) => {
+  if (!value) return null
+
+  const parsedDate = new Date(value)
+  if (Number.isNaN(parsedDate.getTime())) return null
+
+  return [
+    parsedDate.getFullYear(),
+    String(parsedDate.getMonth() + 1).padStart(2, '0'),
+    String(parsedDate.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
+const getAgeFromDateOfBirth = (value) => {
+  const normalizedDateOfBirth = normalizeDateOfBirth(value)
+  if (!normalizedDateOfBirth) return null
+
+  const today = new Date()
+  const dateOfBirth = new Date(`${normalizedDateOfBirth}T00:00:00`)
+  let age = today.getFullYear() - dateOfBirth.getFullYear()
+  const monthDifference = today.getMonth() - dateOfBirth.getMonth()
+
+  if (monthDifference < 0 || (monthDifference === 0 && today.getDate() < dateOfBirth.getDate())) {
+    age -= 1
+  }
+
+  return age
+}
 
 const PosTerminalView = () => {
   const [isCompleting, setIsCompleting] = useState(false)
@@ -102,6 +140,10 @@ const PosTerminalView = () => {
   } = usePosStore()
 
   const totals = getTotals()
+  const cartRequiresAgeVerification = useMemo(
+    () => cartItems.some((item) => item.ageRestricted !== false),
+    [cartItems],
+  )
 
   const filteredProducts = useMemo(() => {
     const normalizedSearch = productSearch.trim().toLowerCase()
@@ -117,16 +159,21 @@ const PosTerminalView = () => {
   useEffect(() => {
     const previousCartCount = previousCartCountRef.current
 
-    if (previousCartCount === 0 && cartItems.length > 0 && !ageVerification.isVerified) {
+    if (
+      previousCartCount === 0
+      && cartItems.length > 0
+      && cartRequiresAgeVerification
+      && !ageVerification.isVerified
+    ) {
       setIsAgeVerificationOpen(true)
     }
 
-    if (cartItems.length === 0 && isAgeVerificationOpen) {
+    if ((!cartRequiresAgeVerification || cartItems.length === 0) && isAgeVerificationOpen) {
       setIsAgeVerificationOpen(false)
     }
 
     previousCartCountRef.current = cartItems.length
-  }, [ageVerification.isVerified, cartItems, isAgeVerificationOpen])
+  }, [ageVerification.isVerified, cartItems, cartRequiresAgeVerification, isAgeVerificationOpen])
 
   const handleAgeVerificationCancel = () => {
     setIsAgeVerificationOpen(false)
@@ -143,10 +190,81 @@ const PosTerminalView = () => {
     setIsAgeVerificationOpen(false)
   }
 
+  const getCustomerAgeEligibility = (customer) => {
+    const customerName = getCustomerName(customer) || 'Selected customer'
+    const customerDateOfBirth = getCustomerDateOfBirth(customer)
+    const normalizedDateOfBirth = normalizeDateOfBirth(customerDateOfBirth)
+
+    if (!normalizedDateOfBirth) {
+      return {
+        isEligible: false,
+        customerName,
+        message: `${customerName} does not have a valid DOB. Update DOB before adding age-restricted items.`,
+      }
+    }
+
+    const customerAge = getAgeFromDateOfBirth(normalizedDateOfBirth)
+    if (customerAge === null || customerAge < LEGAL_DRINKING_AGE) {
+      return {
+        isEligible: false,
+        customerName,
+        message: `${customerName} must be at least ${LEGAL_DRINKING_AGE} years old to add this product.`,
+      }
+    }
+
+    return {
+      isEligible: true,
+      customerName,
+      normalizedDateOfBirth,
+    }
+  }
+
+  const syncCustomerAgeVerification = (customer) => {
+    const customerEligibility = getCustomerAgeEligibility(customer)
+
+    if (!customerEligibility.isEligible) {
+      setAgeVerification({
+        isVerified: false,
+        verifiedAt: null,
+        verifiedDateOfBirth: null,
+        method: null,
+      })
+      return customerEligibility
+    }
+
+    setAgeVerification({
+      isVerified: true,
+      verifiedAt: new Date().toISOString(),
+      verifiedDateOfBirth: customerEligibility.normalizedDateOfBirth,
+      method: 'customer_dob',
+    })
+    setIsAgeVerificationOpen(false)
+    return customerEligibility
+  }
+
   const handleCompleteOrder = async () => {
     if (cartItems.length === 0) return
-    setIsCompleting(true)
     setError('')
+
+    if (cartRequiresAgeVerification) {
+      if (selectedCustomer) {
+        const customerEligibility = syncCustomerAgeVerification(selectedCustomer)
+        if (!customerEligibility.isEligible) {
+          setError(customerEligibility.message)
+          showToast({
+            title: 'Age Restriction',
+            message: customerEligibility.message,
+            type: 'warning',
+          })
+          return
+        }
+      } else if (!ageVerification.isVerified) {
+        setIsAgeVerificationOpen(true)
+        return
+      }
+    }
+
+    setIsCompleting(true)
 
     try {
       const payload = {
@@ -173,13 +291,46 @@ const PosTerminalView = () => {
 
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer)
+    syncCustomerAgeVerification(customer)
     setIsCustomerModalOpen(false)
   }
 
   const handleCustomerAdded = async (customer) => {
     await refetchCustomers()
     setSelectedCustomer(customer)
+    syncCustomerAgeVerification(customer)
     setIsCustomerModalOpen(false)
+  }
+
+  const handleAddToCart = (product) => {
+    if (product?.ageRestricted === false) {
+      addToCart(product)
+      return
+    }
+
+    if (!selectedCustomer) {
+      addToCart(product)
+      return
+    }
+
+    const customerEligibility = getCustomerAgeEligibility(selectedCustomer)
+    if (!customerEligibility.isEligible) {
+      showToast({
+        title: 'Age Restriction',
+        message: customerEligibility.message,
+        type: 'warning',
+      })
+      return
+    }
+
+    setAgeVerification({
+      isVerified: true,
+      verifiedAt: new Date().toISOString(),
+      verifiedDateOfBirth: customerEligibility.normalizedDateOfBirth,
+      method: 'customer_dob',
+    })
+    setIsAgeVerificationOpen(false)
+    addToCart(product)
   }
 
   return (
@@ -361,7 +512,7 @@ const PosTerminalView = () => {
               ))}
             </div>
           ) : (
-            <ProductGrid products={filteredProducts} onAddToCart={addToCart} variant="terminal" />
+            <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} variant="terminal" />
           )}
         </div>
       </section>
