@@ -6,11 +6,11 @@ import {
   Clock,
   LayoutGrid,
   History,
-  Info,
-  Loader
+  Info
 } from 'lucide-react'
 import Card from '../common/Card'
 import DatePickerField from '../common/DatePickerField'
+import Loader from '../common/Loader'
 import useFetch from '../../hooks/useFetch'
 import { formatDateTime } from '../../utils/dateUtils'
 
@@ -171,11 +171,11 @@ const SalesManagement = () => {
                    <tbody className="divide-y divide-slate-100">
                       {currentLoading ? (
                         <tr>
-                          <td colSpan="5" className="px-6 py-10">
-                            <div className="flex flex-col items-center justify-center">
-                              <Loader size={48} className="animate-spin text-sky-500 mb-2" />
-                              <p className="text-slate-500 font-medium tracking-tight">Loading {activeTab === 'list' ? 'sales history' : 'return history'}...</p>
-                            </div>
+                          <td colSpan="5" className="px-5 py-8 text-center text-[#64748B]">
+                            <Loader size={48} className="mx-auto" />
+                            <p className="mt-2 font-medium text-[#64748B]">
+                              Loading {activeTab === 'list' ? 'sales history' : 'return history'}...
+                            </p>
                           </td>
                         </tr>
                       ) : currentError ? (

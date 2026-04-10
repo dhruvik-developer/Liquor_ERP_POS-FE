@@ -72,7 +72,7 @@ const SidebarItem = ({ label, icon: Icon, active, path, isPng, iconClassName = '
         )}
       </div>
 
-      <span className={`text-[16px] font-semibold leading-[22px] whitespace-nowrap ${active ? 'text-white' : 'text-[#1E293B] group-hover:text-[#1E293B]'}`}>
+      <span className={`text-[15px] font-semibold leading-[22px] whitespace-nowrap ${active ? 'text-white' : 'text-[#1E293B] group-hover:text-[#1E293B]'}`}>
         {label}
       </span>
     </Link>
