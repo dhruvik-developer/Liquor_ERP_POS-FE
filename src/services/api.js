@@ -7,11 +7,13 @@ import { extractErrorMessage, showErrorToast } from "../utils/toast";
 // We remove any trailing slashes from the base URL so that we can safely append '/path/'
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.79:8001/api';
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
+const NGROK_SKIP_WARNING_HEADER = "true";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
+    "ngrok-skip-browser-warning": NGROK_SKIP_WARNING_HEADER,
   },
 });
 
@@ -22,6 +24,9 @@ api.interceptors.request.use(
     if (config.url) {
       config.url = normalizeUrl(config.url);
     }
+
+    config.headers = config.headers || {};
+    config.headers["ngrok-skip-browser-warning"] = NGROK_SKIP_WARNING_HEADER;
     
     // Log the final request URL for debugging 404 issues
     const finalUrl = `${config.baseURL || ''}${config.url || ''}`;

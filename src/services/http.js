@@ -2,6 +2,7 @@ import { normalizeUrl } from '../utils/url'
 import { showErrorToast } from '../utils/toast'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '')
+const NGROK_SKIP_WARNING_HEADER = 'true'
 
 const createQueryString = params => {
   const searchParams = new URLSearchParams()
@@ -45,6 +46,7 @@ export const getJson = async (path, params = {}) => {
   const token = localStorage.getItem('access_token')
   const headers = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': NGROK_SKIP_WARNING_HEADER,
   }
 
   if (token && token !== 'undefined' && token !== 'null') {
@@ -82,6 +84,7 @@ export const postJson = async (path, payload = {}) => {
   const token = localStorage.getItem('access_token')
   const headers = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': NGROK_SKIP_WARNING_HEADER,
   }
 
   if (token && token !== 'undefined' && token !== 'null') {

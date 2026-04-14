@@ -2,14 +2,14 @@ import { getAutoClearZeroInputProps } from '../../utils/zeroValueInput'
 
 const rowClass = 'flex items-center justify-between text-[14px] text-[#64748B] font-medium'
 
-const BillingSummary = ({ subtotal, tax, discount, grandTotal, onDiscountChange }) => (
+const BillingSummary = ({ subtotal, tax, taxLabel = 'Tax', discount, grandTotal, onDiscountChange }) => (
   <div className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4 flex flex-col gap-2 shadow-inner">
     <div className={rowClass}>
       <span>Subtotal</span>
       <span className="font-bold text-[#1E293B]">${subtotal.toFixed(2)}</span>
     </div>
     <div className={rowClass}>
-      <span>Tax (GST 18%)</span>
+      <span>{taxLabel}</span>
       <span className="font-bold text-[#1E293B]">${tax.toFixed(2)}</span>
     </div>
     <div className={rowClass}>

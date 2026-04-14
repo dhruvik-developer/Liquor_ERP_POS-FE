@@ -108,7 +108,7 @@ const SettingsPage = () => {
             className="gap-2 px-8 h-12 rounded-xl text-[14px] bg-[#0EA5E9] hover:bg-[#0284C7] shadow-lg shadow-[#0EA5E933]"
           >
             <Plus size={18} />
-            + Add
+            Add
           </Button>
         </div>
 

@@ -7,10 +7,12 @@ import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import { resolveMediaUrl } from '../../utils/url'
 import { showToast } from '../../utils/toast'
+import { getStoredAuth } from '../../utils/auth'
+import { resolveTaxRateDetails } from '../../utils/tax'
 import AgeVerificationModal from './AgeVerificationModal'
 import CustomerSelectModal from './CustomerSelectModal'
+import PaymentMethodModal from './PaymentMethodModal'
 
-const TAX_RATE = 0.18
 const LEGAL_DRINKING_AGE = 21
 
 const roundToTwo = (value) => {
@@ -19,6 +21,52 @@ const roundToTwo = (value) => {
 }
 
 const formatCurrency = (value) => `$${(Number(value) || 0).toFixed(2)}`
+
+const getNumericId = (...candidates) => {
+  for (const candidate of candidates) {
+    if (typeof candidate === 'number' && Number.isFinite(candidate)) {
+      return candidate
+    }
+
+    if (typeof candidate === 'string') {
+      const trimmedCandidate = candidate.trim()
+      if (!trimmedCandidate) continue
+
+      const directNumber = Number(trimmedCandidate)
+      if (Number.isFinite(directNumber)) {
+        return directNumber
+      }
+
+      const matchedDigits = trimmedCandidate.match(/\d+/)
+      if (matchedDigits) {
+        return Number(matchedDigits[0])
+      }
+    }
+
+    if (candidate && typeof candidate === 'object') {
+      const nestedId = getNumericId(
+        candidate.id,
+        candidate.pk,
+        candidate.value,
+        candidate.store_id,
+        candidate.storeId,
+        candidate.shift_id,
+        candidate.shiftId,
+      )
+
+      if (nestedId !== null) {
+        return nestedId
+      }
+    }
+  }
+
+  return null
+}
+
+const normalizeOrderPaymentMethod = (paymentMethod) => {
+  const normalizedMethod = String(paymentMethod || '').trim().toLowerCase()
+  return normalizedMethod === 'cash' ? 'Cash' : 'Card'
+}
 
 const getCustomerName = (customer) => (
   customer?.name ||
@@ -68,13 +116,21 @@ const PosTerminalView = () => {
   const [error, setError] = useState('')
   const [isAgeVerificationOpen, setIsAgeVerificationOpen] = useState(false)
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
   const previousCartCountRef = useRef(0)
+  const previousCheckoutSignatureRef = useRef('')
+  const auth = getStoredAuth()
 
   const { data: categoriesData } = useFetch('/inventory/categories/')
   const { data: productsData, loading: isLoadingProducts } = useFetch('/inventory/products/')
+  const { data: taxRatesData } = useFetch('/lookups/tax-rates/')
   const { data: customersData, loading: isLoadingCustomers, refetch: refetchCustomers } = useFetch('/people/customers/')
   const { post } = useApi()
+
+  const taxRates = useMemo(() => (
+    Array.isArray(taxRatesData) ? taxRatesData : taxRatesData?.results || []
+  ), [taxRatesData])
 
   const categories = categoriesData && Array.isArray(categoriesData) && categoriesData.length > 0
     ? [{ id: 'all', name: 'All Products' }, ...categoriesData.map(c => ({ id: c.id, name: c.name }))]
@@ -111,11 +167,13 @@ const PosTerminalView = () => {
         abv: p?.abv || p?.alcohol_percentage || '-',
         caseBottle: p?.case_bottle || p?.case_qty || p?.bottle_per_case || '-',
         taxCategory: p?.tax_category?.name || p?.tax_category_name || 'Liquor',
+        taxRateSource: p?.tax_rate ?? p?.taxRate ?? null,
+        taxRate: resolveTaxRateDetails(p?.tax_rate ?? p?.taxRate, taxRates).rate,
         deposit: Number(p?.deposit_amount ?? p?.deposit ?? 0),
         itemDiscount: Number(p?.discount_amount ?? p?.discount ?? 0),
         ageRestricted: p?.age_restricted !== false,
       }))
-  }, [productsData])
+  }, [productsData, taxRates])
 
   const customers = useMemo(() => {
     if (Array.isArray(customersData)) return customersData
@@ -128,13 +186,19 @@ const PosTerminalView = () => {
     paymentMethod,
     discount,
     cartItems,
+    activeStoreId,
     ageVerification,
+    giftCardPayment,
     setCategory,
     setProductSearch,
+    setPaymentMethod,
+    setGiftCardPayment,
     addToCart,
     increaseCartItem,
     decreaseCartItem,
     clearCart,
+    clearGiftCardPayment,
+    syncCartItemTaxRates,
     setAgeVerification,
     getTotals,
   } = usePosStore()
@@ -143,6 +207,17 @@ const PosTerminalView = () => {
   const cartRequiresAgeVerification = useMemo(
     () => cartItems.some((item) => item.ageRestricted !== false),
     [cartItems],
+  )
+  const checkoutSignature = useMemo(
+    () => JSON.stringify({
+      cartItems: cartItems.map((item) => ({
+        id: item.id,
+        quantity: item.quantity,
+        price: item.price,
+      })),
+      discount,
+    }),
+    [cartItems, discount],
   )
 
   const filteredProducts = useMemo(() => {
@@ -174,6 +249,30 @@ const PosTerminalView = () => {
 
     previousCartCountRef.current = cartItems.length
   }, [ageVerification.isVerified, cartItems, cartRequiresAgeVerification, isAgeVerificationOpen])
+
+  useEffect(() => {
+    if (!previousCheckoutSignatureRef.current) {
+      previousCheckoutSignatureRef.current = checkoutSignature
+      return
+    }
+
+    if (
+      previousCheckoutSignatureRef.current !== checkoutSignature
+      && (Number(giftCardPayment?.appliedAmount) || 0) > 0
+    ) {
+      clearGiftCardPayment()
+    }
+
+    previousCheckoutSignatureRef.current = checkoutSignature
+  }, [checkoutSignature, clearGiftCardPayment, giftCardPayment?.appliedAmount])
+
+  useEffect(() => {
+    if (taxRates.length === 0 || cartItems.length === 0) {
+      return
+    }
+
+    syncCartItemTaxRates(taxRates)
+  }, [cartItems.length, syncCartItemTaxRates, taxRates])
 
   const handleAgeVerificationCancel = () => {
     setIsAgeVerificationOpen(false)
@@ -242,8 +341,8 @@ const PosTerminalView = () => {
     return customerEligibility
   }
 
-  const handleCompleteOrder = async () => {
-    if (cartItems.length === 0) return
+  const ensureCheckoutReady = () => {
+    if (cartItems.length === 0) return false
     setError('')
 
     if (cartRequiresAgeVerification) {
@@ -256,37 +355,124 @@ const PosTerminalView = () => {
             message: customerEligibility.message,
             type: 'warning',
           })
-          return
+          return false
         }
       } else if (!ageVerification.isVerified) {
         setIsAgeVerificationOpen(true)
-        return
+        return false
       }
     }
 
+    return true
+  }
+
+  const handleCompleteOrder = async (selectedPaymentMethod = paymentMethod) => {
+    if (!ensureCheckoutReady()) return false
+
+    const resolvedPaymentMethod = typeof selectedPaymentMethod === 'string'
+      ? selectedPaymentMethod
+      : selectedPaymentMethod?.paymentMethod || paymentMethod
+    const normalizedPaymentMethod = normalizeOrderPaymentMethod(resolvedPaymentMethod)
+    const storeId = getNumericId(
+      activeStoreId,
+      auth?.store,
+      auth?.store_id,
+      auth?.storeId,
+      auth?.user?.store,
+      auth?.user?.store_id,
+      auth?.user?.storeId,
+      auth?.data?.store,
+      auth?.data?.store_id,
+      auth?.data?.storeId,
+      auth?.data?.user?.store,
+      auth?.data?.user?.store_id,
+      auth?.data?.user?.storeId,
+      auth?.stores?.[0],
+      auth?.user?.stores?.[0],
+      auth?.data?.user?.stores?.[0],
+      localStorage.getItem('active_store_id'),
+      localStorage.getItem('store_id'),
+    )
+    const shiftId = getNumericId(
+      auth?.shift,
+      auth?.shift_id,
+      auth?.shiftId,
+      auth?.current_shift,
+      auth?.currentShift,
+      auth?.user?.shift,
+      auth?.user?.shift_id,
+      auth?.user?.shiftId,
+      auth?.user?.current_shift,
+      auth?.user?.currentShift,
+      auth?.data?.shift,
+      auth?.data?.shift_id,
+      auth?.data?.shiftId,
+      auth?.data?.current_shift,
+      auth?.data?.currentShift,
+      auth?.data?.user?.shift,
+      auth?.data?.user?.shift_id,
+      auth?.data?.user?.shiftId,
+      auth?.data?.user?.current_shift,
+      auth?.data?.user?.currentShift,
+      localStorage.getItem('active_shift_id'),
+      localStorage.getItem('shift_id'),
+      localStorage.getItem('current_shift_id'),
+    )
+
     setIsCompleting(true)
+    setPaymentMethod(normalizedPaymentMethod)
 
     try {
       const payload = {
-        status: 'Completed',
-        payment_method: paymentMethod || 'Cash',
-        total_amount: roundToTwo(totals.grandTotal),
-        discount_amount: roundToTwo(totals.discount || 0),
+        store: storeId,
+        customer: getNumericId(selectedCustomer?.id, selectedCustomer?.customer_id, selectedCustomer?.customerId),
+        shift: shiftId,
+        subtotal: roundToTwo(totals.subtotal),
         tax_amount: roundToTwo(totals.tax || 0),
+        discount_amount: roundToTwo(discount || 0),
+        total_amount: roundToTwo(totals.subtotal + (totals.tax || 0) - (discount || 0)),
+        payment_method: normalizedPaymentMethod,
+        status: 'Completed',
         items: cartItems.map((item) => ({
-          product_id: item.id,
+          product: item.id,
           quantity: item.quantity,
           unit_price: roundToTwo(item.price),
+          subtotal: roundToTwo((Number(item.price) || 0) * (Number(item.quantity) || 0)),
         })),
       }
 
       await post('/sales/orders/', payload)
       clearCart()
+      setIsPaymentModalOpen(false)
+      return true
     } catch (err) {
-      setError(err?.message || 'Unable to complete order')
+      console.error('Unable to complete order.', err)
+      setError('')
+      return false
     } finally {
       setIsCompleting(false)
     }
+  }
+
+  const handleOpenPaymentModal = () => {
+    if (!ensureCheckoutReady()) return
+    setError('')
+    setIsPaymentModalOpen(true)
+  }
+
+  const handlePaymentMethodSelection = async (method) => {
+    setPaymentMethod(method)
+    setError('')
+  }
+
+  const handleGiftCardPaymentApply = async ({ number, balance, appliedAmount }) => {
+    setPaymentMethod('Gift Card')
+    setGiftCardPayment({
+      number,
+      balance,
+      appliedAmount: Math.min(roundToTwo(appliedAmount), roundToTwo(totals.grandTotal)),
+    })
+    setError('')
   }
 
   const handleCustomerSelect = (customer) => {
@@ -332,6 +518,12 @@ const PosTerminalView = () => {
     setIsAgeVerificationOpen(false)
     addToCart(product)
   }
+
+  useEffect(() => {
+    if (cartItems.length === 0 && isPaymentModalOpen) {
+      setIsPaymentModalOpen(false)
+    }
+  }, [cartItems.length, isPaymentModalOpen])
 
   return (
     <div className="h-full min-h-0 grid grid-cols-[340px_1fr] bg-[#F3F5F8]">
@@ -448,7 +640,7 @@ const PosTerminalView = () => {
                 <span className="text-[13px] font-bold transition-colors text-emerald-600">-{formatCurrency(discount)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Tax ({(TAX_RATE * 100).toFixed(0)}%)</span>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{totals.taxLabel}</span>
                 <span className="text-[13px] font-bold transition-colors text-slate-900">{formatCurrency(totals.tax)}</span>
               </div>
               <div className="border-t border-[#E2E8F0] pt-3 flex items-center justify-between">
@@ -458,7 +650,7 @@ const PosTerminalView = () => {
 
               <button
                 type="button"
-                onClick={handleCompleteOrder}
+                onClick={handleOpenPaymentModal}
                 disabled={isCompleting || cartItems.length === 0}
                 className="w-full h-12 rounded-xl bg-[#1EA7EE] text-white text-[15px] font-black tracking-tight font-poppins disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -530,6 +722,21 @@ const PosTerminalView = () => {
         onClose={() => setIsCustomerModalOpen(false)}
         onSelect={handleCustomerSelect}
         onCustomerAdded={handleCustomerAdded}
+      />
+
+      <PaymentMethodModal
+        isOpen={isPaymentModalOpen}
+        cartItems={cartItems}
+        totals={totals}
+        taxLabel={totals.taxLabel}
+        discount={discount}
+        paymentMethod={paymentMethod}
+        giftCardPayment={giftCardPayment}
+        processing={isCompleting}
+        onClose={() => setIsPaymentModalOpen(false)}
+        onSelectMethod={handlePaymentMethodSelection}
+        onApplyGiftCard={handleGiftCardPaymentApply}
+        onFinalizeCash={handleCompleteOrder}
       />
     </div>
   )

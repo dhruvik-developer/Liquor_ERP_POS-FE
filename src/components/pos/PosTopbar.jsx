@@ -4,13 +4,14 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
 import { getIsAdminUser, getStoredAuth } from '../../utils/auth'
 import { usePosStore } from '../../store/usePosStore'
-import { showToast } from '../../utils/toast'
 import {
+  buildCustomerDisplayPopupFeatures,
   CUSTOMER_DISPLAY_EVENTS,
   CUSTOMER_DISPLAY_WINDOW_NAME,
   createCustomerDisplayChannel,
   createCustomerDisplaySnapshot,
   getCustomerDisplayCartItems,
+  getCustomerDisplayTargetScreen,
   persistCustomerDisplaySnapshot,
 } from '../../utils/customerDisplay'
 import PosTabIcon from '../../assets/icon/POS.png'
@@ -49,19 +50,24 @@ const PosTopbar = () => {
   const cartItems = usePosStore((state) => state.cartItems)
   const discount = usePosStore((state) => state.discount)
   const ageVerification = usePosStore((state) => state.ageVerification)
+  const giftCardPayment = usePosStore((state) => state.giftCardPayment)
 
   const userName = user?.name || 'Admin User'
   const userRole = getUserRoleLabel(user)
   useEffect(() => {
     const displayCartItems = getCustomerDisplayCartItems(cartItems, ageVerification)
-    const snapshot = createCustomerDisplaySnapshot({ cartItems: displayCartItems, discount })
+    const snapshot = createCustomerDisplaySnapshot({
+      cartItems: displayCartItems,
+      discount,
+      giftCardAppliedAmount: giftCardPayment?.appliedAmount,
+    })
     latestSnapshotRef.current = snapshot
     persistCustomerDisplaySnapshot(snapshot)
     customerDisplayChannelRef.current?.postMessage({
       type: CUSTOMER_DISPLAY_EVENTS.SYNC_STATE,
       payload: snapshot,
     })
-  }, [ageVerification, cartItems, discount])
+  }, [ageVerification, cartItems, discount, giftCardPayment?.appliedAmount])
 
   useEffect(() => {
     const channel = createCustomerDisplayChannel()
@@ -158,7 +164,12 @@ const PosTopbar = () => {
     })
   }
 
-  const handleOpenCustomerDisplay = () => {
+  const openCustomerDisplayInCurrentScreen = () => {
+    syncCustomerDisplayState()
+    navigate(`${routeBase}/customer-display`)
+  }
+
+  const handleOpenCustomerDisplay = async () => {
     const popupUrl = `${window.location.origin}${routeBase}/customer-display`
     const existingWindow = customerDisplayWindowRef.current
 
@@ -172,37 +183,27 @@ const PosTopbar = () => {
       return
     }
 
-    const popupFeatures = [
-      'popup=yes',
-      'resizable=yes',
-      'scrollbars=yes',
-      `width=${window.screen.availWidth || 1280}`,
-      `height=${window.screen.availHeight || 800}`,
-      'left=0',
-      'top=0',
-    ].join(',')
-
     let nextWindow = null
 
     try {
       syncCustomerDisplayState()
+      const targetScreen = await getCustomerDisplayTargetScreen()
+
+      if (!targetScreen) {
+        openCustomerDisplayInCurrentScreen()
+        return
+      }
+
+      const popupFeatures = buildCustomerDisplayPopupFeatures(targetScreen)
       nextWindow = window.open(popupUrl, CUSTOMER_DISPLAY_WINDOW_NAME, popupFeatures)
     } catch (error) {
       console.error('Unable to open customer display window.', error)
-      showToast({
-        title: 'Unable to Open Display',
-        message: 'Something went wrong while opening the customer display screen.',
-        type: 'error',
-      })
+      openCustomerDisplayInCurrentScreen()
       return
     }
 
     if (!nextWindow) {
-      showToast({
-        title: 'Popup Blocked',
-        message: 'Please allow popups for this site to open the customer display screen.',
-        type: 'warning',
-      })
+      openCustomerDisplayInCurrentScreen()
       return
     }
 

@@ -1,7 +1,6 @@
 import { create } from 'zustand'
 import { showToast } from '../utils/toast'
-
-const TAX_RATE = 0.18
+import { getCartTaxSummary, resolveTaxRateDetails } from '../utils/tax'
 
 const showOutOfStockWarning = (productName = 'This product') => {
   showToast({
@@ -24,6 +23,8 @@ const normalizeCartItem = product => ({
   abv: product.abv || '-',
   caseBottle: product.caseBottle || '-',
   taxCategory: product.taxCategory || 'Liquor',
+  taxRateSource: product.taxRateSource ?? product.tax_rate ?? product.taxRate ?? null,
+  taxRate: resolveTaxRateDetails(product.taxRate ?? product.tax_rate).rate,
   deposit: Number(product.deposit) || 0,
   itemDiscount: Number(product.itemDiscount) || 0,
   ageRestricted: product.ageRestricted !== false,
@@ -36,12 +37,18 @@ const createInitialAgeVerification = () => ({
   method: null,
 })
 
+const createInitialGiftCardPayment = () => ({
+  number: '',
+  balance: 0,
+  appliedAmount: 0,
+})
+
 const computeTotals = (cartItems, discount) => {
   const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0)
-  const tax = subtotal * TAX_RATE
+  const { tax, taxLabel } = getCartTaxSummary(cartItems)
   const grandTotal = Math.max(subtotal + tax - discount, 0)
 
-  return { subtotal, tax, grandTotal }
+  return { subtotal, tax, taxLabel, grandTotal }
 }
 
 export const usePosStore = create((set, get) => ({
@@ -55,6 +62,7 @@ export const usePosStore = create((set, get) => ({
   orderStatus: 'Pending',
   recentOrders: [],
   ageVerification: createInitialAgeVerification(),
+  giftCardPayment: createInitialGiftCardPayment(),
 
   setStore: storeId => set({ activeStoreId: storeId }),
   setCategory: categoryId => set({ selectedCategory: categoryId }),
@@ -69,7 +77,38 @@ export const usePosStore = create((set, get) => ({
       ...payload,
     },
   })),
+  setGiftCardPayment: payload => set(state => ({
+    giftCardPayment: {
+      ...state.giftCardPayment,
+      ...payload,
+      balance: Number(payload?.balance ?? state.giftCardPayment.balance) || 0,
+      appliedAmount: Number(payload?.appliedAmount ?? state.giftCardPayment.appliedAmount) || 0,
+    },
+  })),
+  clearGiftCardPayment: () => set({ giftCardPayment: createInitialGiftCardPayment() }),
   resetAgeVerification: () => set({ ageVerification: createInitialAgeVerification() }),
+  syncCartItemTaxRates: (taxRates = []) => set((state) => {
+    let hasChanges = false
+
+    const nextCartItems = state.cartItems.map((item) => {
+      const nextTaxRate = resolveTaxRateDetails(
+        item.taxRateSource ?? item.taxRate ?? item.tax_rate,
+        taxRates,
+      ).rate
+
+      if (nextTaxRate === item.taxRate) {
+        return item
+      }
+
+      hasChanges = true
+      return {
+        ...item,
+        taxRate: nextTaxRate,
+      }
+    })
+
+    return hasChanges ? { cartItems: nextCartItems } : state
+  }),
 
   addToCart: product => {
     const availableStock = Number(product?.stock) || 0
@@ -145,6 +184,7 @@ export const usePosStore = create((set, get) => ({
     paymentMethod: 'Cash',
     orderStatus: 'Pending',
     ageVerification: createInitialAgeVerification(),
+    giftCardPayment: createInitialGiftCardPayment(),
   }),
   newOrder: () => set({
     cartItems: [],
@@ -152,6 +192,7 @@ export const usePosStore = create((set, get) => ({
     paymentMethod: 'Cash',
     orderStatus: 'Pending',
     ageVerification: createInitialAgeVerification(),
+    giftCardPayment: createInitialGiftCardPayment(),
   }),
 
   holdOrder: () => {
@@ -175,6 +216,7 @@ export const usePosStore = create((set, get) => ({
       discount: 0,
       orderStatus: 'Pending',
       ageVerification: createInitialAgeVerification(),
+      giftCardPayment: createInitialGiftCardPayment(),
     })
   },
 

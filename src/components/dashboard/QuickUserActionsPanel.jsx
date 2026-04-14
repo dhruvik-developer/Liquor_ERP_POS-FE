@@ -17,7 +17,7 @@ const QuickUserActionsPanel = ({
           onClick={onAddUser}
           className={`${buttonClass} border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100`}
         >
-          + Add User
+          Add User
         </button>
       ) : null}
       {canEdit ? (

@@ -241,6 +241,7 @@ const PosPage = () => {
                       <BillingSummary
                         subtotal={totals.subtotal}
                         tax={totals.tax}
+                        taxLabel={totals.taxLabel}
                         discount={discount}
                         grandTotal={totals.grandTotal}
                         onDiscountChange={setDiscount}

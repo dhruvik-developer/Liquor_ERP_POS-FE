@@ -812,21 +812,31 @@ const AddProductModal = ({ isOpen, onClose, onSaved, departments = [], product =
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                         <button 
                           onClick={handleImageClick}
-                          className="p-2 bg-white rounded-full text-slate-800 hover:text-sky-500 transition-colors"
+                          className="p-4 bg-white rounded-full text-slate-800 hover:text-sky-500 transition-colors shadow-md"
                         >
-                          <ImageIcon size={20} />
+                          <ImageIcon size={36} />
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div 
                       onClick={handleImageClick}
-                      className="w-full aspect-video rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-sky-500 hover:bg-sky-50/50 transition-all group"
+                      className="w-full min-h-[90px] rounded-[12px] border border-slate-200 bg-slate-50 flex items-center justify-between px-[21px] py-[21px] cursor-pointer hover:border-sky-500 hover:bg-sky-50 transition-all group"
                     >
-                      <div className="p-3 rounded-full bg-white shadow-sm text-slate-400 group-hover:text-sky-500 transition-colors">
-                        <ImageIcon size={24} />
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm text-slate-400 group-hover:text-sky-500 transition-colors">
+                          <ImageIcon size={30} strokeWidth={2.4} />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-700 group-hover:text-sky-600 transition-colors">
+                            Upload product image
+                          </span>
+                          <span className="text-xs font-medium text-slate-400 group-hover:text-sky-500 transition-colors">
+                            Click to browse
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:text-sky-500 transition-colors">Click to upload image</span>
+                      <Plus size={22} className="shrink-0 text-slate-400 group-hover:text-sky-500 transition-colors" />
                     </div>
                   )}
 
