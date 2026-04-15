@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { 
   User, 
-  Eye, 
-  EyeOff, 
   Camera,
   Mail,
   Phone,
@@ -32,8 +30,6 @@ const AddUserPage = ({ onCancel, onSave }) => {
   const { data: existingData, loading: fetching, error: fetchError } = useFetch(isEdit ? `/users/${id}/` : null)
   const { data: rolesData, loading: rolesLoading } = useFetch('/roles/')
 
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [formData, setFormData] = useState({
     user_id: '',
     gender: '',
@@ -302,47 +298,29 @@ const AddUserPage = ({ onCancel, onSave }) => {
                <h3 className="text-[14px] font-black uppercase tracking-widest text-[#94A3B8] border-b border-[#E2E8F0] pb-2">Authentication & Access</h3>
                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
                  
-                 <div className="relative">
-                   <Input 
-                     label={isEdit ? "New Password (Leave blank to keep current)" : "Access Password"} 
-                     name="password"
-                     value={formData.password}
-                     onChange={handleChange}
-                     type={showPassword ? 'text' : 'password'} 
-                     autoComplete="new-password"
-                     placeholder="••••••••" 
-                     icon={Lock} 
-                     required={!isEdit}
-                   />
-                   <button 
-                     type="button"
-                     onClick={() => setShowPassword(!showPassword)}
-                     className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
-                   >
-                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                   </button>
-                 </div>
+                 <Input 
+                   label={isEdit ? "New Password (Leave blank to keep current)" : "Access Password"} 
+                   name="password"
+                   value={formData.password}
+                   onChange={handleChange}
+                   type="password" 
+                   autoComplete="new-password"
+                   placeholder="••••••••" 
+                   icon={Lock} 
+                   required={!isEdit}
+                 />
 
-                 <div className="relative">
-                   <Input 
-                     label="Confirm Password" 
-                     name="confirm_password"
-                     value={formData.confirm_password}
-                     onChange={handleChange}
-                     type={showConfirmPassword ? 'text' : 'password'} 
-                     autoComplete="new-password"
-                     placeholder="••••••••" 
-                     icon={ShieldCheck} 
-                     required={!isEdit || !!formData.password}
-                   />
-                   <button 
-                     type="button"
-                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                     className="absolute right-4 top-[38px] text-[#94A3B8] hover:text-[#0EA5E9]"
-                   >
-                     {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                   </button>
-                 </div>
+                 <Input 
+                   label="Confirm Password" 
+                   name="confirm_password"
+                   value={formData.confirm_password}
+                   onChange={handleChange}
+                   type="password" 
+                   autoComplete="new-password"
+                   placeholder="••••••••" 
+                   icon={ShieldCheck} 
+                   required={!isEdit || !!formData.password}
+                 />
 
                  <div className="space-y-1.5 flex flex-col relative z-20">
                    <label className="text-[14px] font-bold text-[#1E293B] ml-0.5">Assigned Role</label>
