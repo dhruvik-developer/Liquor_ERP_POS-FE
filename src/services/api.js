@@ -8,13 +8,30 @@ import { extractErrorMessage, showErrorToast } from "../utils/toast";
 const rawBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://192.168.1.79:8001/api';
 const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 const NGROK_SKIP_WARNING_HEADER = "true";
+const shouldSendNgrokHeader = (() => {
+  try {
+    const hostname = new URL(API_BASE_URL).hostname;
+    return hostname.includes("ngrok");
+  } catch {
+    return false;
+  }
+})();
+
+const createBaseHeaders = () => {
+  const headers = {
+    "Content-Type": "application/json",
+  };
+
+  if (shouldSendNgrokHeader) {
+    headers["ngrok-skip-browser-warning"] = NGROK_SKIP_WARNING_HEADER;
+  }
+
+  return headers;
+};
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    "Content-Type": "application/json",
-    "ngrok-skip-browser-warning": NGROK_SKIP_WARNING_HEADER,
-  },
+  headers: createBaseHeaders(),
 });
 
 // Request interceptor to attach JWT token, enforce normalized API paths, and log requests
@@ -26,7 +43,11 @@ api.interceptors.request.use(
     }
 
     config.headers = config.headers || {};
-    config.headers["ngrok-skip-browser-warning"] = NGROK_SKIP_WARNING_HEADER;
+    if (shouldSendNgrokHeader) {
+      config.headers["ngrok-skip-browser-warning"] = NGROK_SKIP_WARNING_HEADER;
+    } else {
+      delete config.headers["ngrok-skip-browser-warning"];
+    }
     
     // Log the final request URL for debugging 404 issues
     const finalUrl = `${config.baseURL || ''}${config.url || ''}`;

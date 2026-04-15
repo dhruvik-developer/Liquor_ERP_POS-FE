@@ -3,6 +3,26 @@ import { showErrorToast } from '../utils/toast'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim()?.replace(/\/+$/, '')
 const NGROK_SKIP_WARNING_HEADER = 'true'
+const shouldSendNgrokHeader = (() => {
+  try {
+    const hostname = new URL(API_BASE_URL).hostname
+    return hostname.includes('ngrok')
+  } catch {
+    return false
+  }
+})()
+
+const createBaseHeaders = () => {
+  const headers = {
+    'Content-Type': 'application/json',
+  }
+
+  if (shouldSendNgrokHeader) {
+    headers['ngrok-skip-browser-warning'] = NGROK_SKIP_WARNING_HEADER
+  }
+
+  return headers
+}
 
 const createQueryString = params => {
   const searchParams = new URLSearchParams()
@@ -44,10 +64,7 @@ export const getJson = async (path, params = {}) => {
   }
 
   const token = localStorage.getItem('access_token')
-  const headers = {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': NGROK_SKIP_WARNING_HEADER,
-  }
+  const headers = createBaseHeaders()
 
   if (token && token !== 'undefined' && token !== 'null') {
     headers['Authorization'] = `Bearer ${token}`
@@ -82,10 +99,7 @@ export const postJson = async (path, payload = {}) => {
   }
 
   const token = localStorage.getItem('access_token')
-  const headers = {
-    'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': NGROK_SKIP_WARNING_HEADER,
-  }
+  const headers = createBaseHeaders()
 
   if (token && token !== 'undefined' && token !== 'null') {
     headers['Authorization'] = `Bearer ${token}`
