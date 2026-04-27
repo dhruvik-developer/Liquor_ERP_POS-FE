@@ -3,7 +3,7 @@ import { Link, useLocation } from 'react-router-dom'
 import { 
   LogOut
 } from 'lucide-react'
-import { getStoredAuth } from '../../utils/auth'
+import { clearStoredAuthSession, getStoredAuth } from '../../utils/auth'
 import api from '../../services/api'
 
 // Import PNG icons
@@ -112,10 +112,7 @@ const PosSidebar = () => {
     } catch (err) {
       console.warn('Logout API failed, forcing local logout:', err)
     } finally {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('auth_user')
-      localStorage.removeItem('auth_token')
+      clearStoredAuthSession()
       window.location.href = '/login'
     }
   }

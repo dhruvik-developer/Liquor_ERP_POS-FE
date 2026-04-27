@@ -8,6 +8,10 @@ import {
   Package,
   Ruler,
   Award,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   Pencil,
   Plus,
   Trash2,
@@ -165,10 +169,21 @@ const getDefaultForm = (activeTab) => {
   return { name: "", localized_name: "" };
 };
 
+const getSerialNumberColumn = () => ({
+  key: "serialNumber",
+  title: "SR NO.",
+  render: (_, index) => index + 1,
+});
+
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100];
+
 const ItemMasterManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTab = searchParams.get("tab") || "department";
   const [searchText, setSearchText] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState(getDefaultForm(activeTab));
@@ -202,6 +217,8 @@ const ItemMasterManagement = () => {
 
   useEffect(() => {
     setSearchText("");
+    setCurrentPage(1);
+    setPageInput("1");
     setIsModalOpen(false);
     setFormError("");
     setFormData(getDefaultForm(activeTab));
@@ -235,8 +252,51 @@ const ItemMasterManagement = () => {
     });
   }, [rows, searchText, activeTab, categories, departments]);
 
+  const totalRecords = filteredRows.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput("1");
+  }, [searchText, pageSize]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+      setPageInput(String(totalPages));
+      return;
+    }
+
+    setPageInput(String(currentPage));
+  }, [currentPage, totalPages]);
+
+  const paginatedRows = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredRows.slice(start, start + pageSize);
+  }, [filteredRows, currentPage, pageSize]);
+
+  const pageStart = totalRecords === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const pageEnd =
+    totalRecords === 0 ? 0 : Math.min(currentPage * pageSize, totalRecords);
+
   const setTab = (tab) => {
     setSearchParams({ tab });
+  };
+
+  const handlePageChange = (nextPage) => {
+    const safePage = Math.min(Math.max(1, nextPage), totalPages);
+    setCurrentPage(safePage);
+    setPageInput(String(safePage));
+  };
+
+  const handlePageInputCommit = () => {
+    const parsedPage = Number(pageInput);
+    if (!Number.isInteger(parsedPage) || parsedPage < 1) {
+      setPageInput(String(currentPage));
+      return;
+    }
+
+    handlePageChange(parsedPage);
   };
 
   const openCreate = () => {
@@ -430,7 +490,7 @@ const ItemMasterManagement = () => {
   const columns = useMemo(() => {
     if (activeTab === "department") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         {
           key: "name",
           title: "DEPARTMENT",
@@ -440,7 +500,7 @@ const ItemMasterManagement = () => {
     }
     if (activeTab === "category") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         { key: "name", title: "CATEGORY", render: (item) => item.name || "-" },
         {
           key: "department",
@@ -452,7 +512,7 @@ const ItemMasterManagement = () => {
     }
     if (activeTab === "sub-category") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         {
           key: "name",
           title: "SUB CATEGORY",
@@ -468,7 +528,7 @@ const ItemMasterManagement = () => {
     }
     if (activeTab === "size") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         { key: "name", title: "SIZE", render: (item) => item.name || "-" },
         {
           key: "uom",
@@ -494,13 +554,13 @@ const ItemMasterManagement = () => {
     }
     if (activeTab === "uom") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         { key: "name", title: "UOM", render: (item) => item.name || "-" },
       ];
     }
     if (activeTab === "pack") {
       return [
-        { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+        getSerialNumberColumn(),
         { key: "name", title: "PACK", render: (item) => item.name || "-" },
         {
           key: "units_in_pack",
@@ -510,7 +570,7 @@ const ItemMasterManagement = () => {
       ];
     }
     return [
-      { key: "id", title: "ID", render: (item) => item.id ?? "-" },
+      getSerialNumberColumn(),
       { key: "name", title: "BRAND NAME", render: (item) => item.name || "-" },
       {
         key: "manufacturer",
@@ -550,6 +610,21 @@ const ItemMasterManagement = () => {
             className="h-10 w-full max-w-[320px] rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 text-[14px] font-medium text-[#1E293B] outline-none transition-all focus:border-[#0EA5E9] focus:bg-white focus:ring-4 focus:ring-[#0EA5E90D]"
           />
           <div className="flex-1" />
+          <div className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] text-[#475569]">
+            <span>Show</span>
+            <select
+              value={pageSize}
+              onChange={(event) => setPageSize(Number(event.target.value))}
+              className="min-w-[64px] rounded border border-[#CBD5E1] bg-white px-2 py-1 text-[13px] font-medium text-[#1E293B] outline-none"
+            >
+              {PAGE_SIZE_OPTIONS.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
+            </select>
+            <span>records</span>
+          </div>
           <Button className="gap-2" onClick={openCreate}>
             <Plus size={16} />
             Add
@@ -608,14 +683,17 @@ const ItemMasterManagement = () => {
                 )}
                 {!loading &&
                   !error &&
-                  filteredRows.map((item, index) => (
+                  paginatedRows.map((item, index) => (
                     <tr key={item?.id || index} className="hover:bg-[#F8FAFC]">
                       {columns.map((column) => (
                         <td
                           key={column.key}
                           className="whitespace-nowrap px-5 py-3 text-[#1E293B]"
                         >
-                          {column.render(item)}
+                          {column.render(
+                            item,
+                            (currentPage - 1) * pageSize + index,
+                          )}
                         </td>
                       ))}
                       <td className="px-5 py-3">
@@ -640,6 +718,67 @@ const ItemMasterManagement = () => {
                   ))}
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[13px] text-[#475569] md:flex-row md:items-center md:justify-between">
+          <div>
+            {pageStart} - {pageEnd} of {totalRecords} records
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handlePageChange(1)}
+              disabled={currentPage === 1 || totalRecords === 0}
+              className="flex h-8 w-8 items-center justify-center rounded border border-[#CBD5E1] bg-white text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+              title="First Page"
+            >
+              <ChevronsLeft size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1 || totalRecords === 0}
+              className="flex h-8 items-center gap-1 rounded border border-[#CBD5E1] bg-white px-2 text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <ChevronLeft size={14} />
+              Prev
+            </button>
+            <div className="flex items-center gap-2 px-1">
+              <span>Pg</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={pageInput}
+                onChange={(event) =>
+                  setPageInput(event.target.value.replace(/[^\d]/g, ""))
+                }
+                onBlur={handlePageInputCommit}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handlePageInputCommit();
+                }}
+                className="h-8 w-14 rounded border border-[#CBD5E1] bg-white px-2 text-center font-medium text-[#1E293B] outline-none"
+              />
+              <span>of {totalPages}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages || totalRecords === 0}
+              className="flex h-8 items-center gap-1 rounded border border-[#CBD5E1] bg-white px-2 text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Next
+              <ChevronRight size={14} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handlePageChange(totalPages)}
+              disabled={currentPage === totalPages || totalRecords === 0}
+              className="flex h-8 w-8 items-center justify-center rounded border border-[#CBD5E1] bg-white text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+              title="Last Page"
+            >
+              <ChevronsRight size={14} />
+            </button>
           </div>
         </div>
       </section>

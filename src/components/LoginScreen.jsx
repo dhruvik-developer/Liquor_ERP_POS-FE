@@ -7,7 +7,7 @@ import Button from './common/Button'
 import Input from './common/Input'
 import loginIcon from '../assets/icon/login.png'
 import api from '../services/api'
-import { getDefaultRouteForRole } from '../utils/auth'
+import { getDefaultRouteForRole, persistAuthSession } from '../utils/auth'
 
 const roleConfig = {
   staff: {
@@ -67,20 +67,14 @@ const LoginScreen = ({ type = 'staff' }) => {
         console.log('[Login]: Access token extracted successfully')
         localStorage.setItem('access_token', accessToken)
 
-        // Store user data if available and preserve a role fallback from selected login type.
-        const apiUser = responseData?.user
-        const userToStore = apiUser
-          ? {
-              ...apiUser,
-              role: apiUser.role ?? apiUser.role_name ?? type,
-            }
-          : {
-          name: 'Admin User',
-          role: type,
-          email: formValues.email
-        }
-
-        localStorage.setItem('auth_user', JSON.stringify(userToStore))
+        const userToStore = persistAuthSession({
+          ...responseData,
+          user: responseData?.user || {
+            name: 'Admin User',
+            role: type,
+            email: formValues.email,
+          },
+        }, type)
 
         const targetRoute = getDefaultRouteForRole(userToStore)
         navigate(targetRoute, { replace: true })

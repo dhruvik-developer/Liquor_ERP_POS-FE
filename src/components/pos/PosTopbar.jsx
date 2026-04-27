@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Bell, LogOut, Monitor, Settings, User, Users, Store } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import api from '../../services/api'
-import { getIsAdminUser, getStoredAuth } from '../../utils/auth'
+import { clearStoredAuthSession, getIsAdminUser, getStoredAuth } from '../../utils/auth'
 import { usePosStore } from '../../store/usePosStore'
 import {
   buildCustomerDisplayPopupFeatures,
@@ -133,10 +133,7 @@ const PosTopbar = () => {
     } catch (err) {
       console.warn('Logout API failed, forcing local logout:', err)
     } finally {
-      localStorage.removeItem('access_token')
-      localStorage.removeItem('refresh_token')
-      localStorage.removeItem('auth_user')
-      localStorage.removeItem('auth_token')
+      clearStoredAuthSession()
       window.location.href = '/login'
     }
   }

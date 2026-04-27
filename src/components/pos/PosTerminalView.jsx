@@ -7,7 +7,7 @@ import useFetch from '../../hooks/useFetch'
 import useApi from '../../hooks/useApi'
 import { resolveMediaUrl } from '../../utils/url'
 import { showToast } from '../../utils/toast'
-import { getStoredAuth } from '../../utils/auth'
+import { getStoredAuth, resolveStoredShiftId, resolveStoredStoreId } from '../../utils/auth'
 import { resolveTaxRateDetails } from '../../utils/tax'
 import AgeVerificationModal from './AgeVerificationModal'
 import CustomerSelectModal from './CustomerSelectModal'
@@ -373,51 +373,20 @@ const PosTerminalView = () => {
       ? selectedPaymentMethod
       : selectedPaymentMethod?.paymentMethod || paymentMethod
     const normalizedPaymentMethod = normalizeOrderPaymentMethod(resolvedPaymentMethod)
-    const storeId = getNumericId(
-      activeStoreId,
-      auth?.store,
-      auth?.store_id,
-      auth?.storeId,
-      auth?.user?.store,
-      auth?.user?.store_id,
-      auth?.user?.storeId,
-      auth?.data?.store,
-      auth?.data?.store_id,
-      auth?.data?.storeId,
-      auth?.data?.user?.store,
-      auth?.data?.user?.store_id,
-      auth?.data?.user?.storeId,
-      auth?.stores?.[0],
-      auth?.user?.stores?.[0],
-      auth?.data?.user?.stores?.[0],
-      localStorage.getItem('active_store_id'),
-      localStorage.getItem('store_id'),
-    )
-    const shiftId = getNumericId(
-      auth?.shift,
-      auth?.shift_id,
-      auth?.shiftId,
-      auth?.current_shift,
-      auth?.currentShift,
-      auth?.user?.shift,
-      auth?.user?.shift_id,
-      auth?.user?.shiftId,
-      auth?.user?.current_shift,
-      auth?.user?.currentShift,
-      auth?.data?.shift,
-      auth?.data?.shift_id,
-      auth?.data?.shiftId,
-      auth?.data?.current_shift,
-      auth?.data?.currentShift,
-      auth?.data?.user?.shift,
-      auth?.data?.user?.shift_id,
-      auth?.data?.user?.shiftId,
-      auth?.data?.user?.current_shift,
-      auth?.data?.user?.currentShift,
-      localStorage.getItem('active_shift_id'),
-      localStorage.getItem('shift_id'),
-      localStorage.getItem('current_shift_id'),
-    )
+    const latestAuth = getStoredAuth()
+    const storeId = getNumericId(activeStoreId, resolveStoredStoreId(latestAuth), resolveStoredStoreId())
+    const shiftId = resolveStoredShiftId(latestAuth) ?? resolveStoredShiftId()
+
+    if (!shiftId) {
+      const message = 'An active shift is required before finalizing payment.'
+      setError(message)
+      showToast({
+        title: 'Shift Required',
+        message,
+        type: 'warning',
+      })
+      return false
+    }
 
     setIsCompleting(true)
     setPaymentMethod(normalizedPaymentMethod)

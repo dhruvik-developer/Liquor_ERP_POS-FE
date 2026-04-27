@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react'
 import Loader from '../common/Loader'
 import InventoryFilter from './InventoryFilter'
 import InventoryTable from './InventoryTable'
@@ -26,6 +26,8 @@ const toNameList = list => (
     : []
 )
 
+const PAGE_SIZE_OPTIONS = [10, 20, 50, 100]
+
 const InventoryManagement = () => {
   const [searchParams, setSearchParams] = useSearchParams()
   const [filters, setFilters] = useState({
@@ -44,6 +46,9 @@ const InventoryManagement = () => {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState(null)
+  const [pageSize, setPageSize] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageInput, setPageInput] = useState('1')
 
   useEffect(() => {
     if (searchParams.get('openAddProduct') === '1') {
@@ -210,6 +215,46 @@ const InventoryManagement = () => {
   }, [filters, mappedProducts])
 
   const totalProducts = filteredData.length
+  const totalPages = Math.max(1, Math.ceil(totalProducts / pageSize))
+
+  useEffect(() => {
+    setCurrentPage(1)
+    setPageInput('1')
+  }, [filters, pageSize])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+      setPageInput(String(totalPages))
+      return
+    }
+
+    setPageInput(String(currentPage))
+  }, [currentPage, totalPages])
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * pageSize
+    return filteredData.slice(start, start + pageSize)
+  }, [filteredData, currentPage, pageSize])
+
+  const pageStart = totalProducts === 0 ? 0 : ((currentPage - 1) * pageSize) + 1
+  const pageEnd = totalProducts === 0 ? 0 : Math.min(currentPage * pageSize, totalProducts)
+
+  const handlePageChange = nextPage => {
+    const safePage = Math.min(Math.max(1, nextPage), totalPages)
+    setCurrentPage(safePage)
+    setPageInput(String(safePage))
+  }
+
+  const handlePageInputCommit = () => {
+    const parsedPage = Number(pageInput)
+    if (!Number.isInteger(parsedPage) || parsedPage < 1) {
+      setPageInput(String(currentPage))
+      return
+    }
+
+    handlePageChange(parsedPage)
+  }
 
   return (
     <div className="space-y-6">
@@ -232,7 +277,86 @@ const InventoryManagement = () => {
           {error}
         </div>
       ) : (
-        <InventoryTable products={filteredData} onEdit={handleEdit} />
+        <>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-2 text-[13px] text-[#475569]">
+              <span>Show</span>
+              <select
+                value={pageSize}
+                onChange={event => setPageSize(Number(event.target.value))}
+                className="min-w-[64px] rounded border border-[#CBD5E1] bg-white px-2 py-1 text-[13px] font-medium text-[#1E293B] outline-none"
+              >
+                {PAGE_SIZE_OPTIONS.map(size => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+              <span>records</span>
+            </div>
+          </div>
+
+          <InventoryTable products={paginatedProducts} onEdit={handleEdit} />
+
+          <div className="flex flex-col gap-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] px-4 py-3 text-[13px] text-[#475569] md:flex-row md:items-center md:justify-between">
+            <div>
+              {pageStart} - {pageEnd} of {totalProducts} records
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handlePageChange(1)}
+                disabled={currentPage === 1 || totalProducts === 0}
+                className="flex h-8 w-8 items-center justify-center rounded border border-[#CBD5E1] bg-white text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+                title="First Page"
+              >
+                <ChevronsLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || totalProducts === 0}
+                className="flex h-8 items-center gap-1 rounded border border-[#CBD5E1] bg-white px-2 text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <ChevronLeft size={14} />
+                Prev
+              </button>
+              <div className="flex items-center gap-2 px-1">
+                <span>Pg</span>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={pageInput}
+                  onChange={event => setPageInput(event.target.value.replace(/[^\d]/g, ''))}
+                  onBlur={handlePageInputCommit}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') handlePageInputCommit()
+                  }}
+                  className="h-8 w-14 rounded border border-[#CBD5E1] bg-white px-2 text-center font-medium text-[#1E293B] outline-none"
+                />
+                <span>of {totalPages}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || totalProducts === 0}
+                className="flex h-8 items-center gap-1 rounded border border-[#CBD5E1] bg-white px-2 text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Next
+                <ChevronRight size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => handlePageChange(totalPages)}
+                disabled={currentPage === totalPages || totalProducts === 0}
+                className="flex h-8 w-8 items-center justify-center rounded border border-[#CBD5E1] bg-white text-[#64748B] transition hover:bg-[#E2E8F0] disabled:cursor-not-allowed disabled:opacity-50"
+                title="Last Page"
+              >
+                <ChevronsRight size={14} />
+              </button>
+            </div>
+          </div>
+        </>
       )}
 
       <AddProductModal 
