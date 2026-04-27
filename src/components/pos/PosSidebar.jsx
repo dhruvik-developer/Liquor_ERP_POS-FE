@@ -7,7 +7,7 @@ import { clearStoredAuthSession, getStoredAuth } from '../../utils/auth'
 import api from '../../services/api'
 
 // Import PNG icons
-import DashboardIcon from '../../assets/icon/dashboard.png'
+import DashboardIcon from '../../assets/icon/Dashboard.png'
 import ProductsIcon from '../../assets/icon/products.png'
 import PurchaseBillsIcon from '../../assets/icon/purchasebills.png'
 import PurchaseOrdersIcon from '../../assets/icon/purchaseorders.png'
