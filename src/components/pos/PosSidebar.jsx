@@ -8,7 +8,7 @@ import api from '../../services/api'
 
 // Import PNG icons
 import DashboardIcon from '../../assets/icon/Dashboard.png'
-import ProductsIcon from '../../assets/icon/products.png'
+import ProductsIcon from '../../assets/icon/Products.png'
 import PurchaseBillsIcon from '../../assets/icon/purchasebills.png'
 import PurchaseOrdersIcon from '../../assets/icon/purchaseorders.png'
 import PurchaseReturnIcon from '../../assets/icon/purchasereturn.png'
